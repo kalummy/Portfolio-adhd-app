@@ -1,0 +1,142 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/draft/format.json",
+  "color": {
+    "base": {
+      "black": { "$type": "color", "$value": "#111111", "$extensions": { "oklch": "oklch(17.8% 0 0)", "cssVariable": "--color-base-black" } },
+      "white": { "$type": "color", "$value": "#ffffff", "$extensions": { "oklch": "oklch(100% 0 0)", "cssVariable": "--color-base-white" } }
+    },
+    "mint": {
+      "50": { "$type": "color", "$value": "#e4fbf4", "$extensions": { "oklch": "oklch(97% 0.0256 174.69)", "cssVariable": "--color-mint-50" } },
+      "100": { "$type": "color", "$value": "#cdf6e9", "$extensions": { "oklch": "oklch(94% 0.0456 174.69)", "cssVariable": "--color-mint-100" } },
+      "200": { "$type": "color", "$value": "#aaefdb", "$extensions": { "oklch": "oklch(90% 0.0741 174.69)", "cssVariable": "--color-mint-200" } },
+      "300": { "$type": "color", "$value": "#86e7cd", "$extensions": { "oklch": "oklch(86% 0.0997 174.69)", "cssVariable": "--color-mint-300" } },
+      "400": { "$type": "color", "$value": "#5fe0c1", "$extensions": { "oklch": "oklch(82.5% 0.1225 174.69)", "cssVariable": "--color-mint-400" } },
+      "500": { "$type": "color", "$value": "#2bd9b6", "$extensions": { "oklch": "oklch(79.4% 0.1425 174.69)", "cssVariable": "--color-mint-500" } },
+      "600": { "$type": "color", "$value": "#00b999", "$extensions": { "oklch": "oklch(70% 0.1323 174.69)", "cssVariable": "--color-mint-600" } },
+      "700": { "$type": "color", "$value": "#00997f", "$extensions": { "oklch": "oklch(61% 0.1153 174.69)", "cssVariable": "--color-mint-700" } },
+      "800": { "$type": "color", "$value": "#067b65", "$extensions": { "oklch": "oklch(52% 0.0969 174.69)", "cssVariable": "--color-mint-800" } },
+      "900": { "$type": "color", "$value": "#0d5d4d", "$extensions": { "oklch": "oklch(43% 0.0769 174.69)", "cssVariable": "--color-mint-900" } }
+    },
+    "blue": {
+      "50": { "$type": "color", "$value": "#e3f2fd", "$extensions": { "oklch": "oklch(95.3% 0.0218 239.43)", "cssVariable": "--color-blue-50" } },
+      "100": { "$type": "color", "$value": "#bbdefb", "$extensions": { "oklch": "oklch(88.5% 0.0546 243.39)", "cssVariable": "--color-blue-100" } },
+      "200": { "$type": "color", "$value": "#90caf9", "$extensions": { "oklch": "oklch(81.6% 0.0896 243.62)", "cssVariable": "--color-blue-200" } },
+      "300": { "$type": "color", "$value": "#64b5f6", "$extensions": { "oklch": "oklch(74.8% 0.1235 244.75)", "cssVariable": "--color-blue-300" } },
+      "400": { "$type": "color", "$value": "#42a5f5", "$extensions": { "oklch": "oklch(70% 0.1488 246.66)", "cssVariable": "--color-blue-400" } },
+      "500": { "$type": "color", "$value": "#2196f3", "$extensions": { "oklch": "oklch(65.8% 0.169 248.81)", "cssVariable": "--color-blue-500" } },
+      "600": { "$type": "color", "$value": "#1e88e5", "$extensions": { "oklch": "oklch(61.8% 0.1668 250.87)", "cssVariable": "--color-blue-600" } },
+      "700": { "$type": "color", "$value": "#1976d2", "$extensions": { "oklch": "oklch(56.5% 0.1633 253.27)", "cssVariable": "--color-blue-700" } },
+      "800": { "$type": "color", "$value": "#1565c0", "$extensions": { "oklch": "oklch(51.3% 0.1603 255.67)", "cssVariable": "--color-blue-800" } },
+      "900": { "$type": "color", "$value": "#0d47a1", "$extensions": { "oklch": "oklch(42.2% 0.1569 259.91)", "cssVariable": "--color-blue-900" } }
+    },
+    "gray": {
+      "50": { "$type": "color", "$value": "#fafafb", "$extensions": { "oklch": "oklch(98.5% 0.0013 286.38)", "cssVariable": "--color-gray-50" } },
+      "75": { "$type": "color", "$value": "#f6f7f9", "$extensions": { "oklch": "oklch(97.6% 0.0029 264.54)", "cssVariable": "--color-gray-75" } },
+      "100": { "$type": "color", "$value": "#f1f2f4", "$extensions": { "oklch": "oklch(96.1% 0.0029 264.54)", "cssVariable": "--color-gray-100" } },
+      "150": { "$type": "color", "$value": "#eaebee", "$extensions": { "oklch": "oklch(94% 0.0042 271.37)", "cssVariable": "--color-gray-150" } },
+      "200": { "$type": "color", "$value": "#e3e4e8", "$extensions": { "oklch": "oklch(91.9% 0.0055 274.96)", "cssVariable": "--color-gray-200" } },
+      "300": { "$type": "color", "$value": "#cfd1d6", "$extensions": { "oklch": "oklch(86.1% 0.0072 268.54)", "cssVariable": "--color-gray-300" } },
+      "400": { "$type": "color", "$value": "#b5b7bd", "$extensions": { "oklch": "oklch(78% 0.0088 271.3)", "cssVariable": "--color-gray-400" } },
+      "500": { "$type": "color", "$value": "#9c9ea5", "$extensions": { "oklch": "oklch(70% 0.0104 273.3)", "cssVariable": "--color-gray-500" } },
+      "600": { "$type": "color", "$value": "#83868e", "$extensions": { "oklch": "oklch(62% 0.0125 269.48)", "cssVariable": "--color-gray-600" } },
+      "700": { "$type": "color", "$value": "#6c6e78", "$extensions": { "oklch": "oklch(54% 0.0157 276.84)", "cssVariable": "--color-gray-700" } },
+      "800": { "$type": "color", "$value": "#555862", "$extensions": { "oklch": "oklch(46.1% 0.0166 272.43)", "cssVariable": "--color-gray-800" } },
+      "900": { "$type": "color", "$value": "#41444f", "$extensions": { "oklch": "oklch(38.8% 0.019 273.41)", "cssVariable": "--color-gray-900" } }
+    },
+    "orange": {
+      "50": { "$type": "color", "$value": "#fff3e0", "$extensions": { "oklch": "oklch(96.9% 0.0282 79.48)", "cssVariable": "--color-orange-50" } },
+      "100": { "$type": "color", "$value": "#ffe0b2", "$extensions": { "oklch": "oklch(92.1% 0.0687 77.49)", "cssVariable": "--color-orange-100" } },
+      "200": { "$type": "color", "$value": "#ffcc80", "$extensions": { "oklch": "oklch(87.4% 0.1102 76.47)", "cssVariable": "--color-orange-200" } },
+      "300": { "$type": "color", "$value": "#ffb74d", "$extensions": { "oklch": "oklch(82.9% 0.1452 73.54)", "cssVariable": "--color-orange-300" } },
+      "400": { "$type": "color", "$value": "#ffa726", "$extensions": { "oklch": "oklch(79.7% 0.1638 69.62)", "cssVariable": "--color-orange-400" } },
+      "500": { "$type": "color", "$value": "#ff9800", "$extensions": { "oklch": "oklch(77% 0.1741 64.05)", "cssVariable": "--color-orange-500" } },
+      "600": { "$type": "color", "$value": "#fb8c00", "$extensions": { "oklch": "oklch(74.5% 0.1759 59.37)", "cssVariable": "--color-orange-600" } }
+    },
+    "red": {
+      "50": { "$type": "color", "$value": "#ffebee", "$extensions": { "oklch": "oklch(95.7% 0.0221 7.17)", "cssVariable": "--color-red-50" } },
+      "100": { "$type": "color", "$value": "#ffcdd2", "$extensions": { "oklch": "oklch(89.3% 0.0569 11.54)", "cssVariable": "--color-red-100" } },
+      "200": { "$type": "color", "$value": "#ef9a9a", "$extensions": { "oklch": "oklch(77.2% 0.1024 19.67)", "cssVariable": "--color-red-200" } },
+      "300": { "$type": "color", "$value": "#e57373", "$extensions": { "oklch": "oklch(68.8% 0.142 21.46)", "cssVariable": "--color-red-300" } },
+      "400": { "$type": "color", "$value": "#ef5350", "$extensions": { "oklch": "oklch(65.4% 0.1926 25.14)", "cssVariable": "--color-red-400" } },
+      "500": { "$type": "color", "$value": "#e35141", "$extensions": { "oklch": "oklch(63% 0.1844 29.43)", "cssVariable": "--color-red-500" } },
+      "600": { "$type": "color", "$value": "#da3632", "$extensions": { "oklch": "oklch(58.6% 0.2012 27.06)", "cssVariable": "--color-red-600" } }
+    },
+    "green": {
+      "50": { "$type": "color", "$value": "#e8f5e9", "$extensions": { "oklch": "oklch(95.7% 0.021 147.64)", "cssVariable": "--color-green-50" } },
+      "100": { "$type": "color", "$value": "#c8e6c9", "$extensions": { "oklch": "oklch(89.5% 0.0504 146.04)", "cssVariable": "--color-green-100" } },
+      "200": { "$type": "color", "$value": "#a5d6a7", "$extensions": { "oklch": "oklch(82.9% 0.0827 145.82)", "cssVariable": "--color-green-200" } },
+      "300": { "$type": "color", "$value": "#81c784", "$extensions": { "oklch": "oklch(76.6% 0.1179 145.3)", "cssVariable": "--color-green-300" } },
+      "400": { "$type": "color", "$value": "#66bb6a", "$extensions": { "oklch": "oklch(71.8% 0.1417 144.89)", "cssVariable": "--color-green-400" } },
+      "500": { "$type": "color", "$value": "#4caf50", "$extensions": { "oklch": "oklch(67.3% 0.1624 144.21)", "cssVariable": "--color-green-500" } },
+      "600": { "$type": "color", "$value": "#43a047", "$extensions": { "oklch": "oklch(62.9% 0.1543 144.2)", "cssVariable": "--color-green-600" } }
+    },
+    "bg": {
+      "base_01": { "$type": "color", "$value": "{color.base.white}", "$extensions": { "cssVariable": "--color-bg-base-01" } },
+      "base_02": { "$type": "color", "$value": "{color.base.black}", "$extensions": { "cssVariable": "--color-bg-base-02" } },
+      "base_03": { "$type": "color", "$value": "{color.gray.50}", "$extensions": { "cssVariable": "--color-bg-base-03" } },
+      "base_04": { "$type": "color", "$value": "{color.gray.75}", "$extensions": { "cssVariable": "--color-bg-base-04" } },
+      "base_05": { "$type": "color", "$value": "{color.gray.100}", "$extensions": { "cssVariable": "--color-bg-base-05" } },
+      "interactive": {
+        "brand": {
+          "default": { "$type": "color", "$value": "{color.mint.500}", "$extensions": { "cssVariable": "--color-bg-interactive-brand-default" } },
+          "pressed": { "$type": "color", "$value": "{color.mint.400}", "$extensions": { "cssVariable": "--color-bg-interactive-brand-pressed" } },
+          "focused": { "$type": "color", "$value": "{color.mint.600}", "$extensions": { "cssVariable": "--color-bg-interactive-brand-focused" } },
+          "disabled": { "$type": "color", "$value": "{color.mint.50}", "$extensions": { "cssVariable": "--color-bg-interactive-brand-disabled" } }
+        },
+        "gray": {
+          "default": { "$type": "color", "$value": "{color.gray.100}", "$extensions": { "cssVariable": "--color-bg-interactive-gray-default" } },
+          "pressed": { "$type": "color", "$value": "{color.gray.150}", "$extensions": { "cssVariable": "--color-bg-interactive-gray-pressed" } },
+          "focused": { "$type": "color", "$value": "{color.gray.200}", "$extensions": { "cssVariable": "--color-bg-interactive-gray-focused" } },
+          "disabled": { "$type": "color", "$value": "{color.gray.300}", "$extensions": { "cssVariable": "--color-bg-interactive-gray-disabled" } }
+        },
+        "neutral": {
+          "default": { "$type": "color", "$value": "{color.base.white}", "$extensions": { "cssVariable": "--color-bg-interactive-neutral-default" } },
+          "pressed": { "$type": "color", "$value": "{color.gray.75}", "$extensions": { "cssVariable": "--color-bg-interactive-neutral-pressed" } },
+          "focused": { "$type": "color", "$value": "{color.gray.100}", "$extensions": { "cssVariable": "--color-bg-interactive-neutral-focused" } },
+          "disabled": { "$type": "color", "$value": "{color.base.white}", "$extensions": { "cssVariable": "--color-bg-interactive-neutral-disabled" } }
+        },
+        "mint": {
+          "default": { "$type": "color", "$value": "{color.mint.100}", "$extensions": { "cssVariable": "--color-bg-interactive-mint-default" } },
+          "pressed": { "$type": "color", "$value": "{color.mint.50}", "$extensions": { "cssVariable": "--color-bg-interactive-mint-pressed" } },
+          "focused": { "$type": "color", "$value": "{color.mint.200}", "$extensions": { "cssVariable": "--color-bg-interactive-mint-focused" } },
+          "disabled": { "$type": "color", "$value": "{color.gray.200}", "$extensions": { "cssVariable": "--color-bg-interactive-mint-disabled" } }
+        }
+      }
+    },
+    "font": {
+      "base_01": { "$type": "color", "$value": "{color.base.white}", "$extensions": { "cssVariable": "--color-font-base-01" } },
+      "base_02": { "$type": "color", "$value": "{color.base.black}", "$extensions": { "cssVariable": "--color-font-base-02" } },
+      "base_03": { "$type": "color", "$value": "{color.gray.900}", "$extensions": { "cssVariable": "--color-font-base-03" } },
+      "base_04": { "$type": "color", "$value": "{color.gray.700}", "$extensions": { "cssVariable": "--color-font-base-04" } },
+      "base_05": { "$type": "color", "$value": "{color.gray.600}", "$extensions": { "cssVariable": "--color-font-base-05" } },
+      "base_06": { "$type": "color", "$value": "{color.gray.500}", "$extensions": { "cssVariable": "--color-font-base-06" } },
+      "primary": { "$type": "color", "$value": "{color.mint.900}", "$extensions": { "cssVariable": "--color-font-primary" } },
+      "semantic": {
+        "danger": { "$type": "color", "$value": "{color.red.600}", "$extensions": { "cssVariable": "--color-font-semantic-danger" } },
+        "warning": { "$type": "color", "$value": "{color.orange.600}", "$extensions": { "cssVariable": "--color-font-semantic-warning" } },
+        "success": { "$type": "color", "$value": "{color.green.600}", "$extensions": { "cssVariable": "--color-font-semantic-success" } }
+      }
+    },
+    "border": {
+      "base_01": { "$type": "color", "$value": "{color.base.white}", "$extensions": { "cssVariable": "--color-border-base-01" } },
+      "base_02": { "$type": "color", "$value": "{color.base.black}", "$extensions": { "cssVariable": "--color-border-base-02" } },
+      "base_03": { "$type": "color", "$value": "{color.gray.100}", "$extensions": { "cssVariable": "--color-border-base-03" } },
+      "base_04": { "$type": "color", "$value": "{color.gray.150}", "$extensions": { "cssVariable": "--color-border-base-04" } },
+      "base_05": { "$type": "color", "$value": "{color.gray.200}", "$extensions": { "cssVariable": "--color-border-base-05" } },
+      "focusDefault": { "$type": "color", "$value": "{color.blue.500}", "$extensions": { "cssVariable": "--color-border-focus-default" } },
+      "focusStrong": { "$type": "color", "$value": "{color.gray.800}", "$extensions": { "cssVariable": "--color-border-focus-strong" } },
+      "semantic": {
+        "danger": { "$type": "color", "$value": "{color.red.600}", "$extensions": { "cssVariable": "--color-border-semantic-danger" } },
+        "warning": { "$type": "color", "$value": "{color.orange.600}", "$extensions": { "cssVariable": "--color-border-semantic-warning" } },
+        "success": { "$type": "color", "$value": "{color.green.600}", "$extensions": { "cssVariable": "--color-border-semantic-success" } }
+      }
+    },
+    "brand": {
+      "primary": {
+        "$type": "color",
+        "$value": "{color.mint.500}",
+        "$extensions": { "cssVariable": "--color-brand-primary" }
+      }
+    }
+  }
+}
