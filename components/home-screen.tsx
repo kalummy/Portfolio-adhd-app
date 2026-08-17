@@ -404,6 +404,8 @@ export function HomeScreen({
           <span>서비스이용약관</span>
           <i />
           <span>개인정보처리방침</span>
+          <i />
+          <Link href="/auth/login">계정</Link>
         </div>
         <Image src="/brand/addi-footer.svg" alt="아디" width={64} height={24} />
         <p>Copyright ⓒ Kalummy ALL RIGHTS RESERVED.</p>
