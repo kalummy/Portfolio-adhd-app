@@ -3,14 +3,17 @@ import type {
   MedicationIntakeRecord,
   MoodRecord,
   SavedMedication,
+  VisitSchedule,
 } from "./types";
 import { createClientId } from "./client-id";
 
 const DB_NAME = "addi-mvp";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const MEDICATION_STORE = "userMedications";
 const INTAKE_STORE = "medicationIntakeRecords";
 const MOOD_STORE = "moodRecords";
+const VISIT_STORE = "visitSchedules";
+const UPCOMING_VISIT_ID = "upcoming";
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -30,6 +33,9 @@ function openDatabase(): Promise<IDBDatabase> {
       if (!database.objectStoreNames.contains(MOOD_STORE)) {
         const store = database.createObjectStore(MOOD_STORE, { keyPath: "id" });
         store.createIndex("date", "date", { unique: true });
+      }
+      if (!database.objectStoreNames.contains(VISIT_STORE)) {
+        database.createObjectStore(VISIT_STORE, { keyPath: "id" });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -232,4 +238,53 @@ export async function saveMoodRecord(
   });
   database.close();
   return saved;
+}
+
+export async function getUpcomingVisit(): Promise<VisitSchedule | null> {
+  const database = await openDatabase();
+  const result = await new Promise<VisitSchedule | null>((resolve, reject) => {
+    const request = database
+      .transaction(VISIT_STORE, "readonly")
+      .objectStore(VISIT_STORE)
+      .get(UPCOMING_VISIT_ID);
+    request.onsuccess = () => resolve((request.result as VisitSchedule | undefined) ?? null);
+    request.onerror = () => reject(request.error ?? new Error("내원일정을 불러오지 못했어요."));
+  });
+  database.close();
+  return result;
+}
+
+export async function saveUpcomingVisit(visitDate: string): Promise<VisitSchedule> {
+  const current = await getUpcomingVisit();
+  const now = new Date().toISOString();
+  const saved: VisitSchedule = {
+    id: UPCOMING_VISIT_ID,
+    visitDate,
+    createdAt: current?.createdAt ?? now,
+    updatedAt: now,
+  };
+  const database = await openDatabase();
+
+  await new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction(VISIT_STORE, "readwrite");
+    transaction.objectStore(VISIT_STORE).put(saved);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error("내원일정을 저장하지 못했어요."));
+    transaction.onabort = () => reject(transaction.error ?? new Error("내원일정 저장이 중단됐어요."));
+  });
+
+  database.close();
+  return saved;
+}
+
+export async function deleteUpcomingVisit(): Promise<void> {
+  const database = await openDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction(VISIT_STORE, "readwrite");
+    transaction.objectStore(VISIT_STORE).delete(UPCOMING_VISIT_ID);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error("내원일정을 삭제하지 못했어요."));
+    transaction.onabort = () => reject(transaction.error ?? new Error("내원일정 삭제가 중단됐어요."));
+  });
+  database.close();
 }

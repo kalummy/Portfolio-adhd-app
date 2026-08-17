@@ -7,12 +7,21 @@ import {
   getMedicationIntakeRecords,
   getMoodRecords,
   getSavedMedications,
+  getUpcomingVisit,
   setMedicationTaken,
 } from "@/lib/indexed-db";
 import { getWeekProgress } from "@/lib/home-week-progress";
 import { medicationLabel } from "@/lib/medication-utils";
-import type { HomeDataSet, MedicationIntakeRecord, MoodRecord, SavedMedication } from "@/lib/types";
+import { formatVisitDday } from "@/lib/visit-date";
+import type {
+  HomeDataSet,
+  MedicationIntakeRecord,
+  MoodRecord,
+  SavedMedication,
+  VisitSchedule,
+} from "@/lib/types";
 import { MobileShell } from "./mobile-shell";
+import { Toast } from "./toast";
 
 const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 const DEFAULT_DIARY_ENTRIES = [
@@ -78,6 +87,7 @@ type HomeScreenProps = {
   initialDateKey?: string;
   minimumDateKey?: string;
   maximumDateKey?: string;
+  initialVisitToast?: string;
 };
 
 export function HomeScreen({
@@ -86,6 +96,7 @@ export function HomeScreen({
   initialDateKey,
   minimumDateKey,
   maximumDateKey,
+  initialVisitToast,
 }: HomeScreenProps = {}) {
   const referenceDate = useMemo(
     () => (referenceDateKey ? fromDateKey(referenceDateKey) : startOfDay(new Date())),
@@ -99,7 +110,11 @@ export function HomeScreen({
     previewData?.intakeRecords ?? [],
   );
   const [moodRecords, setMoodRecords] = useState<MoodRecord[]>(previewData?.moodRecords ?? []);
+  const [visitSchedule, setVisitSchedule] = useState<VisitSchedule | null>(
+    previewData?.visitSchedule ?? null,
+  );
   const [loading, setLoading] = useState(!previewData);
+  const [toast, setToast] = useState("");
 
   const selectedDateKey = toDateKey(selectedDate);
   const selectedRelation = relationToReference(selectedDate, referenceDate);
@@ -109,20 +124,23 @@ export function HomeScreen({
       setMedications(previewData.medications);
       setIntakeRecords(previewData.intakeRecords);
       setMoodRecords(previewData.moodRecords);
+      setVisitSchedule(previewData.visitSchedule ?? null);
       setLoading(false);
       return;
     }
 
     setLoading(true);
     try {
-      const [savedMedications, savedIntakes, savedMoods] = await Promise.all([
+      const [savedMedications, savedIntakes, savedMoods, savedVisit] = await Promise.all([
         getSavedMedications(),
         getMedicationIntakeRecords(),
         getMoodRecords(),
+        getUpcomingVisit(),
       ]);
       setMedications(savedMedications);
       setIntakeRecords(savedIntakes);
       setMoodRecords(savedMoods);
+      setVisitSchedule(savedVisit);
     } finally {
       setLoading(false);
     }
@@ -138,6 +156,12 @@ export function HomeScreen({
       window.removeEventListener("focus", load);
     };
   }, [load, previewData]);
+
+  useEffect(() => {
+    if (!initialVisitToast) return;
+    setToast(initialVisitToast);
+    window.history.replaceState(window.history.state, "", "/");
+  }, [initialVisitToast]);
 
   const selectedIntakeByMedication = useMemo(() => {
     return new Map(
@@ -234,21 +258,27 @@ export function HomeScreen({
         ))}
       </section>
 
-      <section className="appointment-row">
+      <Link
+        className="appointment-row"
+        href={visitSchedule ? "/visits" : "/visits/new"}
+        aria-label={visitSchedule ? "내원일정 확인하기" : "다음 내원일 추가하기"}
+      >
         <span className="clinic-icon" aria-hidden="true">
           <Image className="appointment-base" src="/icons/appointment-base.svg" alt="" width={20} height={20} />
           <Image className="appointment-top" src="/icons/appointment-top.svg" alt="" width={8} height={10} />
         </span>
-        <strong>{medications.length === 0 ? "다음 내원일을 선택해주세요" : "다음 내원일"}</strong>
-        {medications.length === 0 ? (
+        <strong>{visitSchedule ? "다음 내원일" : "다음 내원일을 선택해주세요"}</strong>
+        {!visitSchedule ? (
           <ChevronRight />
         ) : (
           <span className="appointment-countdown">
-            <strong>D-28</strong>
+            {formatVisitDday(visitSchedule.visitDate, referenceDate) ? (
+              <strong>{formatVisitDday(visitSchedule.visitDate, referenceDate)}</strong>
+            ) : null}
             <ChevronRight />
           </span>
         )}
-      </section>
+      </Link>
 
       <section className="home-content">
         <div className="date-heading">
@@ -384,6 +414,10 @@ export function HomeScreen({
         <button type="button"><span className="nav-icon"><Image className="nav-heart-icon" src="/icons/nav-heart.svg" alt="" width={23} height={19} /></span>감정기록</button>
         <button type="button"><span className="nav-icon"><Image className="nav-settings-icon" src="/icons/nav-settings.svg" alt="" width={24} height={24} /></span>설정</button>
       </nav>
+
+      {toast ? (
+        <Toast message={toast} onDismiss={() => setToast("")} aboveNavigation />
+      ) : null}
     </MobileShell>
   );
 }

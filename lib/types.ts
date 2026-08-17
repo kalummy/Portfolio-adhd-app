@@ -68,8 +68,16 @@ export type MoodRecord = {
   diaryEntries?: string[];
 };
 
+export type VisitSchedule = {
+  id: "upcoming";
+  visitDate: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type HomeDataSet = {
   medications: SavedMedication[];
   intakeRecords: MedicationIntakeRecord[];
   moodRecords: MoodRecord[];
+  visitSchedule?: VisitSchedule | null;
 };

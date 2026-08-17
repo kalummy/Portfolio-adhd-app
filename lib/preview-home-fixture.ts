@@ -82,10 +82,17 @@ export const PREVIEW_HOME_DATA: HomeDataSet = {
   medications: previewMedications,
   intakeRecords: previewIntakeRecords,
   moodRecords: previewMoodRecords,
+  visitSchedule: {
+    id: "upcoming",
+    visitDate: "2026-09-11",
+    createdAt: "2026-08-01T00:00:00.000Z",
+    updatedAt: "2026-08-01T00:00:00.000Z",
+  },
 };
 
 export const PREVIEW_EMPTY_HOME_DATA: HomeDataSet = {
   medications: [],
   intakeRecords: [],
   moodRecords: [],
+  visitSchedule: null,
 };
