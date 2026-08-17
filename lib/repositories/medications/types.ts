@@ -6,5 +6,15 @@ export interface MedicationRepository {
   createMany(medications: SavedMedication[]): Promise<SavedMedication[]>;
   deactivate(id: string): Promise<SavedMedication>;
   getByIds(ids: string[]): Promise<SavedMedication[]>;
-  hasServerData?(): Promise<boolean>;
+}
+
+export type InitialMedicationMigrationResult = {
+  migrated: boolean;
+  insertedCount: number;
+};
+
+export interface ServerMedicationRepository extends MedicationRepository {
+  migrateInitial(
+    medications: SavedMedication[],
+  ): Promise<InitialMedicationMigrationResult>;
 }

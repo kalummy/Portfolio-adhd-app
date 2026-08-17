@@ -1,22 +1,20 @@
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { indexedDbMedicationRepository } from "./indexed-db";
 import { createSupabaseMedicationRepository } from "./supabase";
-import type { MedicationRepository } from "./types";
+import type { MedicationRepository, ServerMedicationRepository } from "./types";
 
 const initialMigrationByUser = new Map<string, Promise<void>>();
 
 async function migrateLocalMedicationsWhenServerIsEmpty(
   userId: string,
-  repository: MedicationRepository,
+  repository: ServerMedicationRepository,
 ) {
   const existing = initialMigrationByUser.get(userId);
   if (existing) return existing;
 
   const migration = (async () => {
-    if (!repository.hasServerData || await repository.hasServerData()) return;
     const localMedications = await indexedDbMedicationRepository.listAll();
-    if (localMedications.length === 0) return;
-    await repository.createMany(localMedications);
+    await repository.migrateInitial(localMedications);
   })();
 
   initialMigrationByUser.set(userId, migration);

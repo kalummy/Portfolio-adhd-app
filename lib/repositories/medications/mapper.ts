@@ -32,6 +32,8 @@ export type SupabaseMedicationRow = {
   updated_at: string;
 };
 
+export type SupabaseMedicationMigrationInput = Omit<SupabaseMedicationRow, "user_id">;
+
 export function fromSupabaseMedication(row: SupabaseMedicationRow): SavedMedication {
   return {
     id: row.id,
@@ -64,8 +66,16 @@ export function toSupabaseMedication(
   userId: string,
 ): SupabaseMedicationRow {
   return {
-    id: medication.id,
+    ...toSupabaseMedicationMigrationInput(medication),
     user_id: userId,
+  };
+}
+
+export function toSupabaseMedicationMigrationInput(
+  medication: SavedMedication,
+): SupabaseMedicationMigrationInput {
+  return {
+    id: medication.id,
     catalog_id: medication.catalogId ?? null,
     display_label: medication.displayLabel ?? null,
     name: medication.name,

@@ -3,9 +3,10 @@ import type { SavedMedication } from "@/lib/types";
 import {
   fromSupabaseMedication,
   toSupabaseMedication,
+  toSupabaseMedicationMigrationInput,
   type SupabaseMedicationRow,
 } from "./mapper";
-import type { MedicationRepository } from "./types";
+import type { ServerMedicationRepository } from "./types";
 
 const MEDICATION_COLUMNS = [
   "id", "user_id", "catalog_id", "display_label", "name", "ingredient_name",
@@ -19,7 +20,7 @@ function sortByCreatedAt(medications: SavedMedication[]) {
   return medications.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
-export function createSupabaseMedicationRepository(userId: string): MedicationRepository {
+export function createSupabaseMedicationRepository(userId: string): ServerMedicationRepository {
   const supabase = createBrowserSupabaseClient();
 
   async function list(activeOnly: boolean) {
@@ -56,6 +57,22 @@ export function createSupabaseMedicationRepository(userId: string): MedicationRe
       );
       return medications.map((medication) => byId.get(medication.id) ?? medication);
     },
+    async migrateInitial(medications) {
+      const rows = medications.map(toSupabaseMedicationMigrationInput);
+      const { data, error } = await supabase.rpc("migrate_initial_user_medications", {
+        p_medications: rows,
+      });
+      if (error) throw error;
+
+      const result = data?.[0] as {
+        migrated: boolean;
+        inserted_count: number;
+      } | undefined;
+      return {
+        migrated: result?.migrated ?? false,
+        insertedCount: result?.inserted_count ?? 0,
+      };
+    },
     async deactivate(id) {
       const now = new Date().toISOString();
       const { data, error } = await supabase
@@ -85,15 +102,6 @@ export function createSupabaseMedicationRepository(userId: string): MedicationRe
         const medication = byId.get(id);
         return medication ? [medication] : [];
       });
-    },
-    async hasServerData() {
-      const { data, error } = await supabase
-        .from("user_medications")
-        .select("id")
-        .eq("user_id", userId)
-        .limit(1);
-      if (error) throw error;
-      return data.length > 0;
     },
   };
 }
