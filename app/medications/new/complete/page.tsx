@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MedicationSummaryCard } from "@/components/medication-card";
 import { MobileShell } from "@/components/mobile-shell";
-import { getSavedMedicationsByIds } from "@/lib/indexed-db";
+import { getMedicationRepository } from "@/lib/repositories/medications";
 import { getLastSavedMedicationIds } from "@/lib/registration-session";
 import type { SavedMedication } from "@/lib/types";
 
@@ -14,7 +14,9 @@ export default function MedicationCompletePage() {
   const [medications, setMedications] = useState<SavedMedication[]>([]);
 
   useEffect(() => {
-    void getSavedMedicationsByIds(getLastSavedMedicationIds()).then(setMedications);
+    void getMedicationRepository()
+      .then((repository) => repository.getByIds(getLastSavedMedicationIds()))
+      .then(setMedications);
   }, []);
 
   function finishRegistration() {

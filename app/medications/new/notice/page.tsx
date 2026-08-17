@@ -5,7 +5,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
-import { saveMedicationDraft } from "@/lib/indexed-db";
+import {
+  createSavedMedicationsFromDraft,
+  getMedicationRepository,
+} from "@/lib/repositories/medications";
 import {
   clearDraft,
   getDraft,
@@ -36,7 +39,9 @@ export default function MedicationNoticePage() {
     setSaving(true);
     setError("");
     try {
-      const saved = await saveMedicationDraft(getDraft());
+      const medications = createSavedMedicationsFromDraft(getDraft());
+      const repository = await getMedicationRepository();
+      const saved = await repository.createMany(medications);
       setLastSavedMedicationIds(saved.map((medication) => medication.id));
       clearDraft();
       router.push(registrationHref("/medications/new/complete"));

@@ -6,10 +6,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getMedicationIntakeRecords,
   getMoodRecords,
-  getSavedMedications,
   getUpcomingVisit,
   setMedicationTaken,
 } from "@/lib/indexed-db";
+import { getMedicationRepository } from "@/lib/repositories/medications";
 import { getWeekProgress } from "@/lib/home-week-progress";
 import { medicationLabel } from "@/lib/medication-utils";
 import { formatVisitDday } from "@/lib/visit-date";
@@ -131,8 +131,9 @@ export function HomeScreen({
 
     setLoading(true);
     try {
+      const medicationRepository = await getMedicationRepository();
       const [savedMedications, savedIntakes, savedMoods, savedVisit] = await Promise.all([
-        getSavedMedications(),
+        medicationRepository.listActive(),
         getMedicationIntakeRecords(),
         getMoodRecords(),
         getUpcomingVisit(),

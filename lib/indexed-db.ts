@@ -5,7 +5,7 @@ import type {
   SavedMedication,
   VisitSchedule,
 } from "./types";
-import { createClientId } from "./client-id";
+import { createSavedMedicationsFromDraft } from "./repositories/medications/create";
 
 const DB_NAME = "addi-mvp";
 const DB_VERSION = 3;
@@ -44,39 +44,28 @@ function openDatabase(): Promise<IDBDatabase> {
 }
 
 export async function saveMedicationDraft(draft: MedicationDraft): Promise<SavedMedication[]> {
-  if (
-    !draft.noticeAccepted
-    || draft.draftMedications.length === 0
-    || draft.draftMedications.some((medication) => !medication.source || !medication.schedule)
-  ) {
-    throw new Error("저장할 복용약 정보가 완성되지 않았어요.");
-  }
+  const saved = createSavedMedicationsFromDraft(draft);
+  await saveSavedMedications(saved);
+  return saved;
+}
+
+export async function saveSavedMedications(medications: SavedMedication[]): Promise<void> {
+  if (medications.length === 0) return;
 
   const database = await openDatabase();
-  const createdAt = new Date().toISOString();
-  const saved = draft.draftMedications.map(({ draftId: _draftId, source, schedule, ...medication }) => ({
-    ...medication,
-    id: createClientId(),
-    registrationMethod: source,
-    schedule: schedule!,
-    createdAt,
-    active: true,
-  }));
-
   await new Promise<void>((resolve, reject) => {
     const transaction = database.transaction(MEDICATION_STORE, "readwrite");
     const store = transaction.objectStore(MEDICATION_STORE);
-    saved.forEach((medication) => store.add(medication));
+    medications.forEach((medication) => store.add(medication));
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error ?? new Error("복용약을 저장하지 못했어요."));
     transaction.onabort = () => reject(transaction.error ?? new Error("복용약 저장이 중단됐어요."));
   });
 
   database.close();
-  return saved;
 }
 
-export async function getSavedMedications(): Promise<SavedMedication[]> {
+export async function getAllSavedMedications(): Promise<SavedMedication[]> {
   const database = await openDatabase();
   const result = await new Promise<SavedMedication[]>((resolve, reject) => {
     const request = database
@@ -87,9 +76,12 @@ export async function getSavedMedications(): Promise<SavedMedication[]> {
     request.onerror = () => reject(request.error ?? new Error("복용약을 불러오지 못했어요."));
   });
   database.close();
-  return result
-    .filter((medication) => medication.active !== false)
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  return result.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+export async function getSavedMedications(): Promise<SavedMedication[]> {
+  const all = await getAllSavedMedications();
+  return all.filter((medication) => medication.active !== false);
 }
 
 export async function hasMedicationIntakeHistory(medicationId: string): Promise<boolean> {
