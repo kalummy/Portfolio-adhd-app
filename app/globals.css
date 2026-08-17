@@ -43,7 +43,8 @@ button {
 
 .mobile-shell {
   position: relative;
-  width: min(100%, 360px);
+  width: 100%;
+  max-width: 430px;
   min-height: 100dvh;
   margin: 0 auto;
   overflow-x: hidden;
@@ -152,7 +153,8 @@ button {
   z-index: 20;
   left: 50%;
   bottom: 0;
-  width: min(100%, 360px);
+  width: 100%;
+  max-width: 430px;
   transform: translateX(-50%);
   border-top: 1px solid var(--color-border-base-03);
   background: rgba(255, 255, 255, 0.98);
@@ -521,7 +523,7 @@ button {
 .schedule-options {
   display: grid;
   gap: 16px;
-  margin-top: 68px;
+  margin-top: 60px;
 }
 
 .schedule-option {
@@ -1055,6 +1057,361 @@ button {
   .method-grid { margin-top: 52px; }
 }
 
+/* Figma nodes 147:10590, 147:10680, 147:11432 and 147:10715. */
+.photo-screen {
+  width: 100%;
+  min-height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+  overflow: hidden;
+  background: var(--color-bg-base-02);
+}
+
+.photo-screen .flow-header {
+  position: relative;
+  z-index: 10;
+  background: var(--color-bg-base-01);
+}
+
+.recognition-loading-layer {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: grid;
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.recognition-spinner {
+  display: block;
+  width: 40px;
+  height: 40px;
+  animation: recognition-spinner-rotate 2s linear infinite;
+}
+
+@keyframes recognition-spinner-rotate {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recognition-spinner {
+    animation-duration: 4s;
+  }
+}
+
+.camera-stage {
+  min-height: calc(100dvh - env(safe-area-inset-top) - 56px);
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow: hidden;
+  background: var(--color-bg-base-02);
+}
+
+.camera-preview {
+  position: relative;
+  display: block;
+  width: min(280px, calc(100% - 80px));
+  aspect-ratio: 1 / 1;
+  margin: 64px auto 0;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid var(--color-border-base-01);
+  border-radius: 16px;
+  background: var(--color-bg-base-02);
+}
+
+.camera-preview video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-copy {
+  display: flex;
+  width: 100%;
+  margin-top: 40px;
+  padding: 0 20px;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.camera-copy strong {
+  width: 100%;
+  color: var(--color-font-base-01);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 700;
+  letter-spacing: -0.45px;
+}
+
+.camera-copy.permission {
+  gap: 24px;
+}
+
+.camera-copy.permission button {
+  display: grid;
+  place-items: center;
+  width: 175px;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--color-bg-interactive-brand-default);
+  color: var(--color-font-base-01);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  cursor: pointer;
+}
+
+.camera-copy.permission button:active:not(:disabled) {
+  background: var(--color-bg-interactive-brand-pressed);
+}
+
+.camera-copy.permission button:focus-visible {
+  outline: 2px solid var(--color-bg-interactive-brand-focused);
+  outline-offset: 2px;
+}
+
+.camera-copy.permission button:disabled {
+  background: var(--color-bg-interactive-brand-disabled);
+  color: var(--color-font-base-06);
+  cursor: default;
+}
+
+.recognition-alert-layer {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: grid;
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.recognition-alert {
+  display: flex;
+  width: min(296px, calc(100% - 40px));
+  flex-direction: column;
+  align-items: stretch;
+  border-radius: 20px;
+  background: var(--color-bg-base-01);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.recognition-alert header {
+  padding: 24px 20px 16px;
+}
+
+.recognition-alert h2 {
+  margin: 0;
+  color: var(--color-font-base-03);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  letter-spacing: -0.45px;
+}
+
+.recognition-alert > p {
+  margin: 0;
+  padding: 0 20px;
+  color: var(--color-font-base-03);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  letter-spacing: -0.35px;
+}
+
+.recognition-alert-actions {
+  display: flex;
+  gap: 12px;
+  padding: 24px 20px;
+}
+
+.recognition-alert-actions button {
+  display: grid;
+  min-width: 0;
+  min-height: 48px;
+  padding: 12px 16px;
+  flex: 1 0 0;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  cursor: pointer;
+}
+
+.recognition-alert-actions .manual {
+  background: var(--color-bg-interactive-gray-default);
+  color: var(--color-font-base-03);
+}
+
+.recognition-alert-actions .retry {
+  background: var(--color-bg-interactive-brand-default);
+  color: var(--color-font-base-01);
+}
+
+.photo-result-content .confirm-card-list {
+  gap: 16px;
+}
+
+.schedule-content {
+  padding-top: 24px;
+}
+
+.schedule-content > .medication-summary-card {
+  margin: 0;
+}
+
+.schedule-content h1 {
+  margin-top: 28px;
+}
+
+.review-content {
+  padding-top: 20px;
+}
+
+.review-content > p {
+  margin: 2px 0 0;
+  color: var(--color-font-base-03);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  letter-spacing: -0.4px;
+}
+
+.review-medication-section {
+  margin-top: 36px;
+}
+
+.review-medication-section > span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--color-font-primary);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+
+.review-medication-list {
+  display: grid;
+  gap: 16px;
+}
+
+.review-medication-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 16px;
+}
+
+.review-medication-row .medication-summary-card {
+  min-width: 0;
+}
+
+.delete-medication-button {
+  display: grid;
+  width: 24px;
+  height: 44px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.delete-medication-button img {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.review-delete-layer {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  display: grid;
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 20px;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.review-delete-dialog {
+  display: flex;
+  width: min(288px, 100%);
+  flex-direction: column;
+  border-radius: 20px;
+  background: var(--color-bg-base-01);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.review-delete-dialog header {
+  padding: 24px 20px 16px;
+}
+
+.review-delete-dialog h2 {
+  margin: 0;
+  color: var(--color-font-base-03);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  letter-spacing: -0.45px;
+}
+
+.review-delete-dialog > p {
+  margin: 0;
+  padding: 0 20px;
+  color: var(--color-font-base-03);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 400;
+  letter-spacing: -0.375px;
+}
+
+.review-delete-actions {
+  display: flex;
+  gap: 12px;
+  padding: 24px 20px;
+}
+
+.review-delete-actions button {
+  min-width: 0;
+  min-height: 48px;
+  padding: 12px 16px;
+  flex: 1 0 0;
+  border: 0;
+  border-radius: 12px;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  cursor: pointer;
+}
+
+.review-delete-actions .cancel {
+  background: var(--color-bg-interactive-gray-default);
+  color: var(--color-font-base-03);
+}
+
+.review-delete-actions .delete {
+  background: var(--color-bg-interactive-brand-default);
+  color: var(--color-font-base-01);
+}
+
 /* Figma-aligned home composition. OS chrome is handled with safe-area insets. */
 .home-screen {
   width: 100%;
@@ -1096,8 +1453,7 @@ button {
 
 .week-strip {
   display: flex;
-  width: 360px;
-  max-width: 100%;
+  width: 100%;
   height: 88px;
   margin: 20px auto 0;
   padding: 0 20px;
@@ -1107,10 +1463,13 @@ button {
 }
 
 .week-strip div {
+  position: relative;
   display: flex;
-  width: 44px;
+  min-width: 0;
+  width: auto;
   height: 88px;
   padding: 8px 4px;
+  flex: 1 0 0;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
@@ -1119,7 +1478,21 @@ button {
   border-radius: 18px;
 }
 
+.week-strip div::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 44px;
+  transform: translateX(-50%);
+  border-radius: 16px;
+}
+
 .week-strip span {
+  position: relative;
+  z-index: 1;
   font-size: 16px;
   line-height: 24px;
   font-weight: 500;
@@ -1127,6 +1500,8 @@ button {
 }
 
 .week-strip strong {
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
   width: 36px;
@@ -1140,8 +1515,11 @@ button {
 }
 
 .week-strip .today {
-  background: var(--color-gray-800);
   color: var(--color-font-base-01);
+}
+
+.week-strip .today::before {
+  background: var(--color-gray-800);
 }
 
 .week-strip .today strong {

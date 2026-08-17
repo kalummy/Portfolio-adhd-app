@@ -1,8 +1,12 @@
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 
-export function MobileShell({ children, className = "" }: { children: ReactNode; className?: string }) {
+type MobileShellProps = HTMLAttributes<HTMLElement> & {
+  children: ReactNode;
+};
+
+export function MobileShell({ children, className = "", ...props }: MobileShellProps) {
   return (
-    <main className={`mobile-shell ${className}`}>
+    <main className={`mobile-shell ${className}`} {...props}>
       {children}
     </main>
   );

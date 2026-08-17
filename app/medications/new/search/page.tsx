@@ -6,7 +6,12 @@ import { FormEvent, useEffect, useState } from "react";
 import { FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
 import { medicationLabel } from "@/lib/medication-utils";
-import { getDraft, updateDraft } from "@/lib/registration-session";
+import {
+  getDraft,
+  setManualReturnHref,
+  setPendingCandidates,
+  updateDraft,
+} from "@/lib/registration-session";
 import type { MedicationCandidate } from "@/lib/types";
 
 type MedicationSearchResponse = {
@@ -16,6 +21,26 @@ type MedicationSearchResponse = {
 type MedicationDetailResponse = {
   medication?: MedicationCandidate;
 };
+
+const SEARCH_DEBOUNCE_MS = 250;
+const SEARCH_CACHE_LIMIT = 20;
+const searchResultCache = new Map<string, MedicationCandidate[]>();
+
+function readCachedSearch(query: string) {
+  const cached = searchResultCache.get(query);
+  if (!cached) return undefined;
+  searchResultCache.delete(query);
+  searchResultCache.set(query, cached);
+  return cached;
+}
+
+function cacheSearch(query: string, medications: MedicationCandidate[]) {
+  searchResultCache.delete(query);
+  searchResultCache.set(query, medications);
+  if (searchResultCache.size <= SEARCH_CACHE_LIMIT) return;
+  const oldestQuery = searchResultCache.keys().next().value;
+  if (typeof oldestQuery === "string") searchResultCache.delete(oldestQuery);
+}
 
 function HighlightedMedicationName({ label, query }: { label: string; query: string }) {
   const normalizedQuery = query.trim();
@@ -44,8 +69,9 @@ export default function MedicationSearchPage() {
   useEffect(() => {
     const draft = getDraft();
     setQuery(draft.searchQuery);
-    setSelectedCatalogId(draft.medications[0]?.catalogId);
-    if (draft.method !== "search") updateDraft({ method: "search" });
+    setSelectedCatalogId(
+      draft.pendingCandidates.find((medication) => medication.source === "search")?.catalogId,
+    );
   }, []);
 
   useEffect(() => {
@@ -59,6 +85,14 @@ export default function MedicationSearchPage() {
 
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
+      const cached = readCachedSearch(normalizedQuery);
+      if (cached) {
+        setResults(cached);
+        setResolvedQuery(normalizedQuery);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       try {
         const response = await fetch(`/api/medications/search?q=${encodeURIComponent(normalizedQuery)}`, {
@@ -66,7 +100,9 @@ export default function MedicationSearchPage() {
         });
         if (!response.ok) throw new Error("의약품 검색에 실패했어요.");
         const payload = await response.json() as MedicationSearchResponse;
-        setResults(Array.isArray(payload.medications) ? payload.medications : []);
+        const medications = Array.isArray(payload.medications) ? payload.medications : [];
+        cacheSearch(normalizedQuery, medications);
+        setResults(medications);
         setResolvedQuery(normalizedQuery);
       } catch (error) {
         if ((error as Error).name === "AbortError") return;
@@ -75,7 +111,7 @@ export default function MedicationSearchPage() {
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
-    }, 350);
+    }, SEARCH_DEBOUNCE_MS);
 
     return () => {
       window.clearTimeout(timer);
@@ -89,7 +125,7 @@ export default function MedicationSearchPage() {
     setSelectedCatalogId(undefined);
     setResults([]);
     setResolvedQuery("");
-    updateDraft({ searchQuery: value, medications: [] });
+    updateDraft({ searchQuery: value, pendingCandidates: [] });
   }
 
   function submitSearch(event: FormEvent) {
@@ -100,7 +136,8 @@ export default function MedicationSearchPage() {
 
   async function selectMedication(medication: MedicationCandidate) {
     setSelectedCatalogId(medication.catalogId);
-    updateDraft({ method: "search", medications: [medication], searchQuery: query });
+    setPendingCandidates([medication], "search");
+    updateDraft({ searchQuery: query });
 
     const shouldReduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (!shouldReduceMotion) setActivatingCatalogId(medication.catalogId);
@@ -119,7 +156,8 @@ export default function MedicationSearchPage() {
       : new Promise<void>((resolve) => window.setTimeout(resolve, 180));
     const [selectedMedication] = await Promise.all([detailRequest, motion]);
 
-    updateDraft({ method: "search", medications: [selectedMedication], searchQuery: query });
+    setPendingCandidates([selectedMedication], "search");
+    updateDraft({ searchQuery: query });
     router.push("/medications/new/confirm");
   }
 
@@ -130,7 +168,7 @@ export default function MedicationSearchPage() {
 
   return (
     <MobileShell className="flow-screen search-screen">
-      <FlowHeader />
+      <FlowHeader fallbackHref="/medications/new" />
       <form className="search-form" onSubmit={submitSearch}>
         <input
           value={query}
@@ -188,7 +226,8 @@ export default function MedicationSearchPage() {
           <PrimaryButton
             type="button"
             onClick={() => {
-              updateDraft({ method: "manual", manualName: query });
+              updateDraft({ manualName: query, pendingCandidates: [] });
+              setManualReturnHref("/medications/new/search");
               router.push("/medications/new/manual/name");
             }}
           >

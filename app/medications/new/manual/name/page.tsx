@@ -4,21 +4,22 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
-import { getDraft, updateDraft } from "@/lib/registration-session";
+import { getDraft, getManualReturnHref, updateDraft } from "@/lib/registration-session";
 
 export default function ManualMedicationNamePage() {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [returnHref, setReturnHref] = useState("/medications/new/search");
 
   useEffect(() => {
     const draft = getDraft();
     setName(draft.manualName);
-    updateDraft({ method: "manual" });
+    setReturnHref(getManualReturnHref());
   }, []);
 
   return (
     <MobileShell className="flow-screen">
-      <FlowHeader />
+      <FlowHeader fallbackHref={returnHref} />
       <section className="flow-content input-content">
         <h1>복용중인 약을 입력해주세요</h1>
         <input
@@ -28,7 +29,7 @@ export default function ManualMedicationNamePage() {
           value={name}
           onChange={(event) => {
             setName(event.target.value);
-            updateDraft({ method: "manual", manualName: event.target.value, medications: [] });
+            updateDraft({ manualName: event.target.value, pendingCandidates: [] });
           }}
           autoFocus
         />

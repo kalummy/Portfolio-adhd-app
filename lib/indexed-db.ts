@@ -4,6 +4,7 @@ import type {
   MoodRecord,
   SavedMedication,
 } from "./types";
+import { createClientId } from "./client-id";
 
 const DB_NAME = "addi-mvp";
 const DB_VERSION = 2;
@@ -37,17 +38,21 @@ function openDatabase(): Promise<IDBDatabase> {
 }
 
 export async function saveMedicationDraft(draft: MedicationDraft): Promise<SavedMedication[]> {
-  if (!draft.method || !draft.schedule || draft.medications.length === 0) {
+  if (
+    !draft.noticeAccepted
+    || draft.draftMedications.length === 0
+    || draft.draftMedications.some((medication) => !medication.source || !medication.schedule)
+  ) {
     throw new Error("저장할 복용약 정보가 완성되지 않았어요.");
   }
 
   const database = await openDatabase();
   const createdAt = new Date().toISOString();
-  const saved = draft.medications.map((medication) => ({
+  const saved = draft.draftMedications.map(({ draftId: _draftId, source, schedule, ...medication }) => ({
     ...medication,
-    id: crypto.randomUUID(),
-    registrationMethod: draft.method!,
-    schedule: draft.schedule!,
+    id: createClientId(),
+    registrationMethod: source,
+    schedule: schedule!,
     createdAt,
   }));
 

@@ -214,24 +214,3 @@ export function searchMedications(query: string) {
     return searchable.includes(normalized);
   });
 }
-
-export function enrichManualMedication(name: string, strengthValue: number): MedicationCandidate {
-  const normalizedName = name.replace(/\s/g, "").toLowerCase();
-  const catalogMatch = MOCK_MEDICATIONS.find(
-    (medication) =>
-      medication.strengthValue === strengthValue &&
-      (medication.name.replace(/\s/g, "").toLowerCase().includes(normalizedName) ||
-        normalizedName.includes("콘서타")),
-  );
-
-  if (catalogMatch) return catalogMatch;
-
-  return {
-    name: name.trim(),
-    strengthValue,
-    strengthUnit: "mg",
-    imagePath: MEDICATION_FALLBACK_IMAGE,
-    fallbackImage: MEDICATION_FALLBACK_IMAGE,
-    imageType: "fallback",
-  };
-}

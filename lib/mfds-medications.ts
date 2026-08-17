@@ -1,4 +1,5 @@
 import { MEDICATION_FALLBACK_IMAGE } from "./medication-utils";
+import { selectOfficialManualMedicationCandidate } from "./medication-candidates";
 import type { MedicationCandidate } from "./types";
 
 const PRODUCT_ENDPOINT =
@@ -158,14 +159,12 @@ function parseXmlItems(xml: string): ApiItem[] {
 function parseStrength(item: ApiItem) {
   const sources = [
     getString(item, "ITEM_NAME", "item_name"),
-    getString(item, "ITEM_INGR_NAME", "item_ingr_name"),
-    getString(item, "MAIN_ITEM_INGR", "main_item_ingr"),
-    getString(item, "MATERIAL_NAME", "material_name"),
+    getString(item, "ITEM_ENG_NAME", "item_eng_name", "itemEngName"),
   ];
 
   for (const source of sources) {
-    const match = source.match(/(\d+(?:\.\d+)?)\s*(?:mg|밀리그램)/i);
-    if (match) return Number(match[1]);
+    const match = source.match(/(\d+(?:[.,]\d+)?)\s*(?:mg|㎎|밀리그(?:램|람))/i);
+    if (match) return Number(match[1].replace(",", "."));
   }
   return 0;
 }
@@ -173,7 +172,7 @@ function parseStrength(item: ApiItem) {
 function cleanProductLabel(productName: string) {
   return productName
     .replace(/\s*\([^)]*\).*$/, "")
-    .replace(/(\d+(?:\.\d+)?)\s*밀리그램/gi, "$1mg")
+    .replace(/(\d+(?:[.,]\d+)?)\s*밀리그(?:램|람)/gi, "$1mg")
     .replace(/([^\s])(\d+(?:\.\d+)?mg)\b/i, "$1 $2")
     .trim();
 }
@@ -210,6 +209,19 @@ function officialImageFromItem(item: ApiItem) {
   return normalizeOfficialImage(getString(item, ...OFFICIAL_IMAGE_KEYS));
 }
 
+function cleanIngredientName(value: string) {
+  const seen = new Set<string>();
+  return value
+    .split(/[|/]/)
+    .map((ingredient) => ingredient.replace(/\[[^\]]+\]/g, "").trim())
+    .filter((ingredient) => {
+      if (!ingredient || seen.has(ingredient)) return false;
+      seen.add(ingredient);
+      return true;
+    })
+    .join("/");
+}
+
 function toMedicationCandidate(
   item: ApiItem,
   image?: MfdsImageCandidate,
@@ -236,7 +248,7 @@ function toMedicationCandidate(
     catalogId,
     displayLabel,
     name: productBaseName(displayLabel),
-    ingredientName: getString(
+    ingredientName: cleanIngredientName(getString(
       item,
       "ITEM_INGR_NAME",
       "item_ingr_name",
@@ -244,7 +256,7 @@ function toMedicationCandidate(
       "main_item_ingr",
       "MATERIAL_NAME",
       "material_name",
-    ),
+    )),
     strengthValue: parseStrength(item),
     strengthUnit: "mg",
     manufacturer: getString(item, "ENTP_NAME", "entp_name", "entpName"),
@@ -259,6 +271,7 @@ function toMedicationCandidate(
         : "식품의약품안전처 의약품 낱알식별정보"
       : verifiedLocalImage?.sourceName,
     imageSourceUrl: officialImage ?? verifiedLocalImage?.sourceUrl,
+    officialMatchStatus: "matched",
   };
 }
 
@@ -270,40 +283,9 @@ export async function searchMfdsMedications(query: string): Promise<MedicationCa
     ? productMatches
     : await fetchItems(PRODUCT_ENDPOINT, serviceKey, "item_ingr_name", query);
 
-  let imageByItemSequence = new Map<string, MfdsImageCandidate>();
-  if (productMatches.length > 0) {
-    try {
-      const pillItems = await fetchPillItems("item_name", query);
-      imageByItemSequence = new Map(
-        pillItems
-          .map((item) => [
-            getString(item, "ITEM_SEQ", "item_seq", "itemSeq"),
-            officialImageFromItem(item),
-          ] as const)
-          .filter((entry): entry is readonly [string, string] => Boolean(entry[0] && entry[1]))
-          .map(([itemSequence, image]) => [
-            itemSequence,
-            { source: "pill" as const, originalUrl: image },
-          ]),
-      );
-    } catch {
-      // 제품 검색은 유지하고, 이미지가 없으면 공용 의약품 아이콘을 사용해요.
-    }
-  }
-
   const seen = new Set<string>();
   const medications = permitItems
-    .map((item) => {
-      const itemSequence = getString(
-        item,
-        "ITEM_SEQ",
-        "item_seq",
-        "itemSeq",
-        "PRDLST_STDR_CODE",
-        "prdlst_Stdr_code",
-      );
-      return toMedicationCandidate(item, imageByItemSequence.get(itemSequence));
-    })
+    .map((item) => toMedicationCandidate(item))
     .filter((medication): medication is MedicationCandidate => {
       if (!medication?.catalogId || seen.has(medication.catalogId)) return false;
       seen.add(medication.catalogId);
@@ -338,12 +320,33 @@ export async function getMfdsMedication(itemSequence: string): Promise<Medicatio
   if (!detail) return null;
   const productImage = officialImageFromItem(detail);
   const pillImage = pillItems[0] ? officialImageFromItem(pillItems[0]) : undefined;
-  const image = productImage
-    ? { source: "product" as const, originalUrl: productImage }
-    : pillImage
-      ? { source: "pill" as const, originalUrl: pillImage }
+  const image = pillImage
+    ? { source: "pill" as const, originalUrl: pillImage }
+    : productImage
+      ? { source: "product" as const, originalUrl: productImage }
       : undefined;
   return toMedicationCandidate(detail, image);
+}
+
+export type ManualMedicationMatchResult =
+  | { status: "matched"; medication: MedicationCandidate }
+  | { status: "not-found" }
+  | { status: "ambiguous" };
+
+export async function matchMfdsManualMedication(
+  name: string,
+  strengthValue: number,
+): Promise<ManualMedicationMatchResult> {
+  const candidates = await searchMfdsMedications(name);
+  const selection = selectOfficialManualMedicationCandidate(name, strengthValue, candidates);
+  if (selection.status !== "matched") return selection;
+
+  const catalogId = selection.medication.catalogId;
+  if (!catalogId) return { status: "not-found" };
+  const medication = await getMfdsMedication(catalogId);
+  return medication
+    ? { status: "matched", medication }
+    : { status: "not-found" };
 }
 
 export async function getMfdsImageCandidates(
@@ -360,9 +363,9 @@ export async function getMfdsImageCandidates(
   const productImage = detailItems[0] ? officialImageFromItem(detailItems[0]) : undefined;
   const pillImage = pillItems[0] ? officialImageFromItem(pillItems[0]) : undefined;
 
-  if (productImage) candidates.push({ source: "product", originalUrl: productImage });
-  if (pillImage && pillImage !== productImage) {
-    candidates.push({ source: "pill", originalUrl: pillImage });
+  if (pillImage) candidates.push({ source: "pill", originalUrl: pillImage });
+  if (productImage && productImage !== pillImage) {
+    candidates.push({ source: "product", originalUrl: productImage });
   }
   return candidates;
 }

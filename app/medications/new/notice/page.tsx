@@ -47,7 +47,7 @@ export default function MedicationNoticePage() {
 
   return (
     <MobileShell className="flow-screen notice-screen">
-      <FlowHeader />
+      <FlowHeader fallbackHref="/medications/new/review" />
       <section className="flow-content notice-content">
         <h1>아래 내용을<br />꼭 확인해주세요</h1>
         <ul className="notice-list">

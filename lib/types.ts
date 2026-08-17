@@ -1,5 +1,10 @@
 export type RegistrationMethod = "search" | "manual" | "photo";
 export type MedicationSchedule = "daily" | "as-needed" | "bedtime";
+export type OfficialMedicationMatchStatus =
+  | "matched"
+  | "not-found"
+  | "ambiguous"
+  | "unavailable";
 
 export type MedicationCandidate = {
   catalogId?: string;
@@ -17,15 +22,23 @@ export type MedicationCandidate = {
   imageSourceName?: string;
   imageSourceUrl?: string;
   searchKeywords?: string[];
+  officialMatchStatus?: OfficialMedicationMatchStatus;
+};
+
+export type DraftMedication = MedicationCandidate & {
+  draftId: string;
+  source: RegistrationMethod;
+  schedule?: MedicationSchedule;
 };
 
 export type MedicationDraft = {
-  method?: RegistrationMethod;
-  medications: MedicationCandidate[];
+  draftMedications: DraftMedication[];
+  pendingCandidates: DraftMedication[];
+  activeScheduleDraftId?: string;
+  scheduleQueueDraftIds: string[];
   searchQuery: string;
   manualName: string;
   manualStrength: string;
-  schedule?: MedicationSchedule;
   noticeAccepted: boolean;
 };
 

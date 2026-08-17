@@ -5,8 +5,13 @@ import { useRouter } from "next/navigation";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MedicationSummaryCard } from "@/components/medication-card";
 import { MobileShell } from "@/components/mobile-shell";
-import { getDraft } from "@/lib/registration-session";
-import type { MedicationDraft } from "@/lib/types";
+import {
+  confirmPendingCandidates,
+  discardScheduleQueueCandidates,
+  getDraft,
+  updateDraft,
+} from "@/lib/registration-session";
+import type { DraftMedication, MedicationDraft } from "@/lib/types";
 
 export default function MedicationConfirmPage() {
   const router = useRouter();
@@ -16,14 +21,46 @@ export default function MedicationConfirmPage() {
 
   if (!draft) return <MobileShell className="flow-screen">{null}</MobileShell>;
 
+  const queueCandidates = draft.scheduleQueueDraftIds
+    .map((draftId) => draft.draftMedications.find((medication) => medication.draftId === draftId))
+    .filter((medication): medication is DraftMedication => (
+      Boolean(medication) && medication?.source !== "photo"
+    ));
+  const candidates = draft.pendingCandidates.length > 0
+    ? draft.pendingCandidates
+    : queueCandidates;
+  const source = candidates[0]?.source ?? "search";
+
+  function rejectCandidates() {
+    if (draft!.pendingCandidates.length > 0) {
+      updateDraft({ pendingCandidates: [] });
+    } else {
+      discardScheduleQueueCandidates();
+    }
+    router.push(source === "manual" ? "/medications/new/manual/name" : "/medications/new/search");
+  }
+
+  function confirmCandidates() {
+    if (draft!.pendingCandidates.length > 0) {
+      const { added } = confirmPendingCandidates();
+      router.push(added.length > 0 ? "/medications/new/schedule" : "/medications/new/review");
+      return;
+    }
+
+    updateDraft({ activeScheduleDraftId: draft!.scheduleQueueDraftIds[0] });
+    router.push("/medications/new/schedule");
+  }
+
   return (
     <MobileShell className="flow-screen">
-      <FlowHeader />
+      <FlowHeader
+        fallbackHref={source === "manual" ? "/medications/new/manual/name" : "/medications/new/search"}
+      />
       <section className="flow-content confirm-content">
         <h1>복용중인 약이 맞는지<br />이름과 용량을 확인해주세요</h1>
         <div className="confirm-card-list">
-          {draft.medications.map((medication) => (
-            <MedicationSummaryCard key={`${medication.name}-${medication.strengthValue}`} medication={medication} />
+          {candidates.map((medication) => (
+            <MedicationSummaryCard key={medication.draftId} medication={medication} />
           ))}
         </div>
       </section>
@@ -32,13 +69,11 @@ export default function MedicationConfirmPage() {
           <PrimaryButton
             type="button"
             variant="soft"
-            onClick={() =>
-              router.push(draft.method === "manual" ? "/medications/new/manual/name" : "/medications/new/search")
-            }
+            onClick={rejectCandidates}
           >
             아니에요
           </PrimaryButton>
-          <PrimaryButton type="button" onClick={() => router.push("/medications/new/schedule")}>
+          <PrimaryButton type="button" onClick={confirmCandidates}>
             맞아요
           </PrimaryButton>
         </div>
