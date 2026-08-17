@@ -11,6 +11,13 @@ const DRAFT_KEY = "addi-medication-registration-draft";
 const LAST_SAVED_KEY = "addi-last-saved-medication-ids";
 const MANUAL_RETURN_HREF_KEY = "addi-manual-medication-return-href";
 
+export function registrationHref(path: string) {
+  if (typeof window === "undefined") return path;
+  return new URLSearchParams(window.location.search).get("origin") === "medications"
+    ? `${path}?origin=medications`
+    : path;
+}
+
 const EMPTY_DRAFT: MedicationDraft = {
   draftMedications: [],
   pendingCandidates: [],

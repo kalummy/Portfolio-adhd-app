@@ -17,6 +17,12 @@ export default function MedicationCompletePage() {
     void getSavedMedicationsByIds(getLastSavedMedicationIds()).then(setMedications);
   }, []);
 
+  function finishRegistration() {
+    const startedFromMedications = new URLSearchParams(window.location.search).get("origin")
+      === "medications";
+    router.push(startedFromMedications ? "/medications" : "/");
+  }
+
   return (
     <MobileShell className="flow-screen complete-screen">
       <FlowHeader fallbackHref="/" />
@@ -30,7 +36,7 @@ export default function MedicationCompletePage() {
         </div>
       </section>
       <BottomActions>
-        <PrimaryButton type="button" onClick={() => router.push("/")}>확인</PrimaryButton>
+        <PrimaryButton type="button" onClick={finishRegistration}>확인</PrimaryButton>
       </BottomActions>
     </MobileShell>
   );

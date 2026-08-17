@@ -10,6 +10,7 @@ import {
   confirmPendingCandidates,
   discardScheduleQueueCandidates,
   getDraft,
+  registrationHref,
   updateDraft,
 } from "@/lib/registration-session";
 import type { DraftMedication, MedicationDraft } from "@/lib/types";
@@ -26,7 +27,7 @@ export default function MedicationPhotoResultPage() {
       .map((draftId) => currentDraft.draftMedications.find((medication) => medication.draftId === draftId))
       .filter((medication): medication is DraftMedication => medication?.source === "photo");
     if (currentDraft.pendingCandidates.length === 0 && queueCandidates.length === 0) {
-      router.replace("/medications/new/photo");
+      router.replace(registrationHref("/medications/new/photo"));
       return;
     }
     setDraft(currentDraft);
@@ -41,17 +42,19 @@ export default function MedicationPhotoResultPage() {
       discardScheduleQueueCandidates();
     }
     window.sessionStorage.setItem(PHOTO_RETRY_KEY, "1");
-    router.push("/medications/new/photo");
+    router.push(registrationHref("/medications/new/photo"));
   }
 
   function confirmRecognizedMedications() {
     if (draft!.pendingCandidates.length > 0) {
       const { added } = confirmPendingCandidates();
-      router.push(added.length > 0 ? "/medications/new/schedule" : "/medications/new/review");
+      router.push(registrationHref(
+        added.length > 0 ? "/medications/new/schedule" : "/medications/new/review",
+      ));
       return;
     }
     updateDraft({ activeScheduleDraftId: draft!.scheduleQueueDraftIds[0] });
-    router.push("/medications/new/schedule");
+    router.push(registrationHref("/medications/new/schedule"));
   }
 
   const queueCandidates = draft.scheduleQueueDraftIds
@@ -62,7 +65,7 @@ export default function MedicationPhotoResultPage() {
   return (
     <MobileShell className="flow-screen photo-result-screen">
       <FlowHeader
-        fallbackHref="/medications/new/photo"
+        fallbackHref={registrationHref("/medications/new/photo")}
         beforeBack={() => {
           if (draft.pendingCandidates.length > 0) {
             clearPendingCandidates();

@@ -9,6 +9,7 @@ import { saveMedicationDraft } from "@/lib/indexed-db";
 import {
   clearDraft,
   getDraft,
+  registrationHref,
   setLastSavedMedicationIds,
   updateDraft,
 } from "@/lib/registration-session";
@@ -38,7 +39,7 @@ export default function MedicationNoticePage() {
       const saved = await saveMedicationDraft(getDraft());
       setLastSavedMedicationIds(saved.map((medication) => medication.id));
       clearDraft();
-      router.push("/medications/new/complete");
+      router.push(registrationHref("/medications/new/complete"));
     } catch {
       setError("저장하지 못했어요. 잠시 후 다시 시도해주세요.");
       setSaving(false);
@@ -47,7 +48,7 @@ export default function MedicationNoticePage() {
 
   return (
     <MobileShell className="flow-screen notice-screen">
-      <FlowHeader fallbackHref="/medications/new/review" />
+      <FlowHeader fallbackHref={registrationHref("/medications/new/review")} />
       <section className="flow-content notice-content">
         <h1>아래 내용을<br />꼭 확인해주세요</h1>
         <ul className="notice-list">

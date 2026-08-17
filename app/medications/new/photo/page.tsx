@@ -17,6 +17,7 @@ import {
 import { recognizePrescriptionPhoto } from "@/lib/photo-recognition";
 import {
   clearPendingCandidates,
+  registrationHref,
   setManualReturnHref,
   setPendingCandidates,
 } from "@/lib/registration-session";
@@ -40,6 +41,7 @@ function classifyCameraIssue(error: unknown): CameraIssue {
 
 export default function MedicationPhotoPage() {
   const router = useRouter();
+  const [methodHref, setMethodHref] = useState("/medications/new");
   const [phase, setPhase] = useState<CameraPhase>("permission");
   const [showFailure, setShowFailure] = useState(false);
   const [recognizing, setRecognizing] = useState(false);
@@ -47,6 +49,12 @@ export default function MedicationPhotoPage() {
   const [previewReadyCycle, setPreviewReadyCycle] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("origin") === "medications") {
+      setMethodHref("/medications/new?origin=medications");
+    }
+  }, []);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -75,7 +83,7 @@ export default function MedicationPhotoPage() {
 
       setPendingCandidates(result.medications, "photo");
       stopCamera();
-      router.push("/medications/new/photo/result");
+      router.push(registrationHref("/medications/new/photo/result"));
     } catch {
       showRecognitionFailure();
     }
@@ -230,15 +238,15 @@ export default function MedicationPhotoPage() {
   function useManualInput() {
     stopCamera();
     clearPendingCandidates();
-    setManualReturnHref("/medications/new/photo");
-    router.push("/medications/new/manual/name");
+    setManualReturnHref(registrationHref("/medications/new/photo"));
+    router.push(registrationHref("/medications/new/manual/name"));
   }
 
   return (
     <MobileShell className="photo-screen" data-camera-issue={cameraIssue ?? undefined}>
       <FlowHeader
         title="사진 촬영"
-        fallbackHref="/medications/new"
+        fallbackHref={methodHref}
         beforeBack={stopCamera}
       />
       <section className="camera-stage">

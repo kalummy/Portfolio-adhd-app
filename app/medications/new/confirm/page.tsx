@@ -9,6 +9,7 @@ import {
   confirmPendingCandidates,
   discardScheduleQueueCandidates,
   getDraft,
+  registrationHref,
   updateDraft,
 } from "@/lib/registration-session";
 import type { DraftMedication, MedicationDraft } from "@/lib/types";
@@ -37,24 +38,30 @@ export default function MedicationConfirmPage() {
     } else {
       discardScheduleQueueCandidates();
     }
-    router.push(source === "manual" ? "/medications/new/manual/name" : "/medications/new/search");
+    router.push(registrationHref(
+      source === "manual" ? "/medications/new/manual/name" : "/medications/new/search",
+    ));
   }
 
   function confirmCandidates() {
     if (draft!.pendingCandidates.length > 0) {
       const { added } = confirmPendingCandidates();
-      router.push(added.length > 0 ? "/medications/new/schedule" : "/medications/new/review");
+      router.push(registrationHref(
+        added.length > 0 ? "/medications/new/schedule" : "/medications/new/review",
+      ));
       return;
     }
 
     updateDraft({ activeScheduleDraftId: draft!.scheduleQueueDraftIds[0] });
-    router.push("/medications/new/schedule");
+    router.push(registrationHref("/medications/new/schedule"));
   }
 
   return (
     <MobileShell className="flow-screen">
       <FlowHeader
-        fallbackHref={source === "manual" ? "/medications/new/manual/name" : "/medications/new/search"}
+        fallbackHref={registrationHref(
+          source === "manual" ? "/medications/new/manual/name" : "/medications/new/search",
+        )}
       />
       <section className="flow-content confirm-content">
         <h1>복용중인 약이 맞는지<br />이름과 용량을 확인해주세요</h1>

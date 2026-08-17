@@ -8,6 +8,7 @@ import { MedicationSummaryCard } from "@/components/medication-card";
 import { MobileShell } from "@/components/mobile-shell";
 import {
   getDraft,
+  registrationHref,
   removeDraftMedication,
   updateDraft,
 } from "@/lib/registration-session";
@@ -22,7 +23,7 @@ export default function MedicationReviewPage() {
   useEffect(() => {
     const current = getDraft();
     if (current.draftMedications.length === 0) {
-      router.replace("/medications/new/search");
+      router.replace(registrationHref("/medications/new/search"));
       return;
     }
     setDraft(current);
@@ -39,7 +40,7 @@ export default function MedicationReviewPage() {
       manualName: "",
       manualStrength: "",
     });
-    router.push("/medications/new/search");
+    router.push(registrationHref("/medications/new/search"));
   }
 
   function confirmDelete() {
@@ -53,7 +54,7 @@ export default function MedicationReviewPage() {
         scheduleQueueDraftIds: [],
         searchQuery: "",
       });
-      router.replace("/medications/new/search");
+      router.replace(registrationHref("/medications/new/search"));
       return;
     }
     setDraft(next);
@@ -89,7 +90,10 @@ export default function MedicationReviewPage() {
           <PrimaryButton type="button" variant="soft" onClick={addAnotherMedication}>
             다른 약 추가
           </PrimaryButton>
-          <PrimaryButton type="button" onClick={() => router.push("/medications/new/notice")}>
+          <PrimaryButton
+            type="button"
+            onClick={() => router.push(registrationHref("/medications/new/notice"))}
+          >
             다음으로
           </PrimaryButton>
         </div>

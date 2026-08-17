@@ -8,6 +8,7 @@ import { MedicationSummaryCard } from "@/components/medication-card";
 import { MobileShell } from "@/components/mobile-shell";
 import {
   getDraft,
+  registrationHref,
   updateDraft,
   updateDraftMedication,
 } from "@/lib/registration-session";
@@ -27,7 +28,9 @@ export default function MedicationSchedulePage() {
     const current = getDraft();
     const activeDraftId = current.activeScheduleDraftId ?? current.scheduleQueueDraftIds[0];
     if (!activeDraftId || !current.draftMedications.some((item) => item.draftId === activeDraftId)) {
-      router.replace(current.draftMedications.length > 0 ? "/medications/new/review" : "/medications/new/search");
+      router.replace(registrationHref(
+        current.draftMedications.length > 0 ? "/medications/new/review" : "/medications/new/search",
+      ));
       return;
     }
     if (current.activeScheduleDraftId !== activeDraftId) {
@@ -61,11 +64,11 @@ export default function MedicationSchedulePage() {
       return;
     }
 
-    router.replace(
+    router.replace(registrationHref(
       activeMedication!.source === "photo"
         ? "/medications/new/photo/result"
         : "/medications/new/confirm",
-    );
+    ));
   }
 
   function continueSchedule() {
@@ -78,7 +81,7 @@ export default function MedicationSchedulePage() {
     }
 
     updateDraft({ activeScheduleDraftId: undefined, scheduleQueueDraftIds: [] });
-    router.push("/medications/new/review");
+    router.push(registrationHref("/medications/new/review"));
   }
 
   return (

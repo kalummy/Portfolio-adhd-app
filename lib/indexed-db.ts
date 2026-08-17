@@ -54,6 +54,7 @@ export async function saveMedicationDraft(draft: MedicationDraft): Promise<Saved
     registrationMethod: source,
     schedule: schedule!,
     createdAt,
+    active: true,
   }));
 
   await new Promise<void>((resolve, reject) => {
@@ -80,7 +81,58 @@ export async function getSavedMedications(): Promise<SavedMedication[]> {
     request.onerror = () => reject(request.error ?? new Error("복용약을 불러오지 못했어요."));
   });
   database.close();
-  return result.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  return result
+    .filter((medication) => medication.active !== false)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+export async function hasMedicationIntakeHistory(medicationId: string): Promise<boolean> {
+  const database = await openDatabase();
+  const result = await new Promise<boolean>((resolve, reject) => {
+    const request = database
+      .transaction(INTAKE_STORE, "readonly")
+      .objectStore(INTAKE_STORE)
+      .index("medicationId")
+      .getKey(medicationId);
+    request.onsuccess = () => resolve(request.result !== undefined);
+    request.onerror = () => reject(request.error ?? new Error("복용 기록을 확인하지 못했어요."));
+  });
+  database.close();
+  return result;
+}
+
+export async function deactivateSavedMedication(medicationId: string): Promise<SavedMedication> {
+  const database = await openDatabase();
+  const result = await new Promise<SavedMedication>((resolve, reject) => {
+    const transaction = database.transaction(MEDICATION_STORE, "readwrite");
+    const store = transaction.objectStore(MEDICATION_STORE);
+    const request = store.get(medicationId);
+    let deactivated: SavedMedication | null = null;
+
+    request.onsuccess = () => {
+      const medication = request.result as SavedMedication | undefined;
+      if (!medication) {
+        transaction.abort();
+        return;
+      }
+
+      deactivated = {
+        ...medication,
+        active: false,
+        deactivatedAt: new Date().toISOString(),
+      };
+      store.put(deactivated);
+    };
+    request.onerror = () => reject(request.error ?? new Error("복용약을 찾지 못했어요."));
+    transaction.oncomplete = () => {
+      if (deactivated) resolve(deactivated);
+      else reject(new Error("복용약을 찾지 못했어요."));
+    };
+    transaction.onerror = () => reject(transaction.error ?? new Error("복용약을 삭제하지 못했어요."));
+    transaction.onabort = () => reject(transaction.error ?? new Error("복용약을 찾지 못했어요."));
+  });
+  database.close();
+  return result;
 }
 
 export async function getSavedMedicationsByIds(ids: string[]) {

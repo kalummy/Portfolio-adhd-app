@@ -4,7 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
-import { getDraft, getManualReturnHref, updateDraft } from "@/lib/registration-session";
+import {
+  getDraft,
+  getManualReturnHref,
+  registrationHref,
+  updateDraft,
+} from "@/lib/registration-session";
 
 export default function ManualMedicationNamePage() {
   const router = useRouter();
@@ -38,7 +43,7 @@ export default function ManualMedicationNamePage() {
         <PrimaryButton
           type="button"
           disabled={!name.trim()}
-          onClick={() => router.push("/medications/new/manual/strength")}
+          onClick={() => router.push(registrationHref("/medications/new/manual/strength"))}
         >
           다음
         </PrimaryButton>

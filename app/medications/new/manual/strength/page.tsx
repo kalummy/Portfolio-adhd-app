@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
 import { createManualMedicationCandidate } from "@/lib/medication-candidates";
-import { getDraft, setPendingCandidates, updateDraft } from "@/lib/registration-session";
+import {
+  getDraft,
+  registrationHref,
+  setPendingCandidates,
+  updateDraft,
+} from "@/lib/registration-session";
 import type { MedicationCandidate, OfficialMedicationMatchStatus } from "@/lib/types";
 
 type ManualMatchResponse = {
@@ -55,12 +60,12 @@ export default function ManualMedicationStrengthPage() {
 
     updateDraft({ manualStrength: strength });
     setPendingCandidates([medication], "manual");
-    router.push("/medications/new/confirm");
+    router.push(registrationHref("/medications/new/confirm"));
   }
 
   return (
     <MobileShell className="flow-screen">
-      <FlowHeader fallbackHref="/medications/new/manual/name" />
+      <FlowHeader fallbackHref={registrationHref("/medications/new/manual/name")} />
       <section className="flow-content input-content">
         <h1>복용중인 약의 용량을 입력해주세요</h1>
         <div className="strength-field">

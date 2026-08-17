@@ -54,15 +54,14 @@ button {
 .flow-screen {
   min-height: 100dvh;
   padding-bottom: calc(96px + env(safe-area-inset-bottom));
-  padding-top: env(safe-area-inset-top);
 }
 
 .flow-header {
   display: flex;
   align-items: center;
   gap: 16px;
-  height: 56px;
-  padding: 16px 20px;
+  height: calc(56px + env(safe-area-inset-top));
+  padding: calc(16px + env(safe-area-inset-top)) 20px 16px;
   background: var(--surface);
 }
 
@@ -148,6 +147,185 @@ button {
   display: block;
 }
 
+.medication-list-screen {
+  min-height: 100dvh;
+  padding-bottom: calc(130px + env(safe-area-inset-bottom));
+}
+
+.medication-list-content {
+  padding: 32px 20px 24px;
+}
+
+.medication-list-title h1 {
+  margin: 0;
+  color: var(--color-font-base-03);
+  font-size: 24px;
+  line-height: 34px;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+}
+
+.medication-list-title p {
+  margin: 2px 0 0;
+  color: var(--color-font-base-03);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  letter-spacing: -0.4px;
+}
+
+.registered-medications {
+  margin-top: 36px;
+}
+
+.registered-medications h2 {
+  margin: 0 0 8px;
+  color: var(--color-font-primary);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+
+.registered-medication-list {
+  display: grid;
+  gap: 16px;
+}
+
+.registered-medication-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 16px;
+}
+
+.registered-medication-row .medication-summary-card {
+  min-width: 0;
+}
+
+.medication-list-delete {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.medication-list-delete img {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.medication-empty-methods {
+  margin-top: 92px;
+}
+
+.medication-list-loading {
+  height: 234px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--color-gray-75), var(--color-gray-100), var(--color-gray-75));
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+}
+
+.medication-list-error {
+  margin: 20px 0 0;
+  color: var(--color-font-semantic-danger);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.primary-button.medication-add-link {
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  line-height: 24px;
+  text-decoration: none;
+}
+
+.medication-delete-layer {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  width: 100%;
+  min-height: 100dvh;
+  padding: 36px;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.medication-delete-dialog {
+  display: flex;
+  width: min(288px, 100%);
+  flex-direction: column;
+  border-radius: 20px;
+  background: var(--color-bg-base-01);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.medication-delete-dialog header {
+  padding: 24px 20px 16px;
+}
+
+.medication-delete-dialog h2 {
+  margin: 0;
+  color: var(--color-font-base-03);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  letter-spacing: -0.45px;
+}
+
+.medication-delete-dialog > p {
+  margin: 0;
+  padding: 0 20px;
+  color: var(--color-font-base-03);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 400;
+  letter-spacing: -0.375px;
+}
+
+.medication-delete-actions {
+  display: flex;
+  gap: 12px;
+  padding: 24px 20px;
+}
+
+.medication-delete-actions button {
+  min-width: 0;
+  min-height: 48px;
+  padding: 12px 16px;
+  flex: 1 0 0;
+  border: 0;
+  border-radius: 12px;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  cursor: pointer;
+}
+
+.medication-delete-actions .cancel {
+  background: var(--color-bg-interactive-gray-default);
+  color: var(--color-font-base-03);
+}
+
+.medication-delete-actions .delete {
+  background: var(--color-bg-interactive-brand-default);
+  color: var(--color-font-base-01);
+}
+
+.medication-delete-actions button:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
 .bottom-actions {
   position: fixed;
   z-index: 20;
@@ -231,7 +409,7 @@ button {
   border: 0;
   outline: 0;
   color: var(--color-font-base-02);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 20px;
   font-weight: 400;
   letter-spacing: -0.35px;
@@ -1061,7 +1239,6 @@ button {
 .photo-screen {
   width: 100%;
   min-height: 100dvh;
-  padding-top: env(safe-area-inset-top);
   overflow: hidden;
   background: var(--color-bg-base-02);
 }

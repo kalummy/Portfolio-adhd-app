@@ -280,7 +280,7 @@ export function HomeScreen({
             <div className="home-card populated-medication-card">
               <div className={`home-card-heading ${showDateEyebrow ? "with-date" : ""}`}>
                 {showDateEyebrow && <span className="card-date-eyebrow">{formatDateEyebrow(selectedDate)}</span>}
-                <Link href="/medications/new" className="home-card-title" aria-label="복용약 관리 및 추가">
+                <Link href="/medications" className="home-card-title" aria-label="복용약 목록 열기">
                   <strong>{medicationTitle}</strong>
                   <ChevronRight />
                 </Link>

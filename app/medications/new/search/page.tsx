@@ -8,6 +8,7 @@ import { MobileShell } from "@/components/mobile-shell";
 import { medicationLabel } from "@/lib/medication-utils";
 import {
   getDraft,
+  registrationHref,
   setManualReturnHref,
   setPendingCandidates,
   updateDraft,
@@ -58,6 +59,7 @@ function HighlightedMedicationName({ label, query }: { label: string; query: str
 
 export default function MedicationSearchPage() {
   const router = useRouter();
+  const [methodHref, setMethodHref] = useState("/medications/new");
   const [query, setQuery] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [selectedCatalogId, setSelectedCatalogId] = useState<string>();
@@ -67,6 +69,9 @@ export default function MedicationSearchPage() {
   const [resolvedQuery, setResolvedQuery] = useState("");
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("origin") === "medications") {
+      setMethodHref("/medications/new?origin=medications");
+    }
     const draft = getDraft();
     setQuery(draft.searchQuery);
     setSelectedCatalogId(
@@ -158,7 +163,7 @@ export default function MedicationSearchPage() {
 
     setPendingCandidates([selectedMedication], "search");
     updateDraft({ searchQuery: query });
-    router.push("/medications/new/confirm");
+    router.push(registrationHref("/medications/new/confirm"));
   }
 
   const showNoResults = submitted
@@ -168,7 +173,7 @@ export default function MedicationSearchPage() {
 
   return (
     <MobileShell className="flow-screen search-screen">
-      <FlowHeader fallbackHref="/medications/new" />
+      <FlowHeader fallbackHref={methodHref} />
       <form className="search-form" onSubmit={submitSearch}>
         <input
           value={query}
@@ -227,8 +232,8 @@ export default function MedicationSearchPage() {
             type="button"
             onClick={() => {
               updateDraft({ manualName: query, pendingCandidates: [] });
-              setManualReturnHref("/medications/new/search");
-              router.push("/medications/new/manual/name");
+              setManualReturnHref(registrationHref("/medications/new/search"));
+              router.push(registrationHref("/medications/new/manual/name"));
             }}
           >
             직접 입력

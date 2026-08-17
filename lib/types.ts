@@ -47,6 +47,8 @@ export type SavedMedication = MedicationCandidate & {
   registrationMethod: RegistrationMethod;
   schedule: MedicationSchedule;
   createdAt: string;
+  active?: boolean;
+  deactivatedAt?: string;
 };
 
 export type MedicationIntakeRecord = {
