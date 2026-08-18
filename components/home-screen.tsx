@@ -6,12 +6,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getMedicationIntakeRecords,
   getMoodRecords,
-  getSavedMedications,
   getUpcomingVisit,
   setMedicationTaken,
 } from "@/lib/indexed-db";
+import { getMedicationRepository } from "@/lib/repositories/medications";
+import { enrichOfficialMedications } from "@/lib/medication-enrichment";
 import { getWeekProgress } from "@/lib/home-week-progress";
-import { medicationLabel } from "@/lib/medication-utils";
+import { MEDICATION_FALLBACK_IMAGE, medicationLabel } from "@/lib/medication-utils";
 import { formatVisitDday } from "@/lib/visit-date";
 import type {
   HomeDataSet,
@@ -115,6 +116,9 @@ export function HomeScreen({
   );
   const [loading, setLoading] = useState(!previewData);
   const [toast, setToast] = useState("");
+  const [failedMedicationImages, setFailedMedicationImages] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const selectedDateKey = toDateKey(selectedDate);
   const selectedRelation = relationToReference(selectedDate, referenceDate);
@@ -131,20 +135,29 @@ export function HomeScreen({
 
     setLoading(true);
     try {
+      const medicationRepository = await getMedicationRepository();
       const [savedMedications, savedIntakes, savedMoods, savedVisit] = await Promise.all([
-        getSavedMedications(),
+        medicationRepository.listActive(),
         getMedicationIntakeRecords(),
         getMoodRecords(),
         getUpcomingVisit(),
       ]);
       setMedications(savedMedications);
+      void enrichOfficialMedications(savedMedications).then((enrichedMedications) => {
+        const enrichedById = new Map(
+          enrichedMedications.map((medication) => [medication.id, medication]),
+        );
+        setMedications((current) => current.map(
+          (medication) => enrichedById.get(medication.id) ?? medication,
+        ));
+      });
       setIntakeRecords(savedIntakes);
       setMoodRecords(savedMoods);
       setVisitSchedule(savedVisit);
     } finally {
       setLoading(false);
     }
-  }, [previewData, selectedDateKey]);
+  }, [previewData]);
 
   useEffect(() => {
     void load();
@@ -319,6 +332,8 @@ export function HomeScreen({
                 {medications.map((medication) => {
                   const intake = selectedIntakeByMedication.get(medication.id);
                   const isTaken = Boolean(intake);
+                  const imageKey = `${medication.id}:${medication.imagePath}`;
+                  const imageFailed = failedMedicationImages.has(imageKey);
                   return (
                     <article className="home-medication-item" key={medication.id}>
                       <button
@@ -335,8 +350,21 @@ export function HomeScreen({
                           height={20}
                         />
                       </button>
-                      <div className="home-medication-image">
-                        <Image src={medication.imagePath} alt="" fill sizes="64px" />
+                      <div className={`home-medication-image ${imageFailed ? "fallback" : ""}`}>
+                        <Image
+                          src={imageFailed
+                            ? medication.fallbackImage ?? MEDICATION_FALLBACK_IMAGE
+                            : medication.imagePath}
+                          alt=""
+                          fill
+                          sizes="64px"
+                          onError={() => setFailedMedicationImages((current) => {
+                            if (current.has(imageKey)) return current;
+                            const next = new Set(current);
+                            next.add(imageKey);
+                            return next;
+                          })}
+                        />
                       </div>
                       <div className="home-medication-copy">
                         <strong>{medicationLabel(medication)}</strong>
@@ -404,6 +432,8 @@ export function HomeScreen({
           <span>서비스이용약관</span>
           <i />
           <span>개인정보처리방침</span>
+          <i />
+          <Link href="/auth/login">계정</Link>
         </div>
         <Image src="/brand/addi-footer.svg" alt="아디" width={64} height={24} />
         <p>Copyright ⓒ Kalummy ALL RIGHTS RESERVED.</p>

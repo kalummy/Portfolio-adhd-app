@@ -8,10 +8,10 @@ import { FlowHeader } from "@/components/flow-ui";
 import { MedicationSummaryCard } from "@/components/medication-card";
 import { MobileShell } from "@/components/mobile-shell";
 import {
-  deactivateSavedMedication,
-  getSavedMedications,
   hasMedicationIntakeHistory,
 } from "@/lib/indexed-db";
+import { getMedicationRepository } from "@/lib/repositories/medications";
+import { enrichOfficialMedications } from "@/lib/medication-enrichment";
 import { medicationLabel } from "@/lib/medication-utils";
 import { resetDraft } from "@/lib/registration-session";
 import type { SavedMedication } from "@/lib/types";
@@ -31,7 +31,17 @@ export default function MedicationListPage() {
 
   const load = useCallback(async () => {
     try {
-      setMedications(await getSavedMedications());
+      const repository = await getMedicationRepository();
+      const savedMedications = await repository.listActive();
+      setMedications(savedMedications);
+      void enrichOfficialMedications(savedMedications).then((enrichedMedications) => {
+        const enrichedById = new Map(
+          enrichedMedications.map((medication) => [medication.id, medication]),
+        );
+        setMedications((current) => current.map(
+          (medication) => enrichedById.get(medication.id) ?? medication,
+        ));
+      });
       setError("");
     } catch {
       setError("복용약 목록을 불러오지 못했어요.");
@@ -59,7 +69,8 @@ export default function MedicationListPage() {
     setDeleting(true);
     setError("");
     try {
-      await deactivateSavedMedication(deleteTarget.medication.id);
+      const repository = await getMedicationRepository();
+      await repository.deactivate(deleteTarget.medication.id);
       setMedications((current) => current.filter(({ id }) => id !== deleteTarget.medication.id));
       setDeleteTarget(null);
     } catch {

@@ -5,7 +5,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
-import { saveMedicationDraft } from "@/lib/indexed-db";
+import {
+  createSavedMedicationsFromDraft,
+  getMedicationRepository,
+} from "@/lib/repositories/medications";
 import {
   clearDraft,
   getDraft,
@@ -36,7 +39,9 @@ export default function MedicationNoticePage() {
     setSaving(true);
     setError("");
     try {
-      const saved = await saveMedicationDraft(getDraft());
+      const medications = createSavedMedicationsFromDraft(getDraft());
+      const repository = await getMedicationRepository();
+      const saved = await repository.createMany(medications);
       setLastSavedMedicationIds(saved.map((medication) => medication.id));
       clearDraft();
       router.push(registrationHref("/medications/new/complete"));
@@ -76,7 +81,12 @@ export default function MedicationNoticePage() {
           <strong>안내사항을 확인했으며, 모두 동의합니다.</strong>
         </label>
         {error ? <p className="save-error" role="alert">{error}</p> : null}
-        <PrimaryButton type="button" disabled={!accepted || saving} onClick={save}>
+        <PrimaryButton
+          type="button"
+          disabled={!accepted || saving}
+          aria-busy={saving}
+          onClick={save}
+        >
           {saving ? "저장 중..." : "확인했어요"}
         </PrimaryButton>
       </BottomActions>
