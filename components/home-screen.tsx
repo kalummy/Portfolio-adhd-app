@@ -5,9 +5,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getMoodRecords,
-  getUpcomingVisit,
 } from "@/lib/indexed-db";
-import { getDataRepositories } from "@/lib/repositories";
+import { getDataRepositories, retryGuestDatasetSync } from "@/lib/repositories";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
 import { getWeekProgress } from "@/lib/home-week-progress";
 import { MEDICATION_FALLBACK_IMAGE, medicationLabel } from "@/lib/medication-utils";
@@ -114,6 +113,8 @@ export function HomeScreen({
   );
   const [loading, setLoading] = useState(!previewData);
   const [toast, setToast] = useState("");
+  const [syncError, setSyncError] = useState("");
+  const [syncRetrying, setSyncRetrying] = useState(false);
   const [failedMedicationImages, setFailedMedicationImages] = useState<Set<string>>(
     () => new Set(),
   );
@@ -134,11 +135,14 @@ export function HomeScreen({
     setLoading(true);
     try {
       const repositories = await getDataRepositories();
+      setSyncError(repositories.guestDatasetSync.status === "failed"
+        ? "저장한 정보를 불러오지 못했어요. 다시 시도해 주세요."
+        : "");
       const [savedMedications, savedIntakes, savedMoods, savedVisit] = await Promise.all([
         repositories.medications.listActive(),
         repositories.medicationIntakes.listAll(),
         getMoodRecords(),
-        getUpcomingVisit(),
+        repositories.visitSchedules.getUpcoming(),
       ]);
       setMedications(savedMedications);
       void enrichOfficialMedications(savedMedications).then((enrichedMedications) => {
@@ -152,10 +156,25 @@ export function HomeScreen({
       setIntakeRecords(savedIntakes);
       setMoodRecords(savedMoods);
       setVisitSchedule(savedVisit);
+    } catch {
+      setSyncError("저장한 정보를 불러오지 못했어요. 다시 시도해 주세요.");
     } finally {
       setLoading(false);
     }
   }, [previewData]);
+
+  const handleSyncRetry = useCallback(async () => {
+    if (syncRetrying) return;
+    setSyncRetrying(true);
+    try {
+      await retryGuestDatasetSync();
+      await load();
+    } catch {
+      setSyncError("저장한 정보를 불러오지 못했어요. 다시 시도해 주세요.");
+    } finally {
+      setSyncRetrying(false);
+    }
+  }, [load, syncRetrying]);
 
   useEffect(() => {
     void load();
@@ -295,6 +314,15 @@ export function HomeScreen({
           </span>
         )}
       </Link>
+
+      {syncError ? (
+        <div className="visit-error home-sync-error" role="alert">
+          <span>{syncError}</span>
+          <button type="button" disabled={syncRetrying} onClick={() => void handleSyncRetry()}>
+            {syncRetrying ? "불러오는 중..." : "다시 시도"}
+          </button>
+        </div>
+      ) : null}
 
       <section className="home-content">
         <div className="date-heading">

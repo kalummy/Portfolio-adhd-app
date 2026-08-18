@@ -2075,6 +2075,24 @@ button {
   line-height: 18px;
 }
 
+.home-sync-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 20px 0;
+}
+
+.home-sync-error button {
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
 .visit-dialog-layer {
   position: fixed;
   z-index: 80;

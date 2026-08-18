@@ -6,7 +6,7 @@ import { FlowHeader } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
 import { Toast } from "@/components/toast";
 import { VisitDialog } from "@/components/visit-dialog";
-import { deleteUpcomingVisit, getUpcomingVisit } from "@/lib/indexed-db";
+import { getVisitScheduleRepository } from "@/lib/repositories";
 import { formatVisitDate, formatVisitDday } from "@/lib/visit-date";
 import type { VisitSchedule } from "@/lib/types";
 
@@ -25,7 +25,8 @@ function VisitListContent() {
 
   const load = useCallback(async () => {
     try {
-      const savedVisit = await getUpcomingVisit();
+      const repository = await getVisitScheduleRepository();
+      const savedVisit = await repository.getUpcoming();
       if (!savedVisit) {
         router.replace("/");
         return;
@@ -57,7 +58,8 @@ function VisitListContent() {
     setDeleting(true);
     setError("");
     try {
-      await deleteUpcomingVisit();
+      const repository = await getVisitScheduleRepository();
+      await repository.deleteUpcoming();
       router.replace("/?visitToast=deleted");
     } catch {
       setShowDelete(false);
