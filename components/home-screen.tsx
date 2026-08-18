@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import {
   getMoodRecords,
 } from "@/lib/indexed-db";
@@ -19,7 +19,11 @@ import type {
   VisitSchedule,
 } from "@/lib/types";
 import { MobileShell } from "./mobile-shell";
+import { SplashScreen } from "./splash-screen";
 import { Toast } from "./toast";
+
+const SPLASH_SESSION_KEY = "addi:splash:shown:v1";
+const SPLASH_MINIMUM_MS = 800;
 
 const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 const DEFAULT_DIARY_ENTRIES = [
@@ -86,6 +90,7 @@ type HomeScreenProps = {
   minimumDateKey?: string;
   maximumDateKey?: string;
   initialVisitToast?: string;
+  enableLaunchSplash?: boolean;
 };
 
 export function HomeScreen({
@@ -95,6 +100,7 @@ export function HomeScreen({
   minimumDateKey,
   maximumDateKey,
   initialVisitToast,
+  enableLaunchSplash = false,
 }: HomeScreenProps = {}) {
   const referenceDate = useMemo(
     () => (referenceDateKey ? fromDateKey(referenceDateKey) : startOfDay(new Date())),
@@ -115,12 +121,41 @@ export function HomeScreen({
   const [toast, setToast] = useState("");
   const [syncError, setSyncError] = useState("");
   const [syncRetrying, setSyncRetrying] = useState(false);
+  const [launchSplashRequired, setLaunchSplashRequired] = useState(enableLaunchSplash);
+  const [splashMinimumElapsed, setSplashMinimumElapsed] = useState(!enableLaunchSplash);
   const [failedMedicationImages, setFailedMedicationImages] = useState<Set<string>>(
     () => new Set(),
   );
 
   const selectedDateKey = toDateKey(selectedDate);
   const selectedRelation = relationToReference(selectedDate, referenceDate);
+
+  useLayoutEffect(() => {
+    if (!enableLaunchSplash) return;
+
+    try {
+      if (window.sessionStorage.getItem(SPLASH_SESSION_KEY) === "1") {
+        document.documentElement.dataset.addiSplash = "skip";
+        setLaunchSplashRequired(false);
+        setSplashMinimumElapsed(true);
+        return;
+      }
+    } catch {
+      // If sessionStorage is unavailable, showing the launch screen remains the safe default.
+    }
+
+    document.documentElement.removeAttribute("data-addi-splash");
+  }, [enableLaunchSplash]);
+
+  useEffect(() => {
+    if (!enableLaunchSplash || !launchSplashRequired) return;
+
+    const timer = window.setTimeout(() => {
+      setSplashMinimumElapsed(true);
+    }, SPLASH_MINIMUM_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [enableLaunchSplash, launchSplashRequired]);
 
   const load = useCallback(async () => {
     if (previewData) {
@@ -186,6 +221,22 @@ export function HomeScreen({
       window.removeEventListener("focus", load);
     };
   }, [load, previewData]);
+
+  useEffect(() => {
+    if (
+      !enableLaunchSplash
+      || !launchSplashRequired
+      || !splashMinimumElapsed
+      || loading
+    ) return;
+
+    try {
+      window.sessionStorage.setItem(SPLASH_SESSION_KEY, "1");
+    } catch {
+      // The current launch still completes even when storage is unavailable.
+    }
+    setLaunchSplashRequired(false);
+  }, [enableLaunchSplash, launchSplashRequired, loading, splashMinimumElapsed]);
 
   useEffect(() => {
     if (!initialVisitToast) return;
@@ -274,6 +325,10 @@ export function HomeScreen({
         : "내일 감정을 기록해주세요";
   const medicationTitle = selectedRelation > 0 ? "내일 복용약" : "오늘 복용약";
   const showDateEyebrow = selectedRelation !== 0;
+
+  if (enableLaunchSplash && launchSplashRequired) {
+    return <SplashScreen />;
+  }
 
   return (
     <MobileShell className="home-screen">
