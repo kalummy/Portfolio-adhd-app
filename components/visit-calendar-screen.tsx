@@ -6,7 +6,7 @@ import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
 import { VisitCalendar } from "@/components/visit-calendar";
 import { VisitDialog } from "@/components/visit-dialog";
-import { getUpcomingVisit, saveUpcomingVisit } from "@/lib/indexed-db";
+import { getVisitScheduleRepository } from "@/lib/repositories";
 import { formatVisitDate } from "@/lib/visit-date";
 
 type VisitCalendarScreenProps = {
@@ -25,7 +25,8 @@ export function VisitCalendarScreen({ mode }: VisitCalendarScreenProps) {
   useEffect(() => {
     if (mode !== "edit") return;
     let active = true;
-    void getUpcomingVisit()
+    void getVisitScheduleRepository()
+      .then((repository) => repository.getUpcoming())
       .then((visit) => {
         if (!active) return;
         if (!visit) {
@@ -62,7 +63,8 @@ export function VisitCalendarScreen({ mode }: VisitCalendarScreenProps) {
     setSaving(true);
     setError("");
     try {
-      await saveUpcomingVisit(selectedDate);
+      const repository = await getVisitScheduleRepository();
+      await repository.saveUpcoming(selectedDate);
       router.replace(mode === "new" ? "/?visitToast=added" : "/visits?visitToast=updated");
     } catch {
       setDialog(null);

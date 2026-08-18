@@ -7,20 +7,30 @@ import {
   reserveMedicationIntakeDatasetForUser,
 } from "@/lib/indexed-db";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { mergeGuestMedicationDataset } from "./guest-dataset";
+import { mergeGuestDataset } from "./guest-dataset";
+import {
+  bootstrapGuestDataset,
+  type GuestDatasetBootstrapResult,
+} from "./guest-dataset-bootstrap";
 import { indexedDbMedicationIntakeRepository } from "./intake-records/indexed-db";
 import { createSupabaseMedicationIntakeRepository } from "./intake-records/supabase";
 import type { MedicationIntakeRepository } from "./intake-records/types";
 import { indexedDbMedicationRepository } from "./medications/indexed-db";
 import { createSupabaseMedicationRepository } from "./medications/supabase";
 import type { MedicationRepository, ServerMedicationRepository } from "./medications/types";
+import { indexedDbVisitScheduleRepository } from "./visit-schedules/indexed-db";
+import { createSupabaseVisitScheduleRepository } from "./visit-schedules/supabase";
+import type { VisitScheduleRepository } from "./visit-schedules/types";
 
 export type DataRepositories = {
   medications: MedicationRepository;
   medicationIntakes: MedicationIntakeRepository;
+  visitSchedules: VisitScheduleRepository;
+  guestDatasetSync: GuestDatasetBootstrapResult;
 };
 
-const initialMigrationByUser = new Map<string, Promise<void>>();
+const initialMigrationByUser = new Map<string, Promise<GuestDatasetBootstrapResult>>();
+const failedGuestDatasetSyncByUser = new Map<string, GuestDatasetBootstrapResult>();
 
 // Deprecated compatibility path. New guest data ownership uses mergeLocalGuestDataset.
 async function migrateLocalMedicationsWhenServerIsEmpty(
@@ -52,33 +62,25 @@ async function migrateAndClaimLocalMedicationIntakes(
 }
 
 async function mergeLocalGuestDataset(userId: string) {
-  const reservation = await reserveGuestMedicationDatasetForUser(userId);
-  if (!reservation) return;
-
-  try {
-    const result = await mergeGuestMedicationDataset(reservation);
-    if (result.success && result.claimed) {
-      await completeGuestMedicationDatasetClaim(reservation.datasetId, userId);
-      return;
-    }
-
-    await releaseGuestMedicationDatasetReservation(reservation.datasetId, userId);
-    throw new Error(result.failureReason ?? "guest_dataset_merge_failed");
-  } catch (error) {
-    try {
-      await releaseGuestMedicationDatasetReservation(reservation.datasetId, userId);
-    } catch {
-      // Preserve the merge error. The active guest dataset remains retryable locally.
-    }
-    throw error;
-  }
+  return bootstrapGuestDataset({
+    userId,
+    reserve: reserveGuestMedicationDatasetForUser,
+    merge: mergeGuestDataset,
+    complete: completeGuestMedicationDatasetClaim,
+    release: releaseGuestMedicationDatasetReservation,
+  });
 }
 
 async function migrateInitialLocalData(
   userId: string,
   _medicationRepository: ServerMedicationRepository,
   _intakeRepository: MedicationIntakeRepository,
+  retry = false,
 ) {
+  if (retry) failedGuestDatasetSyncByUser.delete(userId);
+  const failed = failedGuestDatasetSyncByUser.get(userId);
+  if (failed) return failed;
+
   const existing = initialMigrationByUser.get(userId);
   if (existing) return existing;
 
@@ -86,7 +88,11 @@ async function migrateInitialLocalData(
 
   initialMigrationByUser.set(userId, migration);
   try {
-    await migration;
+    const result = await migration;
+    if (result.status === "failed") {
+      failedGuestDatasetSyncByUser.set(userId, result);
+    }
+    return result;
   } finally {
     if (initialMigrationByUser.get(userId) === migration) {
       initialMigrationByUser.delete(userId);
@@ -102,6 +108,8 @@ export async function getDataRepositories(): Promise<DataRepositories> {
     return {
       medications: indexedDbMedicationRepository,
       medicationIntakes: indexedDbMedicationIntakeRepository,
+      visitSchedules: indexedDbVisitScheduleRepository,
+      guestDatasetSync: { status: "no-local-data" },
     };
   }
 
@@ -112,7 +120,8 @@ export async function getDataRepositories(): Promise<DataRepositories> {
 
   const medicationRepository = createSupabaseMedicationRepository(userData.user.id);
   const intakeRepository = createSupabaseMedicationIntakeRepository(userData.user.id);
-  await migrateInitialLocalData(
+  const visitScheduleRepository = createSupabaseVisitScheduleRepository(userData.user.id);
+  const guestDatasetSync = await migrateInitialLocalData(
     userData.user.id,
     medicationRepository,
     intakeRepository,
@@ -121,7 +130,26 @@ export async function getDataRepositories(): Promise<DataRepositories> {
   return {
     medications: medicationRepository,
     medicationIntakes: intakeRepository,
+    visitSchedules: visitScheduleRepository,
+    guestDatasetSync,
   };
+}
+
+export async function retryGuestDatasetSync(): Promise<GuestDatasetBootstrapResult> {
+  const supabase = createBrowserSupabaseClient();
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user) {
+    throw error ?? new Error("로그인 사용자를 확인하지 못했어요.");
+  }
+
+  const medicationRepository = createSupabaseMedicationRepository(data.user.id);
+  const intakeRepository = createSupabaseMedicationIntakeRepository(data.user.id);
+  return migrateInitialLocalData(
+    data.user.id,
+    medicationRepository,
+    intakeRepository,
+    true,
+  );
 }
 
 export async function getMedicationRepository(): Promise<MedicationRepository> {
@@ -132,6 +160,11 @@ export async function getMedicationIntakeRepository(): Promise<MedicationIntakeR
   return (await getDataRepositories()).medicationIntakes;
 }
 
+export async function getVisitScheduleRepository(): Promise<VisitScheduleRepository> {
+  return (await getDataRepositories()).visitSchedules;
+}
+
 export { diagnoseClaimedGuestIntakeRecoveryCandidates } from "./guest-dataset";
 export type { MedicationIntakeRepository } from "./intake-records/types";
 export type { MedicationRepository } from "./medications/types";
+export type { VisitScheduleRepository } from "./visit-schedules/types";

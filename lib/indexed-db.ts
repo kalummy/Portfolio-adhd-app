@@ -7,9 +7,10 @@ import type {
 } from "./types";
 import { createClientId } from "./client-id";
 import { createSavedMedicationsFromDraft } from "./repositories/medications/create";
+import { assertValidVisitDate } from "./repositories/visit-schedules/validation";
 
 const DB_NAME = "addi-mvp";
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 const MEDICATION_STORE = "userMedications";
 const INTAKE_STORE = "medicationIntakeRecords";
 const INTAKE_DATASET_STORE = "medicationIntakeDatasetMetadata";
@@ -32,6 +33,12 @@ type GuestMedicationDatasetClaim = {
   claimedUserId: string;
   claimedAt: string;
   createdAt: string;
+  visitSchedule?: VisitSchedule;
+};
+
+type GuestVisitMutation = {
+  kind: "upsert";
+  schedule: VisitSchedule;
 };
 
 type LegacyMedicationIntakeDatasetState = {
@@ -52,12 +59,14 @@ type GuestMedicationDatasetState = {
   reservedByUserId?: string;
   reservedAt?: string;
   claims: GuestMedicationDatasetClaim[];
+  visitMutation: GuestVisitMutation | null;
 };
 
 export type ReservedGuestMedicationDataset = {
   datasetId: string;
   medications: SavedMedication[];
   intakeRecords: MedicationIntakeRecord[];
+  visitSchedule: VisitSchedule | null;
 };
 
 export type ClaimedGuestIntakeRecoveryCandidate = {
@@ -77,6 +86,7 @@ export type ReservedMedicationIntakeDataset = {
 function createGuestMedicationDatasetState(
   medicationIds: string[] = [],
   intakeRecordIds: string[] = [],
+  visitMutation: GuestVisitMutation | null = null,
 ): GuestMedicationDatasetState {
   return {
     id: INTAKE_DATASET_STATE_ID,
@@ -85,6 +95,7 @@ function createGuestMedicationDatasetState(
     intakeRecordIds,
     createdAt: new Date().toISOString(),
     claims: [],
+    visitMutation,
   };
 }
 
@@ -100,9 +111,14 @@ function normalizeGuestMedicationDatasetState(
   existing: LegacyMedicationIntakeDatasetState | GuestMedicationDatasetState | undefined,
   medicationIds: string[],
   intakeRecordIds: string[],
+  legacyVisit: VisitSchedule | undefined,
 ): GuestMedicationDatasetState {
   if (!existing) {
-    return createGuestMedicationDatasetState(medicationIds, intakeRecordIds);
+    return createGuestMedicationDatasetState(
+      medicationIds,
+      intakeRecordIds,
+      legacyVisit ? { kind: "upsert", schedule: legacyVisit } : null,
+    );
   }
 
   const maybeGuest = existing as Partial<GuestMedicationDatasetState>;
@@ -143,7 +159,15 @@ function normalizeGuestMedicationDatasetState(
       createdAt: "createdAt" in claim && typeof claim.createdAt === "string"
         ? claim.createdAt
         : claim.claimedAt,
+      visitSchedule: "visitSchedule" in claim
+        ? claim.visitSchedule as VisitSchedule | undefined
+        : undefined,
     })),
+    visitMutation: "visitMutation" in maybeGuest
+      ? maybeGuest.visitMutation as GuestVisitMutation | null
+      : legacyVisit
+        ? { kind: "upsert", schedule: legacyVisit }
+        : null,
   };
 }
 
@@ -183,12 +207,13 @@ async function ensureGuestMedicationDatasetState(
 ): Promise<GuestMedicationDatasetState> {
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(
-      [MEDICATION_STORE, INTAKE_STORE, INTAKE_DATASET_STORE],
+      [MEDICATION_STORE, INTAKE_STORE, INTAKE_DATASET_STORE, VISIT_STORE],
       "readwrite",
     );
     const medicationStore = transaction.objectStore(MEDICATION_STORE);
     const intakeStore = transaction.objectStore(INTAKE_STORE);
     const metadataStore = transaction.objectStore(INTAKE_DATASET_STORE);
+    const visitStore = transaction.objectStore(VISIT_STORE);
     const stateRequest = metadataStore.get(INTAKE_DATASET_STATE_ID);
     let state: GuestMedicationDatasetState | null = null;
 
@@ -201,12 +226,16 @@ async function ensureGuestMedicationDatasetState(
       medicationKeysRequest.onsuccess = () => {
         const intakeKeysRequest = intakeStore.getAllKeys();
         intakeKeysRequest.onsuccess = () => {
-          state = normalizeGuestMedicationDatasetState(
-            existing,
-            toStringKeys(medicationKeysRequest.result),
-            toStringKeys(intakeKeysRequest.result),
-          );
-          metadataStore.put(state);
+          const visitRequest = visitStore.get(UPCOMING_VISIT_ID);
+          visitRequest.onsuccess = () => {
+            state = normalizeGuestMedicationDatasetState(
+              existing,
+              toStringKeys(medicationKeysRequest.result),
+              toStringKeys(intakeKeysRequest.result),
+              visitRequest.result as VisitSchedule | undefined,
+            );
+            metadataStore.put(state);
+          };
         };
       };
     };
@@ -421,7 +450,7 @@ export async function reserveGuestMedicationDatasetForUser(
 
   const result = await new Promise<ReservedGuestMedicationDataset | null>((resolve, reject) => {
     const transaction = database.transaction(
-      [MEDICATION_STORE, INTAKE_STORE, INTAKE_DATASET_STORE],
+      [MEDICATION_STORE, INTAKE_STORE, INTAKE_DATASET_STORE, VISIT_STORE],
       "readwrite",
     );
     const medicationStore = transaction.objectStore(MEDICATION_STORE);
@@ -432,7 +461,14 @@ export async function reserveGuestMedicationDatasetForUser(
 
     stateRequest.onsuccess = () => {
       const state = stateRequest.result as GuestMedicationDatasetState | undefined;
-      if (!state || (state.medicationIds.length === 0 && state.intakeRecordIds.length === 0)) return;
+      if (
+        !state
+        || (
+          state.medicationIds.length === 0
+          && state.intakeRecordIds.length === 0
+          && state.visitMutation === null
+        )
+      ) return;
       if (state.reservedByUserId && state.reservedByUserId !== userId) return;
 
       metadataStore.put({
@@ -455,6 +491,9 @@ export async function reserveGuestMedicationDatasetForUser(
             intakeRecords: (recordsRequest.result as MedicationIntakeRecord[]).filter(
               (record) => intakeRecordIds.has(record.id),
             ),
+            visitSchedule: state.visitMutation?.kind === "upsert"
+              ? state.visitMutation.schedule
+              : null,
           };
         };
       };
@@ -511,6 +550,7 @@ export async function completeGuestMedicationDatasetClaim(
         medicationIds: [],
         intakeRecordIds: [],
         createdAt: new Date().toISOString(),
+        visitMutation: null,
         claims: [
           ...state.claims,
           {
@@ -521,6 +561,9 @@ export async function completeGuestMedicationDatasetClaim(
             claimedUserId: userId,
             claimedAt,
             createdAt: state.createdAt,
+            visitSchedule: state.visitMutation?.kind === "upsert"
+              ? state.visitMutation.schedule
+              : undefined,
           },
         ],
       } satisfies GuestMedicationDatasetState);
@@ -700,46 +743,85 @@ export async function saveMoodRecord(
 
 export async function getUpcomingVisit(): Promise<VisitSchedule | null> {
   const database = await openDatabase();
-  const result = await new Promise<VisitSchedule | null>((resolve, reject) => {
-    const request = database
-      .transaction(VISIT_STORE, "readonly")
-      .objectStore(VISIT_STORE)
-      .get(UPCOMING_VISIT_ID);
-    request.onsuccess = () => resolve((request.result as VisitSchedule | undefined) ?? null);
-    request.onerror = () => reject(request.error ?? new Error("내원일정을 불러오지 못했어요."));
-  });
+  const state = await ensureGuestMedicationDatasetState(database);
+  const result = state.visitMutation?.kind === "upsert"
+    ? state.visitMutation.schedule
+    : null;
   database.close();
   return result;
 }
 
 export async function saveUpcomingVisit(visitDate: string): Promise<VisitSchedule> {
-  const current = await getUpcomingVisit();
-  const now = new Date().toISOString();
-  const saved: VisitSchedule = {
-    id: UPCOMING_VISIT_ID,
-    visitDate,
-    createdAt: current?.createdAt ?? now,
-    updatedAt: now,
-  };
+  assertValidVisitDate(visitDate);
   const database = await openDatabase();
+  await ensureGuestMedicationDatasetState(database);
+  let saved: VisitSchedule | null = null;
 
   await new Promise<void>((resolve, reject) => {
-    const transaction = database.transaction(VISIT_STORE, "readwrite");
-    transaction.objectStore(VISIT_STORE).put(saved);
+    const transaction = database.transaction(
+      [VISIT_STORE, INTAKE_DATASET_STORE],
+      "readwrite",
+    );
+    const visitStore = transaction.objectStore(VISIT_STORE);
+    const metadataStore = transaction.objectStore(INTAKE_DATASET_STORE);
+    const stateRequest = metadataStore.get(INTAKE_DATASET_STATE_ID);
+
+    stateRequest.onsuccess = () => {
+      const state = stateRequest.result as GuestMedicationDatasetState | undefined;
+      if (!state) {
+        transaction.abort();
+        return;
+      }
+
+      const current = state.visitMutation?.kind === "upsert"
+        ? state.visitMutation.schedule
+        : null;
+      const now = new Date().toISOString();
+      saved = {
+        id: UPCOMING_VISIT_ID,
+        visitDate,
+        createdAt: current?.createdAt ?? now,
+        updatedAt: now,
+      };
+      visitStore.put(saved);
+      metadataStore.put({
+        ...state,
+        visitMutation: { kind: "upsert", schedule: saved },
+      } satisfies GuestMedicationDatasetState);
+    };
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error ?? new Error("내원일정을 저장하지 못했어요."));
     transaction.onabort = () => reject(transaction.error ?? new Error("내원일정 저장이 중단됐어요."));
   });
 
   database.close();
+  if (!saved) throw new Error("내원일정을 저장하지 못했어요.");
   return saved;
 }
 
 export async function deleteUpcomingVisit(): Promise<void> {
   const database = await openDatabase();
+  await ensureGuestMedicationDatasetState(database);
   await new Promise<void>((resolve, reject) => {
-    const transaction = database.transaction(VISIT_STORE, "readwrite");
-    transaction.objectStore(VISIT_STORE).delete(UPCOMING_VISIT_ID);
+    const transaction = database.transaction(
+      [VISIT_STORE, INTAKE_DATASET_STORE],
+      "readwrite",
+    );
+    const metadataStore = transaction.objectStore(INTAKE_DATASET_STORE);
+    const stateRequest = metadataStore.get(INTAKE_DATASET_STATE_ID);
+    stateRequest.onsuccess = () => {
+      const state = stateRequest.result as GuestMedicationDatasetState | undefined;
+      if (!state) {
+        transaction.abort();
+        return;
+      }
+
+      transaction.objectStore(VISIT_STORE).delete(UPCOMING_VISIT_ID);
+      metadataStore.put({
+        ...state,
+        visitMutation: null,
+      } satisfies GuestMedicationDatasetState);
+    };
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error ?? new Error("내원일정을 삭제하지 못했어요."));
     transaction.onabort = () => reject(transaction.error ?? new Error("내원일정 삭제가 중단됐어요."));

@@ -9,6 +9,7 @@ import {
 } from "./intake-records/mapper";
 import type { ServerMedicationRepository } from "./medications/types";
 import { toSupabaseMedicationMigrationInput } from "./medications/mapper";
+import { toSupabaseVisitScheduleMigrationInput } from "./visit-schedules/mapper";
 
 export type GuestDatasetMergeConflict = {
   code: string;
@@ -24,6 +25,8 @@ export type GuestDatasetMergeResult = {
   reusedMedicationCount: number;
   insertedIntakeCount: number;
   existingIntakeCount: number;
+  insertedVisitCount: number;
+  reusedVisitCount: number;
   conflicts: GuestDatasetMergeConflict[];
   failureReason?: string;
 };
@@ -35,6 +38,8 @@ type GuestDatasetMergeRpcResult = {
   reused_medication_count?: number;
   inserted_intake_count?: number;
   existing_intake_count?: number;
+  inserted_visit_count?: number;
+  reused_visit_count?: number;
   conflicts?: GuestDatasetMergeConflict[];
   failure_reason?: string | null;
 };
@@ -49,6 +54,8 @@ function toGuestDatasetMergeResult(
     reusedMedicationCount: row?.reused_medication_count ?? 0,
     insertedIntakeCount: row?.inserted_intake_count ?? 0,
     existingIntakeCount: row?.existing_intake_count ?? 0,
+    insertedVisitCount: row?.inserted_visit_count ?? 0,
+    reusedVisitCount: row?.reused_visit_count ?? 0,
     conflicts: row?.conflicts ?? [],
     failureReason: row?.failure_reason ?? undefined,
   };
@@ -62,6 +69,23 @@ export async function mergeGuestMedicationDataset(
     p_dataset_id: dataset.datasetId,
     p_medications: dataset.medications.map(toSupabaseMedicationMigrationInput),
     p_intakes: dataset.intakeRecords.map(toSupabaseMedicationIntakeMigrationInput),
+  });
+  if (error) throw error;
+
+  return toGuestDatasetMergeResult(data?.[0] as GuestDatasetMergeRpcResult | undefined);
+}
+
+export async function mergeGuestDataset(
+  dataset: ReservedGuestMedicationDataset,
+): Promise<GuestDatasetMergeResult> {
+  const supabase = createBrowserSupabaseClient();
+  const { data, error } = await supabase.rpc("merge_guest_dataset", {
+    p_dataset_id: dataset.datasetId,
+    p_medications: dataset.medications.map(toSupabaseMedicationMigrationInput),
+    p_intakes: dataset.intakeRecords.map(toSupabaseMedicationIntakeMigrationInput),
+    p_visit: dataset.visitSchedule
+      ? toSupabaseVisitScheduleMigrationInput(dataset.visitSchedule)
+      : null,
   });
   if (error) throw error;
 
