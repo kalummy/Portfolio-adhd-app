@@ -4,12 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  getMedicationIntakeRecords,
   getMoodRecords,
   getUpcomingVisit,
-  setMedicationTaken,
 } from "@/lib/indexed-db";
-import { getMedicationRepository } from "@/lib/repositories/medications";
+import { getDataRepositories } from "@/lib/repositories";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
 import { getWeekProgress } from "@/lib/home-week-progress";
 import { MEDICATION_FALLBACK_IMAGE, medicationLabel } from "@/lib/medication-utils";
@@ -135,10 +133,10 @@ export function HomeScreen({
 
     setLoading(true);
     try {
-      const medicationRepository = await getMedicationRepository();
+      const repositories = await getDataRepositories();
       const [savedMedications, savedIntakes, savedMoods, savedVisit] = await Promise.all([
-        medicationRepository.listActive(),
-        getMedicationIntakeRecords(),
+        repositories.medications.listActive(),
+        repositories.medicationIntakes.listAll(),
         getMoodRecords(),
         getUpcomingVisit(),
       ]);
@@ -231,7 +229,12 @@ export function HomeScreen({
       return;
     }
 
-    await setMedicationTaken(medicationId, selectedDateKey, !isTaken);
+    const repositories = await getDataRepositories();
+    await repositories.medicationIntakes.setTaken(
+      medicationId,
+      selectedDateKey,
+      !isTaken,
+    );
     await load();
   };
 
