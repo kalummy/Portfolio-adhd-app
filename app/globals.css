@@ -1275,48 +1275,6 @@ html[data-addi-splash="skip"] .splash-screen {
   font-size: 30px;
 }
 
-.bottom-nav {
-  position: fixed;
-  z-index: 10;
-  left: 50%;
-  bottom: 0;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  width: min(100%, 360px);
-  height: 74px;
-  padding: 8px 8px 14px;
-  transform: translateX(-50%);
-  border-top: 1px solid var(--color-gray-100);
-  background: rgba(255, 255, 255, 0.98);
-}
-
-.bottom-nav a,
-.bottom-nav button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  border: 0;
-  background: transparent;
-  color: var(--text-tertiary);
-  font-size: 11px;
-  text-decoration: none;
-}
-
-.bottom-nav a,
-.bottom-nav button {
-  flex-direction: column;
-}
-
-.bottom-nav span {
-  font-size: 20px;
-}
-
-.bottom-nav .active {
-  color: var(--color-mint-700);
-  font-weight: 600;
-}
-
 @media (min-width: 480px) {
   .mobile-shell {
     box-shadow: 0 0 32px rgba(31, 36, 48, 0.08);
@@ -1686,8 +1644,8 @@ html[data-addi-splash="skip"] .splash-screen {
   width: 100%;
   max-width: 430px;
   min-height: 100dvh;
-  padding-top: calc(env(safe-area-inset-top) + 56px);
-  padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  padding-top: calc(env(safe-area-inset-top) + 64px);
+  padding-bottom: env(safe-area-inset-bottom);
   background: var(--color-bg-base-03);
 }
 
@@ -1696,11 +1654,29 @@ html[data-addi-splash="skip"] .splash-screen {
   z-index: 20;
   left: 50%;
   top: env(safe-area-inset-top);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
   width: min(100%, 430px);
   transform: translateX(-50%);
-  height: 56px;
+  height: 64px;
   padding: 14px 20px;
   background: var(--color-bg-base-03);
+}
+
+.home-header-brand {
+  display: flex;
+  height: 28px;
+  min-width: 0;
+  flex: 1 0 0;
+  align-items: center;
+}
+
+.home-header-brand img {
+  display: block;
+  width: 70px;
+  height: 28px;
 }
 
 .calendar-button {
@@ -1708,10 +1684,12 @@ html[data-addi-splash="skip"] .splash-screen {
   place-items: center;
   width: 28px;
   height: 28px;
+  flex: 0 0 28px;
   padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
+  text-decoration: none;
 }
 
 .calendar-glyph {
@@ -1720,11 +1698,31 @@ html[data-addi-splash="skip"] .splash-screen {
   height: 23px;
 }
 
+.home-account-link {
+  display: flex;
+  width: 80px;
+  height: 36px;
+  padding: 9px 16px;
+  flex: 0 0 80px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border-base-05);
+  border-radius: 8px;
+  background: var(--color-bg-interactive-neutral-default);
+  color: var(--color-font-base-03);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  letter-spacing: -0.325px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
 .week-strip {
   display: flex;
   width: 100%;
   height: 88px;
-  margin: 20px auto 0;
+  margin: 12px auto 0;
   padding: 0 20px;
   align-items: center;
   gap: 2px;
@@ -2728,76 +2726,9 @@ html[data-addi-splash="skip"] .splash-screen {
   background: var(--color-gray-200);
 }
 
-.footer-links a {
-  color: inherit;
-  text-decoration: none;
-}
-
 .home-footer p {
   margin: 0;
   color: var(--color-font-base-06);
   font-size: 12px;
   line-height: 18px;
-}
-
-.bottom-nav {
-  position: fixed;
-  z-index: 10;
-  left: 50%;
-  bottom: 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  width: min(100%, 430px);
-  height: calc(56px + env(safe-area-inset-bottom));
-  padding: 0 0 env(safe-area-inset-bottom);
-  transform: translateX(-50%);
-  border-top: 1px solid var(--color-border-base-03);
-  background: var(--color-bg-base-01);
-  box-shadow: 0.2px -1.2px 4px rgba(241, 242, 244, 0.3);
-}
-
-.bottom-nav a,
-.bottom-nav button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  border: 0;
-  background: transparent;
-  color: var(--color-font-base-06);
-  font-size: 12px;
-  line-height: 18px;
-  text-decoration: none;
-  flex-direction: column;
-}
-
-.nav-icon {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-}
-
-.nav-icon img {
-  display: block;
-}
-
-.nav-home-icon {
-  width: 22.5px;
-  height: 22.5px;
-}
-
-.nav-heart-icon {
-  width: 22.5015px;
-  height: 18.9987px;
-}
-
-.nav-settings-icon {
-  width: 23.3334px;
-  height: 23.3334px;
-}
-
-.bottom-nav .active {
-  color: var(--color-font-base-02);
-  font-weight: 400;
 }

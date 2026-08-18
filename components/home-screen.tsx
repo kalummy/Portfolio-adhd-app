@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { getAuthState } from "@/lib/auth/client";
 import {
   getMoodRecords,
 } from "@/lib/indexed-db";
@@ -121,6 +122,7 @@ export function HomeScreen({
   const [toast, setToast] = useState("");
   const [syncError, setSyncError] = useState("");
   const [syncRetrying, setSyncRetrying] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [launchSplashRequired, setLaunchSplashRequired] = useState(enableLaunchSplash);
   const [splashMinimumElapsed, setSplashMinimumElapsed] = useState(!enableLaunchSplash);
   const [failedMedicationImages, setFailedMedicationImages] = useState<Set<string>>(
@@ -173,12 +175,16 @@ export function HomeScreen({
       setSyncError(repositories.guestDatasetSync.status === "failed"
         ? "저장한 정보를 불러오지 못했어요. 다시 시도해 주세요."
         : "");
-      const [savedMedications, savedIntakes, savedMoods, savedVisit] = await Promise.all([
+      const [authenticated, savedMedications, savedIntakes, savedMoods, savedVisit] = await Promise.all([
+        getAuthState()
+          .then((state) => state.isAuthenticated)
+          .catch(() => false),
         repositories.medications.listActive(),
         repositories.medicationIntakes.listAll(),
         getMoodRecords(),
         repositories.visitSchedules.getUpcoming(),
       ]);
+      setIsAuthenticated(authenticated);
       setMedications(savedMedications);
       void enrichOfficialMedications(savedMedications).then((enrichedMedications) => {
         const enrichedById = new Map(
@@ -333,10 +339,15 @@ export function HomeScreen({
   return (
     <MobileShell className="home-screen">
       <header className="home-header">
-        <Image src="/brand/addi-wordmark.svg" alt="ADDI" width={70} height={28} priority />
-        <button type="button" className="calendar-button" aria-label="캘린더 열기">
+        <div className="home-header-brand">
+          <Image src="/brand/addi-wordmark.svg" alt="ADDI" width={70} height={28} priority />
+        </div>
+        <button type="button" className="calendar-button" aria-label="내원일정 준비 중" disabled>
           <Image className="calendar-glyph" src="/icons/calendar.svg" alt="" width={21} height={23} />
         </button>
+        <Link href="/auth/login" className="home-account-link">
+          {isAuthenticated ? "계정" : "로그인"}
+        </Link>
       </header>
 
       <section className="week-strip" aria-label="이번 주">
@@ -518,21 +529,13 @@ export function HomeScreen({
           <span>서비스이용약관</span>
           <i />
           <span>개인정보처리방침</span>
-          <i />
-          <Link href="/auth/login">계정</Link>
         </div>
         <Image src="/brand/addi-footer.svg" alt="아디" width={64} height={24} />
         <p>Copyright ⓒ Kalummy ALL RIGHTS RESERVED.</p>
       </footer>
 
-      <nav className="bottom-nav" aria-label="주요 메뉴">
-        <Link href="/" className="active"><span className="nav-icon"><Image className="nav-home-icon" src="/icons/nav-home.svg" alt="" width={23} height={23} /></span>홈</Link>
-        <button type="button"><span className="nav-icon"><Image className="nav-heart-icon" src="/icons/nav-heart.svg" alt="" width={23} height={19} /></span>감정기록</button>
-        <button type="button"><span className="nav-icon"><Image className="nav-settings-icon" src="/icons/nav-settings.svg" alt="" width={24} height={24} /></span>설정</button>
-      </nav>
-
       {toast ? (
-        <Toast message={toast} onDismiss={() => setToast("")} aboveNavigation />
+        <Toast message={toast} onDismiss={() => setToast("")} />
       ) : null}
     </MobileShell>
   );
