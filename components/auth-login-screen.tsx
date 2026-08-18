@@ -95,6 +95,7 @@ export function AuthLoginScreen() {
             type="button"
             variant={authState.isAuthenticated ? "secondary" : "primary"}
             disabled={busy || !configured}
+            aria-busy={busy}
             onClick={() => void (authState.isAuthenticated ? handleSignOut() : handleSignIn())}
           >
             {busy

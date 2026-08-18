@@ -19,11 +19,8 @@ type MedicationSearchResponse = {
   medications?: MedicationCandidate[];
 };
 
-type MedicationDetailResponse = {
-  medication?: MedicationCandidate;
-};
-
 const SEARCH_DEBOUNCE_MS = 250;
+const SELECTION_FEEDBACK_MS = 100;
 const SEARCH_CACHE_LIMIT = 20;
 const searchResultCache = new Map<string, MedicationCandidate[]>();
 
@@ -139,31 +136,22 @@ export default function MedicationSearchPage() {
     setSubmitted(true);
   }
 
-  async function selectMedication(medication: MedicationCandidate) {
+  function selectMedication(medication: MedicationCandidate) {
+    if (activatingCatalogId) return;
     setSelectedCatalogId(medication.catalogId);
     setPendingCandidates([medication], "search");
     updateDraft({ searchQuery: query });
 
     const shouldReduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!shouldReduceMotion) setActivatingCatalogId(medication.catalogId);
+    if (shouldReduceMotion) {
+      router.push(registrationHref("/medications/new/confirm"));
+      return;
+    }
 
-    const detailRequest = medication.catalogId
-      ? fetch(`/api/medications/${encodeURIComponent(medication.catalogId)}`, { cache: "no-store" })
-          .then(async (response) => {
-            if (!response.ok) return medication;
-            const payload = await response.json() as MedicationDetailResponse;
-            return payload.medication ?? medication;
-          })
-          .catch(() => medication)
-      : Promise.resolve(medication);
-    const motion = shouldReduceMotion
-      ? Promise.resolve()
-      : new Promise<void>((resolve) => window.setTimeout(resolve, 180));
-    const [selectedMedication] = await Promise.all([detailRequest, motion]);
-
-    setPendingCandidates([selectedMedication], "search");
-    updateDraft({ searchQuery: query });
-    router.push(registrationHref("/medications/new/confirm"));
+    setActivatingCatalogId(medication.catalogId);
+    window.setTimeout(() => {
+      router.push(registrationHref("/medications/new/confirm"));
+    }, SELECTION_FEEDBACK_MS);
   }
 
   const showNoResults = submitted
@@ -208,6 +196,7 @@ export default function MedicationSearchPage() {
                 key={medication.catalogId}
                 onClick={() => selectMedication(medication)}
                 aria-pressed={isSelected}
+                aria-busy={isActivating}
               >
                 <span className="search-result-content">
                   <span className="search-result-icon" aria-hidden="true">

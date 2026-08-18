@@ -81,7 +81,12 @@ export default function MedicationNoticePage() {
           <strong>안내사항을 확인했으며, 모두 동의합니다.</strong>
         </label>
         {error ? <p className="save-error" role="alert">{error}</p> : null}
-        <PrimaryButton type="button" disabled={!accepted || saving} onClick={save}>
+        <PrimaryButton
+          type="button"
+          disabled={!accepted || saving}
+          aria-busy={saving}
+          onClick={save}
+        >
           {saving ? "저장 중..." : "확인했어요"}
         </PrimaryButton>
       </BottomActions>

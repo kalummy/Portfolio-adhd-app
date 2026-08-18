@@ -22,7 +22,8 @@ export async function getAuthState(): Promise<AuthState> {
 export async function signInWithGoogle(nextPath = "/") {
   const supabase = createBrowserSupabaseClient();
   const callbackUrl = new URL("/auth/callback", window.location.origin);
-  callbackUrl.searchParams.set("next", getSafeNextPath(nextPath));
+  const safeNextPath = getSafeNextPath(nextPath);
+  if (safeNextPath !== "/") callbackUrl.searchParams.set("next", safeNextPath);
 
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",

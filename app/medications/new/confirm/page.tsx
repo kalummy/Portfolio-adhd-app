@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MedicationSummaryCard } from "@/components/medication-card";
 import { MobileShell } from "@/components/mobile-shell";
+import { enrichOfficialMedications } from "@/lib/medication-enrichment";
 import {
   confirmPendingCandidates,
   discardScheduleQueueCandidates,
@@ -17,8 +18,29 @@ import type { DraftMedication, MedicationDraft } from "@/lib/types";
 export default function MedicationConfirmPage() {
   const router = useRouter();
   const [draft, setDraft] = useState<MedicationDraft | null>(null);
+  const [enriching, setEnriching] = useState(false);
 
-  useEffect(() => setDraft(getDraft()), []);
+  useEffect(() => {
+    const initialDraft = getDraft();
+    setDraft(initialDraft);
+    if (initialDraft.pendingCandidates.length === 0) return;
+
+    let active = true;
+    setEnriching(true);
+    void enrichOfficialMedications(initialDraft.pendingCandidates)
+      .then((pendingCandidates) => {
+        if (!active) return;
+        const nextDraft = updateDraft({ pendingCandidates });
+        setDraft(nextDraft);
+      })
+      .finally(() => {
+        if (active) setEnriching(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   if (!draft) return <MobileShell className="flow-screen">{null}</MobileShell>;
 
@@ -80,8 +102,13 @@ export default function MedicationConfirmPage() {
           >
             아니에요
           </PrimaryButton>
-          <PrimaryButton type="button" onClick={confirmCandidates}>
-            맞아요
+          <PrimaryButton
+            type="button"
+            disabled={enriching}
+            aria-busy={enriching}
+            onClick={confirmCandidates}
+          >
+            {enriching ? "정보 확인 중..." : "맞아요"}
           </PrimaryButton>
         </div>
       </BottomActions>
