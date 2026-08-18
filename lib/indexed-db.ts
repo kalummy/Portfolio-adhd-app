@@ -9,7 +9,7 @@ import { createClientId } from "./client-id";
 import { createSavedMedicationsFromDraft } from "./repositories/medications/create";
 
 const DB_NAME = "addi-mvp";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const MEDICATION_STORE = "userMedications";
 const INTAKE_STORE = "medicationIntakeRecords";
 const INTAKE_DATASET_STORE = "medicationIntakeDatasetMetadata";
@@ -24,13 +24,49 @@ type MedicationIntakeDatasetClaim = {
   claimedAt: string;
 };
 
-type MedicationIntakeDatasetState = {
+type GuestMedicationDatasetClaim = {
+  datasetId: string;
+  medicationIds: string[];
+  intakeRecordIds: string[];
+  reservedByUserId?: string;
+  claimedUserId: string;
+  claimedAt: string;
+  createdAt: string;
+};
+
+type LegacyMedicationIntakeDatasetState = {
   id: typeof INTAKE_DATASET_STATE_ID;
   activeDatasetId: string;
-  activeRecordIds: string[];
+  activeRecordIds?: string[];
   reservedByUserId?: string;
   reservedAt?: string;
-  claims: MedicationIntakeDatasetClaim[];
+  claims?: MedicationIntakeDatasetClaim[];
+};
+
+type GuestMedicationDatasetState = {
+  id: typeof INTAKE_DATASET_STATE_ID;
+  activeDatasetId: string;
+  medicationIds: string[];
+  intakeRecordIds: string[];
+  createdAt: string;
+  reservedByUserId?: string;
+  reservedAt?: string;
+  claims: GuestMedicationDatasetClaim[];
+};
+
+export type ReservedGuestMedicationDataset = {
+  datasetId: string;
+  medications: SavedMedication[];
+  intakeRecords: MedicationIntakeRecord[];
+};
+
+export type ClaimedGuestIntakeRecoveryCandidate = {
+  datasetId: string;
+  claimedUserId: string;
+  claimedAt: string;
+  medication: SavedMedication;
+  intakeRecord: MedicationIntakeRecord;
+  reason: "missing-server-medication";
 };
 
 export type ReservedMedicationIntakeDataset = {
@@ -38,14 +74,76 @@ export type ReservedMedicationIntakeDataset = {
   records: MedicationIntakeRecord[];
 };
 
-function createMedicationIntakeDatasetState(
-  activeRecordIds: string[] = [],
-): MedicationIntakeDatasetState {
+function createGuestMedicationDatasetState(
+  medicationIds: string[] = [],
+  intakeRecordIds: string[] = [],
+): GuestMedicationDatasetState {
   return {
     id: INTAKE_DATASET_STATE_ID,
     activeDatasetId: createClientId(),
-    activeRecordIds,
+    medicationIds,
+    intakeRecordIds,
+    createdAt: new Date().toISOString(),
     claims: [],
+  };
+}
+
+function toStringKeys(keys: IDBValidKey[]) {
+  return keys.filter((key): key is string => typeof key === "string");
+}
+
+function uniqueIds(ids: string[]) {
+  return [...new Set(ids)];
+}
+
+function normalizeGuestMedicationDatasetState(
+  existing: LegacyMedicationIntakeDatasetState | GuestMedicationDatasetState | undefined,
+  medicationIds: string[],
+  intakeRecordIds: string[],
+): GuestMedicationDatasetState {
+  if (!existing) {
+    return createGuestMedicationDatasetState(medicationIds, intakeRecordIds);
+  }
+
+  const maybeGuest = existing as Partial<GuestMedicationDatasetState>;
+  const legacyClaims = Array.isArray(existing.claims) ? existing.claims : [];
+  return {
+    id: INTAKE_DATASET_STATE_ID,
+    activeDatasetId: typeof existing.activeDatasetId === "string"
+      ? existing.activeDatasetId
+      : createClientId(),
+    medicationIds: Array.isArray(maybeGuest.medicationIds)
+      ? uniqueIds(maybeGuest.medicationIds)
+      : medicationIds,
+    intakeRecordIds: Array.isArray(maybeGuest.intakeRecordIds)
+      ? uniqueIds(maybeGuest.intakeRecordIds)
+      : uniqueIds(
+          "activeRecordIds" in existing && Array.isArray(existing.activeRecordIds)
+            ? existing.activeRecordIds
+            : intakeRecordIds,
+        ),
+    createdAt: typeof maybeGuest.createdAt === "string"
+      ? maybeGuest.createdAt
+      : new Date().toISOString(),
+    reservedByUserId: existing.reservedByUserId,
+    reservedAt: existing.reservedAt,
+    claims: legacyClaims.map((claim) => ({
+      datasetId: claim.datasetId,
+      medicationIds: "medicationIds" in claim && Array.isArray(claim.medicationIds)
+        ? uniqueIds(claim.medicationIds)
+        : [],
+      intakeRecordIds: "intakeRecordIds" in claim && Array.isArray(claim.intakeRecordIds)
+        ? uniqueIds(claim.intakeRecordIds)
+        : [],
+      reservedByUserId: "reservedByUserId" in claim && typeof claim.reservedByUserId === "string"
+        ? claim.reservedByUserId
+        : undefined,
+      claimedUserId: claim.claimedUserId,
+      claimedAt: claim.claimedAt,
+      createdAt: "createdAt" in claim && typeof claim.createdAt === "string"
+        ? claim.createdAt
+        : claim.claimedAt,
+    })),
   };
 }
 
@@ -80,33 +178,36 @@ function openDatabase(): Promise<IDBDatabase> {
   });
 }
 
-async function ensureMedicationIntakeDatasetState(
+async function ensureGuestMedicationDatasetState(
   database: IDBDatabase,
-): Promise<MedicationIntakeDatasetState> {
+): Promise<GuestMedicationDatasetState> {
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(
-      [INTAKE_STORE, INTAKE_DATASET_STORE],
+      [MEDICATION_STORE, INTAKE_STORE, INTAKE_DATASET_STORE],
       "readwrite",
     );
+    const medicationStore = transaction.objectStore(MEDICATION_STORE);
     const intakeStore = transaction.objectStore(INTAKE_STORE);
     const metadataStore = transaction.objectStore(INTAKE_DATASET_STORE);
     const stateRequest = metadataStore.get(INTAKE_DATASET_STATE_ID);
-    let state: MedicationIntakeDatasetState | null = null;
+    let state: GuestMedicationDatasetState | null = null;
 
     stateRequest.onsuccess = () => {
-      const existing = stateRequest.result as MedicationIntakeDatasetState | undefined;
-      if (existing) {
-        state = existing;
-        return;
-      }
-
-      const keysRequest = intakeStore.getAllKeys();
-      keysRequest.onsuccess = () => {
-        const recordIds = keysRequest.result.filter(
-          (key): key is string => typeof key === "string",
-        );
-        state = createMedicationIntakeDatasetState(recordIds);
-        metadataStore.put(state);
+      const existing = stateRequest.result as
+        | LegacyMedicationIntakeDatasetState
+        | GuestMedicationDatasetState
+        | undefined;
+      const medicationKeysRequest = medicationStore.getAllKeys();
+      medicationKeysRequest.onsuccess = () => {
+        const intakeKeysRequest = intakeStore.getAllKeys();
+        intakeKeysRequest.onsuccess = () => {
+          state = normalizeGuestMedicationDatasetState(
+            existing,
+            toStringKeys(medicationKeysRequest.result),
+            toStringKeys(intakeKeysRequest.result),
+          );
+          metadataStore.put(state);
+        };
       };
     };
     transaction.oncomplete = () => {
@@ -132,10 +233,29 @@ export async function saveSavedMedications(medications: SavedMedication[]): Prom
   if (medications.length === 0) return;
 
   const database = await openDatabase();
+  await ensureGuestMedicationDatasetState(database);
   await new Promise<void>((resolve, reject) => {
-    const transaction = database.transaction(MEDICATION_STORE, "readwrite");
-    const store = transaction.objectStore(MEDICATION_STORE);
-    medications.forEach((medication) => store.add(medication));
+    const transaction = database.transaction(
+      [MEDICATION_STORE, INTAKE_DATASET_STORE],
+      "readwrite",
+    );
+    const medicationStore = transaction.objectStore(MEDICATION_STORE);
+    const metadataStore = transaction.objectStore(INTAKE_DATASET_STORE);
+    const stateRequest = metadataStore.get(INTAKE_DATASET_STATE_ID);
+    stateRequest.onsuccess = () => {
+      const state = stateRequest.result as GuestMedicationDatasetState | undefined;
+      if (!state) {
+        transaction.abort();
+        return;
+      }
+
+      const medicationIds = new Set(state.medicationIds);
+      medications.forEach((medication) => {
+        medicationStore.add(medication);
+        medicationIds.add(medication.id);
+      });
+      metadataStore.put({ ...state, medicationIds: [...medicationIds] });
+    };
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error ?? new Error("복용약을 저장하지 못했어요."));
     transaction.onabort = () => reject(transaction.error ?? new Error("복용약 저장이 중단됐어요."));
@@ -146,12 +266,20 @@ export async function saveSavedMedications(medications: SavedMedication[]): Prom
 
 export async function getAllSavedMedications(): Promise<SavedMedication[]> {
   const database = await openDatabase();
+  const dataset = await ensureGuestMedicationDatasetState(database);
   const result = await new Promise<SavedMedication[]>((resolve, reject) => {
     const request = database
       .transaction(MEDICATION_STORE, "readonly")
       .objectStore(MEDICATION_STORE)
       .getAll();
-    request.onsuccess = () => resolve(request.result as SavedMedication[]);
+    request.onsuccess = () => {
+      const medicationIds = new Set(dataset.medicationIds);
+      resolve(
+        (request.result as SavedMedication[]).filter(
+          (medication) => medicationIds.has(medication.id),
+        ),
+      );
+    };
     request.onerror = () => reject(request.error ?? new Error("복용약을 불러오지 못했어요."));
   });
   database.close();
@@ -210,14 +338,14 @@ export async function getSavedMedicationsByIds(ids: string[]) {
 
 export async function getMedicationIntakeRecords(): Promise<MedicationIntakeRecord[]> {
   const database = await openDatabase();
-  const dataset = await ensureMedicationIntakeDatasetState(database);
+  const dataset = await ensureGuestMedicationDatasetState(database);
   const result = await new Promise<MedicationIntakeRecord[]>((resolve, reject) => {
     const request = database
       .transaction(INTAKE_STORE, "readonly")
       .objectStore(INTAKE_STORE)
       .getAll();
     request.onsuccess = () => {
-      const activeRecordIds = new Set(dataset.activeRecordIds);
+      const activeRecordIds = new Set(dataset.intakeRecordIds);
       resolve(
         (request.result as MedicationIntakeRecord[]).filter(
           (record) => activeRecordIds.has(record.id),
@@ -241,7 +369,7 @@ export async function setMedicationTaken(
   taken: boolean,
 ): Promise<MedicationIntakeRecord | null> {
   const database = await openDatabase();
-  await ensureMedicationIntakeDatasetState(database);
+  await ensureGuestMedicationDatasetState(database);
   const id = `${date}:${medicationId}`;
   const record: MedicationIntakeRecord = {
     id,
@@ -260,13 +388,13 @@ export async function setMedicationTaken(
     const metadataStore = transaction.objectStore(INTAKE_DATASET_STORE);
     const stateRequest = metadataStore.get(INTAKE_DATASET_STATE_ID);
     stateRequest.onsuccess = () => {
-      const state = stateRequest.result as MedicationIntakeDatasetState | undefined;
+      const state = stateRequest.result as GuestMedicationDatasetState | undefined;
       if (!state) {
         transaction.abort();
         return;
       }
 
-      const activeRecordIds = new Set(state.activeRecordIds);
+      const activeRecordIds = new Set(state.intakeRecordIds);
       if (taken) {
         store.put(record);
         activeRecordIds.add(id);
@@ -274,7 +402,7 @@ export async function setMedicationTaken(
         store.delete(id);
         activeRecordIds.delete(id);
       }
-      metadataStore.put({ ...state, activeRecordIds: [...activeRecordIds] });
+      metadataStore.put({ ...state, intakeRecordIds: [...activeRecordIds] });
     };
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error ?? new Error("복용 기록을 저장하지 못했어요."));
@@ -285,25 +413,26 @@ export async function setMedicationTaken(
   return taken ? record : null;
 }
 
-export async function reserveMedicationIntakeDatasetForUser(
+export async function reserveGuestMedicationDatasetForUser(
   userId: string,
-): Promise<ReservedMedicationIntakeDataset | null> {
+): Promise<ReservedGuestMedicationDataset | null> {
   const database = await openDatabase();
-  await ensureMedicationIntakeDatasetState(database);
+  await ensureGuestMedicationDatasetState(database);
 
-  const result = await new Promise<ReservedMedicationIntakeDataset | null>((resolve, reject) => {
+  const result = await new Promise<ReservedGuestMedicationDataset | null>((resolve, reject) => {
     const transaction = database.transaction(
-      [INTAKE_STORE, INTAKE_DATASET_STORE],
+      [MEDICATION_STORE, INTAKE_STORE, INTAKE_DATASET_STORE],
       "readwrite",
     );
+    const medicationStore = transaction.objectStore(MEDICATION_STORE);
     const intakeStore = transaction.objectStore(INTAKE_STORE);
     const metadataStore = transaction.objectStore(INTAKE_DATASET_STORE);
     const stateRequest = metadataStore.get(INTAKE_DATASET_STATE_ID);
-    let reservation: ReservedMedicationIntakeDataset | null = null;
+    let reservation: ReservedGuestMedicationDataset | null = null;
 
     stateRequest.onsuccess = () => {
-      const state = stateRequest.result as MedicationIntakeDatasetState | undefined;
-      if (!state || state.activeRecordIds.length === 0) return;
+      const state = stateRequest.result as GuestMedicationDatasetState | undefined;
+      if (!state || (state.medicationIds.length === 0 && state.intakeRecordIds.length === 0)) return;
       if (state.reservedByUserId && state.reservedByUserId !== userId) return;
 
       metadataStore.put({
@@ -312,14 +441,21 @@ export async function reserveMedicationIntakeDatasetForUser(
         reservedAt: state.reservedAt ?? new Date().toISOString(),
       });
 
-      const recordsRequest = intakeStore.getAll();
-      recordsRequest.onsuccess = () => {
-        const activeRecordIds = new Set(state.activeRecordIds);
-        reservation = {
-          datasetId: state.activeDatasetId,
-          records: (recordsRequest.result as MedicationIntakeRecord[]).filter(
-            (record) => activeRecordIds.has(record.id),
-          ),
+      const medicationsRequest = medicationStore.getAll();
+      medicationsRequest.onsuccess = () => {
+        const recordsRequest = intakeStore.getAll();
+        recordsRequest.onsuccess = () => {
+          const medicationIds = new Set(state.medicationIds);
+          const intakeRecordIds = new Set(state.intakeRecordIds);
+          reservation = {
+            datasetId: state.activeDatasetId,
+            medications: (medicationsRequest.result as SavedMedication[]).filter(
+              (medication) => medicationIds.has(medication.id),
+            ),
+            intakeRecords: (recordsRequest.result as MedicationIntakeRecord[]).filter(
+              (record) => intakeRecordIds.has(record.id),
+            ),
+          };
         };
       };
     };
@@ -336,12 +472,12 @@ export async function reserveMedicationIntakeDatasetForUser(
   return result;
 }
 
-export async function completeMedicationIntakeDatasetClaim(
+export async function completeGuestMedicationDatasetClaim(
   datasetId: string,
   userId: string,
 ): Promise<void> {
   const database = await openDatabase();
-  await ensureMedicationIntakeDatasetState(database);
+  await ensureGuestMedicationDatasetState(database);
 
   await new Promise<void>((resolve, reject) => {
     const transaction = database.transaction(INTAKE_DATASET_STORE, "readwrite");
@@ -349,7 +485,7 @@ export async function completeMedicationIntakeDatasetClaim(
     const request = store.get(INTAKE_DATASET_STATE_ID);
 
     request.onsuccess = () => {
-      const state = request.result as MedicationIntakeDatasetState | undefined;
+      const state = request.result as GuestMedicationDatasetState | undefined;
       if (!state) {
         transaction.abort();
         return;
@@ -372,12 +508,22 @@ export async function completeMedicationIntakeDatasetClaim(
       store.put({
         id: INTAKE_DATASET_STATE_ID,
         activeDatasetId: createClientId(),
-        activeRecordIds: [],
+        medicationIds: [],
+        intakeRecordIds: [],
+        createdAt: new Date().toISOString(),
         claims: [
           ...state.claims,
-          { datasetId, claimedUserId: userId, claimedAt },
+          {
+            datasetId,
+            medicationIds: state.medicationIds,
+            intakeRecordIds: state.intakeRecordIds,
+            reservedByUserId: state.reservedByUserId,
+            claimedUserId: userId,
+            claimedAt,
+            createdAt: state.createdAt,
+          },
         ],
-      } satisfies MedicationIntakeDatasetState);
+      } satisfies GuestMedicationDatasetState);
     };
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(
@@ -391,19 +537,19 @@ export async function completeMedicationIntakeDatasetClaim(
   database.close();
 }
 
-export async function releaseMedicationIntakeDatasetReservation(
+export async function releaseGuestMedicationDatasetReservation(
   datasetId: string,
   userId: string,
 ): Promise<void> {
   const database = await openDatabase();
-  await ensureMedicationIntakeDatasetState(database);
+  await ensureGuestMedicationDatasetState(database);
 
   await new Promise<void>((resolve, reject) => {
     const transaction = database.transaction(INTAKE_DATASET_STORE, "readwrite");
     const store = transaction.objectStore(INTAKE_DATASET_STORE);
     const request = store.get(INTAKE_DATASET_STATE_ID);
     request.onsuccess = () => {
-      const state = request.result as MedicationIntakeDatasetState | undefined;
+      const state = request.result as GuestMedicationDatasetState | undefined;
       if (
         !state
         || state.activeDatasetId !== datasetId
@@ -423,6 +569,88 @@ export async function releaseMedicationIntakeDatasetReservation(
   });
 
   database.close();
+}
+
+export async function reserveMedicationIntakeDatasetForUser(
+  userId: string,
+): Promise<ReservedMedicationIntakeDataset | null> {
+  const reservation = await reserveGuestMedicationDatasetForUser(userId);
+  return reservation
+    ? { datasetId: reservation.datasetId, records: reservation.intakeRecords }
+    : null;
+}
+
+export async function completeMedicationIntakeDatasetClaim(
+  datasetId: string,
+  userId: string,
+): Promise<void> {
+  await completeGuestMedicationDatasetClaim(datasetId, userId);
+}
+
+export async function releaseMedicationIntakeDatasetReservation(
+  datasetId: string,
+  userId: string,
+): Promise<void> {
+  await releaseGuestMedicationDatasetReservation(datasetId, userId);
+}
+
+export async function findClaimedGuestIntakeRecoveryCandidates(
+  userId: string,
+  existingServerMedicationIds: string[],
+): Promise<ClaimedGuestIntakeRecoveryCandidate[]> {
+  const database = await openDatabase();
+  const state = await ensureGuestMedicationDatasetState(database);
+  const result = await new Promise<ClaimedGuestIntakeRecoveryCandidate[]>((resolve, reject) => {
+    const transaction = database.transaction(
+      [MEDICATION_STORE, INTAKE_STORE],
+      "readonly",
+    );
+    const medicationRequest = transaction.objectStore(MEDICATION_STORE).getAll();
+    const intakeRequest = transaction.objectStore(INTAKE_STORE).getAll();
+
+    transaction.oncomplete = () => {
+      const medications = medicationRequest.result as SavedMedication[];
+      const intakes = intakeRequest.result as MedicationIntakeRecord[];
+      const medicationById = new Map(medications.map((medication) => [medication.id, medication]));
+      const intakeById = new Map(intakes.map((record) => [record.id, record]));
+      const activeRecordIds = new Set(state.intakeRecordIds);
+      const serverMedicationIds = new Set(existingServerMedicationIds);
+      const candidates: ClaimedGuestIntakeRecoveryCandidate[] = [];
+
+      state.claims
+        .filter((claim) => claim.claimedUserId === userId)
+        .forEach((claim) => {
+          claim.intakeRecordIds.forEach((recordId) => {
+            if (activeRecordIds.has(recordId)) return;
+
+            const intakeRecord = intakeById.get(recordId);
+            if (!intakeRecord?.taken) return;
+
+            const medication = medicationById.get(intakeRecord.medicationId);
+            if (!medication || serverMedicationIds.has(medication.id)) return;
+
+            candidates.push({
+              datasetId: claim.datasetId,
+              claimedUserId: claim.claimedUserId,
+              claimedAt: claim.claimedAt,
+              medication,
+              intakeRecord,
+              reason: "missing-server-medication",
+            });
+          });
+        });
+
+      resolve(candidates);
+    };
+    transaction.onerror = () => reject(
+      transaction.error ?? new Error("복구 후보 데이터를 확인하지 못했어요."),
+    );
+    transaction.onabort = () => reject(
+      transaction.error ?? new Error("복구 후보 확인이 중단됐어요."),
+    );
+  });
+  database.close();
+  return result;
 }
 
 export async function getMoodRecordByDate(date: string): Promise<MoodRecord | null> {
