@@ -7,9 +7,7 @@ import { useRouter } from "next/navigation";
 import { FlowHeader } from "@/components/flow-ui";
 import { MedicationSummaryCard } from "@/components/medication-card";
 import { MobileShell } from "@/components/mobile-shell";
-import {
-  hasMedicationIntakeHistory,
-} from "@/lib/indexed-db";
+import { getDataRepositories } from "@/lib/repositories";
 import { getMedicationRepository } from "@/lib/repositories/medications";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
 import { medicationLabel } from "@/lib/medication-utils";
@@ -57,7 +55,8 @@ export default function MedicationListPage() {
   async function requestDelete(medication: SavedMedication) {
     setError("");
     try {
-      const hasIntakeHistory = await hasMedicationIntakeHistory(medication.id);
+      const repositories = await getDataRepositories();
+      const hasIntakeHistory = await repositories.medicationIntakes.hasHistory(medication.id);
       setDeleteTarget({ medication, hasIntakeHistory });
     } catch {
       setError("복용 기록을 확인하지 못했어요.");
