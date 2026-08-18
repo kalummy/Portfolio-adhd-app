@@ -51,6 +51,31 @@ button {
   background: var(--surface);
 }
 
+.splash-screen {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: 430px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  overflow: hidden;
+  background: linear-gradient(
+    154.911657deg,
+    var(--color-base-white) 0%,
+    var(--color-mint-50) 132.55%
+  );
+}
+
+.splash-logo {
+  display: block;
+  width: 154px;
+  height: 62px;
+}
+
+html[data-addi-splash="skip"] .splash-screen {
+  visibility: hidden;
+}
+
 .flow-screen {
   min-height: 100dvh;
   padding-bottom: calc(96px + env(safe-area-inset-bottom));
