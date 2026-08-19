@@ -22,12 +22,18 @@ export default async function Page({
     : visitToast
       ? TOAST_MESSAGES[visitToast]
       : undefined;
+  const initialToastQueryKey = moodToast
+    ? "moodToast" as const
+    : visitToast
+      ? "visitToast" as const
+      : undefined;
   return (
     <>
       <script dangerouslySetInnerHTML={{ __html: SPLASH_PREPAINT_SCRIPT }} />
       <HomeScreen
         enableLaunchSplash={!moodToast}
         initialToast={initialToast}
+        initialToastQueryKey={initialToastQueryKey}
       />
     </>
   );

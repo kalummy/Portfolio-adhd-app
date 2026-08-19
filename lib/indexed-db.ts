@@ -8,6 +8,7 @@ import type {
 import { createClientId } from "./client-id";
 import { createSavedMedicationsFromDraft } from "./repositories/medications/create";
 import { assertValidVisitDate } from "./repositories/visit-schedules/validation";
+import { getGuestDatasetReservationDecision } from "./guest-dataset-reservation";
 
 const DB_NAME = "addi-mvp";
 const DB_VERSION = 6;
@@ -448,66 +449,80 @@ export async function reserveGuestMedicationDatasetForUser(
   const database = await openDatabase();
   await ensureGuestMedicationDatasetState(database);
 
-  const result = await new Promise<ReservedGuestMedicationDataset | null>((resolve, reject) => {
-    const transaction = database.transaction(
-      [MEDICATION_STORE, INTAKE_STORE, INTAKE_DATASET_STORE, VISIT_STORE],
-      "readwrite",
-    );
-    const medicationStore = transaction.objectStore(MEDICATION_STORE);
-    const intakeStore = transaction.objectStore(INTAKE_STORE);
-    const metadataStore = transaction.objectStore(INTAKE_DATASET_STORE);
-    const stateRequest = metadataStore.get(INTAKE_DATASET_STATE_ID);
-    let reservation: ReservedGuestMedicationDataset | null = null;
+  let result: ReservedGuestMedicationDataset | null;
+  try {
+    result = await new Promise<ReservedGuestMedicationDataset | null>((resolve, reject) => {
+      const transaction = database.transaction(
+        [MEDICATION_STORE, INTAKE_STORE, INTAKE_DATASET_STORE, VISIT_STORE],
+        "readwrite",
+      );
+      const medicationStore = transaction.objectStore(MEDICATION_STORE);
+      const intakeStore = transaction.objectStore(INTAKE_STORE);
+      const metadataStore = transaction.objectStore(INTAKE_DATASET_STORE);
+      const stateRequest = metadataStore.get(INTAKE_DATASET_STATE_ID);
+      let reservation: ReservedGuestMedicationDataset | null = null;
+      let reservationError: Error | null = null;
 
-    stateRequest.onsuccess = () => {
-      const state = stateRequest.result as GuestMedicationDatasetState | undefined;
-      if (
-        !state
-        || (
-          state.medicationIds.length === 0
-          && state.intakeRecordIds.length === 0
-          && state.visitMutation === null
-        )
-      ) return;
-      if (state.reservedByUserId && state.reservedByUserId !== userId) return;
+      stateRequest.onsuccess = () => {
+        const state = stateRequest.result as GuestMedicationDatasetState | undefined;
+        if (
+          !state
+          || (
+            state.medicationIds.length === 0
+            && state.intakeRecordIds.length === 0
+            && state.visitMutation === null
+          )
+        ) return;
+        const reservationDecision = getGuestDatasetReservationDecision(state, userId);
+        if (reservationDecision === "locked") {
+          reservationError = new Error("guest_dataset_reserved_by_another_user");
+          return;
+        }
 
-      metadataStore.put({
-        ...state,
-        reservedByUserId: userId,
-        reservedAt: state.reservedAt ?? new Date().toISOString(),
-      });
+        metadataStore.put({
+          ...state,
+          reservedByUserId: userId,
+          reservedAt: reservationDecision === "same-user"
+            ? state.reservedAt ?? new Date().toISOString()
+            : new Date().toISOString(),
+        });
 
-      const medicationsRequest = medicationStore.getAll();
-      medicationsRequest.onsuccess = () => {
-        const recordsRequest = intakeStore.getAll();
-        recordsRequest.onsuccess = () => {
-          const medicationIds = new Set(state.medicationIds);
-          const intakeRecordIds = new Set(state.intakeRecordIds);
-          reservation = {
-            datasetId: state.activeDatasetId,
-            medications: (medicationsRequest.result as SavedMedication[]).filter(
-              (medication) => medicationIds.has(medication.id),
-            ),
-            intakeRecords: (recordsRequest.result as MedicationIntakeRecord[]).filter(
-              (record) => intakeRecordIds.has(record.id),
-            ),
-            visitSchedule: state.visitMutation?.kind === "upsert"
-              ? state.visitMutation.schedule
-              : null,
+        const medicationsRequest = medicationStore.getAll();
+        medicationsRequest.onsuccess = () => {
+          const recordsRequest = intakeStore.getAll();
+          recordsRequest.onsuccess = () => {
+            const medicationIds = new Set(state.medicationIds);
+            const intakeRecordIds = new Set(state.intakeRecordIds);
+            reservation = {
+              datasetId: state.activeDatasetId,
+              medications: (medicationsRequest.result as SavedMedication[]).filter(
+                (medication) => medicationIds.has(medication.id),
+              ),
+              intakeRecords: (recordsRequest.result as MedicationIntakeRecord[]).filter(
+                (record) => intakeRecordIds.has(record.id),
+              ),
+              visitSchedule: state.visitMutation?.kind === "upsert"
+                ? state.visitMutation.schedule
+                : null,
+            };
           };
         };
       };
-    };
-    transaction.oncomplete = () => resolve(reservation);
-    transaction.onerror = () => reject(
-      transaction.error ?? new Error("복용 기록 데이터셋을 예약하지 못했어요."),
-    );
-    transaction.onabort = () => reject(
-      transaction.error ?? new Error("복용 기록 데이터셋 예약이 중단됐어요."),
-    );
-  });
+      transaction.oncomplete = () => {
+        if (reservationError) reject(reservationError);
+        else resolve(reservation);
+      };
+      transaction.onerror = () => reject(
+        transaction.error ?? new Error("복용 기록 데이터셋을 예약하지 못했어요."),
+      );
+      transaction.onabort = () => reject(
+        transaction.error ?? new Error("복용 기록 데이터셋 예약이 중단됐어요."),
+      );
+    });
+  } finally {
+    database.close();
+  }
 
-  database.close();
   return result;
 }
 

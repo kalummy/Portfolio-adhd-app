@@ -73,9 +73,20 @@ try {
   assert.equal(clinicianReady.summaryItems.every((item) => item.length < 90), true);
   assert.equal(clinicianReady.summaryItems[0].includes("기분 기복·무기력·우울감"), true);
   assert.equal(clinicianReady.summaryItems[0].includes("오후 약효 저하"), true);
-  assert.equal(clinicianReady.summaryItems[0].includes("신체·수면·컨디션 변화"), true);
+  assert.equal(clinicianReady.summaryItems[0].includes("몸 상태 변화"), true);
   assert.equal(clinicianReady.summaryItems.some((item) => item.includes("오늘 내 감정은 대체로")), false);
+  assert.equal(clinicianReady.summaryItems[0].split(/[.!?]/u).filter(Boolean).length <= 2, true);
   console.log("PASS summary synthesizes clinician-ready context in a concise diary line");
+
+  const legacySummary = summary.getMoodDiarySummary([
+    "오늘 내 감정은 대체로 무기력하고 우울했어요.",
+    "약을 먹고 오후에 약 효과가 빨리 내려갔어요.",
+    "복용하면서 두통이 있었어요.",
+    "오늘은 피곤하고 긴장되었어요.",
+  ]);
+  assert.equal(legacySummary, "오늘은 무기력·우울감과 오후 약효 저하가 있었고, 몸 상태 변화도 느꼈어요.");
+  assert.equal(legacySummary.includes("오늘 내 감정은 대체로"), false);
+  console.log("PASS legacy multi-entry diary renders as one integrated summary without rewriting storage");
 
   const now = new Date(2026, 7, 19, 12, 0, 0);
   const moodRecord = (date, suffix) => ({
@@ -120,7 +131,7 @@ try {
   assert.ok(flowSource.indexOf("await saveMoodRecord") < flowSource.indexOf("window.location.assign"));
   console.log("PASS same-date MoodRecord upsert and navigation-after-commit structure");
 
-  console.log("mood flow fixture cases: 10/10 passed");
+  console.log("mood flow fixture cases: 11/11 passed");
 } finally {
   await rm(fixtureDirectory, { recursive: true, force: true });
 }

@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 // @ts-expect-error Node's type-stripping fixture runner imports the production TypeScript module directly.
 import { bootstrapGuestDataset } from "../lib/repositories/guest-dataset-bootstrap.ts";
+// @ts-expect-error Node's type-stripping fixture runner imports the production TypeScript module directly.
+import { GUEST_DATASET_RESERVATION_TTL_MS, getGuestDatasetReservationDecision } from "../lib/guest-dataset-reservation.ts";
 
 type Visit = {
   visitDate: string;
@@ -98,6 +100,19 @@ async function runLoginBootstrap(state: State) {
 }
 
 const cases: Array<[string, () => Promise<void>]> = [
+  ["legacy reservation without timestamp is reclaimable but a current lock is not", async () => {
+    const now = Date.parse("2026-08-19T12:00:00.000Z");
+    assert.equal(getGuestDatasetReservationDecision({ reservedByUserId: "user-old" }, "user-new", now), "stale");
+    assert.equal(getGuestDatasetReservationDecision({
+      reservedByUserId: "user-old",
+      reservedAt: new Date(now - GUEST_DATASET_RESERVATION_TTL_MS + 1).toISOString(),
+    }, "user-new", now), "locked");
+    assert.equal(getGuestDatasetReservationDecision({
+      reservedByUserId: "user-old",
+      reservedAt: new Date(now - GUEST_DATASET_RESERVATION_TTL_MS).toISOString(),
+    }, "user-new", now), "stale");
+    assert.equal(getGuestDatasetReservationDecision({ reservedByUserId: "user-new" }, "user-new", now), "same-user");
+  }],
   ["QA 9 same-date visit-only dataset claims, rotates, and reads server visit", async () => {
     const state = createState("dataset-visit-only");
     const before = structuredClone(state.serverVisit);

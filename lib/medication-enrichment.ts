@@ -7,6 +7,7 @@ type MedicationDetailResponse = {
 export function needsOfficialMedicationEnrichment(medication: MedicationCandidate) {
   return Boolean(
     medication.catalogId
+    && /^\d{9}$/.test(medication.catalogId)
     && (
       !medication.displayLabel
       || !medication.ingredientName
