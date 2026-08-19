@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { AnalyticsAuthCompletion } from "@/components/analytics-auth-completion";
 import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "./globals.css";
 
@@ -17,7 +18,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko" suppressHydrationWarning>
-      <body>{children}</body>
+      <body>
+        <AnalyticsAuthCompletion />
+        {children}
+      </body>
     </html>
   );
 }

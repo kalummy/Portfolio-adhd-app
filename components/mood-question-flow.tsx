@@ -7,6 +7,13 @@ import { MobileShell } from "@/components/mobile-shell";
 import { MoodResult } from "@/components/mood-result";
 import { MoodSummaryLoading } from "@/components/mood-summary-loading";
 import { VisitDialog } from "@/components/visit-dialog";
+import {
+  ensureMoodAttempt,
+  restartMoodAttempt,
+  trackMoodResultViewed,
+  trackMoodSaved,
+  trackMoodStepCompleted,
+} from "@/lib/analytics/events";
 import { saveMoodRecord } from "@/lib/indexed-db";
 import {
   buildMoodSummary,
@@ -89,6 +96,10 @@ export function MoodQuestionFlow() {
   const canContinue = hasStandardSelection || (customSelected && answer.customText.trim().length > 0);
 
   useEffect(() => {
+    ensureMoodAttempt("home");
+  }, []);
+
+  useEffect(() => {
     window.scrollTo({ top: 0, left: 0 });
   }, [phase, step]);
 
@@ -96,6 +107,10 @@ export function MoodQuestionFlow() {
     if (phase !== "summarizing" || !result) return;
     const timeout = window.setTimeout(() => setPhase("result"), SUMMARY_DURATION_MS);
     return () => window.clearTimeout(timeout);
+  }, [phase, result]);
+
+  useEffect(() => {
+    if (phase === "result" && result) trackMoodResultViewed();
   }, [phase, result]);
 
   function toggleOption(optionId: string) {
@@ -116,6 +131,7 @@ export function MoodQuestionFlow() {
 
   function goToNextStep() {
     if (!canContinue) return;
+    trackMoodStepCompleted((step + 1) as 1 | 2 | 3 | 4);
     if (step === MOOD_QUESTIONS.length - 1) {
       const nextResult = buildMoodSummary(answers, new Date().toISOString());
       setResult(nextResult);
@@ -126,6 +142,7 @@ export function MoodQuestionFlow() {
   }
 
   function restartQuestions() {
+    restartMoodAttempt();
     setAnswers(createEmptyAnswers());
     setStep(0);
     setResult(null);
@@ -145,6 +162,7 @@ export function MoodQuestionFlow() {
         recordedAt: result.recordedAt,
         diaryEntries: result.summaryItems,
       });
+      await trackMoodSaved();
       window.location.assign("/?moodToast=saved");
     } finally {
       setSaving(false);

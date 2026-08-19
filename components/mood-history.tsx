@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MobileShell } from "@/components/mobile-shell";
+import { startMoodAttempt } from "@/lib/analytics/events";
 import { getMoodRecords } from "@/lib/indexed-db";
 import {
   filterMoodRecordsByPeriod,
@@ -167,7 +168,9 @@ export function MoodHistory({ initialPeriod }: MoodHistoryProps) {
               <span>아직 1주일</span>
               <span>기록 내역이 부족해요</span>
             </h2>
-            <Link href="/moods/new">감정기록 입력</Link>
+            <Link href="/moods/new" onClick={() => startMoodAttempt("mood_history")}>
+              감정기록 입력
+            </Link>
           </section>
         )
       ) : null}

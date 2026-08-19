@@ -6,6 +6,7 @@ import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
 import { VisitCalendar } from "@/components/visit-calendar";
 import { VisitDialog } from "@/components/visit-dialog";
+import { trackVisitAdded } from "@/lib/analytics/events";
 import { getVisitScheduleRepository } from "@/lib/repositories";
 import { formatVisitDate } from "@/lib/visit-date";
 
@@ -65,6 +66,7 @@ export function VisitCalendarScreen({ mode }: VisitCalendarScreenProps) {
     try {
       const repository = await getVisitScheduleRepository();
       await repository.saveUpcoming(selectedDate);
+      if (mode === "new") trackVisitAdded();
       router.replace(mode === "new" ? "/?visitToast=added" : "/visits?visitToast=updated");
     } catch {
       setDialog(null);

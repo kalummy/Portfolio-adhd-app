@@ -5,6 +5,11 @@ import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { getAuthState } from "@/lib/auth/client";
 import {
+  startMedicationAddAttempt,
+  startMoodAttempt,
+  trackMedicationTakenOnce,
+} from "@/lib/analytics/events";
+import {
   getMoodRecords,
 } from "@/lib/indexed-db";
 import { getDataRepositories, retryGuestDatasetSync } from "@/lib/repositories";
@@ -330,6 +335,9 @@ export function HomeScreen({
       selectedDateKey,
       !isTaken,
     );
+    if (!isTaken) {
+      await trackMedicationTakenOnce(medicationId, selectedDateKey);
+    }
     await load();
   };
 
@@ -433,7 +441,13 @@ export function HomeScreen({
                 <strong>복용중인 약을 등록해주세요</strong>
                 <p>약을 등록하면<br />오늘의 복용 여부를 간단히 기록할 수 있어요.</p>
               </div>
-              <Link href="/medications/new" className="inline-add-button">약 등록하기</Link>
+              <Link
+                href="/medications/new"
+                className="inline-add-button"
+                onClick={() => startMedicationAddAttempt("home")}
+              >
+                약 등록하기
+              </Link>
             </div>
           ) : (
             <div className="home-card populated-medication-card">
@@ -540,7 +554,13 @@ export function HomeScreen({
                 <strong>{moodEmptyTitle}</strong>
                 <p>아직 기록하지 않았어요.</p>
               </div>
-              <Link href="/moods/new" className="mood-record-link">감정 기록하기</Link>
+              <Link
+                href="/moods/new"
+                className="mood-record-link"
+                onClick={() => startMoodAttempt("home")}
+              >
+                감정 기록하기
+              </Link>
             </div>
           )}
         </section>

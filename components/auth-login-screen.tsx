@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
+import { trackLoginStarted } from "@/lib/analytics/events";
 import { getAuthState, signInWithGoogle, signOut, type AuthState } from "@/lib/auth/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
@@ -52,6 +53,7 @@ export function AuthLoginScreen() {
     setBusy(true);
     setError("");
     try {
+      trackLoginStarted();
       await signInWithGoogle("/");
     } catch {
       setError("Google 로그인을 시작하지 못했어요.");
