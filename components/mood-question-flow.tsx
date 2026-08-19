@@ -14,7 +14,7 @@ import {
   trackMoodSaved,
   trackMoodStepCompleted,
 } from "@/lib/analytics/events";
-import { saveMoodRecord } from "@/lib/indexed-db";
+import { getMoodRepository } from "@/lib/repositories";
 import {
   buildMoodSummary,
   CUSTOM_MOOD_OPTION_ID,
@@ -155,12 +155,14 @@ export function MoodQuestionFlow() {
     setSaving(true);
     try {
       const recordedDate = new Date(result.recordedAt);
-      await saveMoodRecord({
+      const repository = await getMoodRepository();
+      await repository.save({
         date: toLocalDateKey(recordedDate),
         mood: result.moodType,
         moodLabel: result.label,
         recordedAt: result.recordedAt,
         diaryEntries: result.summaryItems,
+        memberSummary: result.memberSummary,
       });
       await trackMoodSaved();
       window.location.assign("/?moodToast=saved");

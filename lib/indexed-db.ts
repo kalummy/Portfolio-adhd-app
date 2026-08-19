@@ -9,9 +9,10 @@ import { createClientId } from "./client-id";
 import { createSavedMedicationsFromDraft } from "./repositories/medications/create";
 import { assertValidVisitDate } from "./repositories/visit-schedules/validation";
 import { getGuestDatasetReservationDecision } from "./guest-dataset-reservation";
+import type { NewMoodRecord } from "./repositories/moods/types";
 
 const DB_NAME = "addi-mvp";
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 const MEDICATION_STORE = "userMedications";
 const INTAKE_STORE = "medicationIntakeRecords";
 const INTAKE_DATASET_STORE = "medicationIntakeDatasetMetadata";
@@ -30,6 +31,7 @@ type GuestMedicationDatasetClaim = {
   datasetId: string;
   medicationIds: string[];
   intakeRecordIds: string[];
+  moodRecordIds: string[];
   reservedByUserId?: string;
   claimedUserId: string;
   claimedAt: string;
@@ -56,6 +58,7 @@ type GuestMedicationDatasetState = {
   activeDatasetId: string;
   medicationIds: string[];
   intakeRecordIds: string[];
+  moodRecordIds: string[];
   createdAt: string;
   reservedByUserId?: string;
   reservedAt?: string;
@@ -67,6 +70,7 @@ export type ReservedGuestMedicationDataset = {
   datasetId: string;
   medications: SavedMedication[];
   intakeRecords: MedicationIntakeRecord[];
+  moodRecords: MoodRecord[];
   visitSchedule: VisitSchedule | null;
 };
 
@@ -94,6 +98,7 @@ function createGuestMedicationDatasetState(
     activeDatasetId: createClientId(),
     medicationIds,
     intakeRecordIds,
+    moodRecordIds: [],
     createdAt: new Date().toISOString(),
     claims: [],
     visitMutation,
@@ -139,6 +144,11 @@ function normalizeGuestMedicationDatasetState(
             ? existing.activeRecordIds
             : intakeRecordIds,
         ),
+    // Mood records created before ownership metadata existed remain legacy-only.
+    // Never infer ownership by scanning the raw mood store.
+    moodRecordIds: Array.isArray(maybeGuest.moodRecordIds)
+      ? uniqueIds(maybeGuest.moodRecordIds)
+      : [],
     createdAt: typeof maybeGuest.createdAt === "string"
       ? maybeGuest.createdAt
       : new Date().toISOString(),
@@ -151,6 +161,9 @@ function normalizeGuestMedicationDatasetState(
         : [],
       intakeRecordIds: "intakeRecordIds" in claim && Array.isArray(claim.intakeRecordIds)
         ? uniqueIds(claim.intakeRecordIds)
+        : [],
+      moodRecordIds: "moodRecordIds" in claim && Array.isArray(claim.moodRecordIds)
+        ? uniqueIds(claim.moodRecordIds)
         : [],
       reservedByUserId: "reservedByUserId" in claim && typeof claim.reservedByUserId === "string"
         ? claim.reservedByUserId
@@ -453,11 +466,12 @@ export async function reserveGuestMedicationDatasetForUser(
   try {
     result = await new Promise<ReservedGuestMedicationDataset | null>((resolve, reject) => {
       const transaction = database.transaction(
-        [MEDICATION_STORE, INTAKE_STORE, INTAKE_DATASET_STORE, VISIT_STORE],
+        [MEDICATION_STORE, INTAKE_STORE, INTAKE_DATASET_STORE, MOOD_STORE, VISIT_STORE],
         "readwrite",
       );
       const medicationStore = transaction.objectStore(MEDICATION_STORE);
       const intakeStore = transaction.objectStore(INTAKE_STORE);
+      const moodStore = transaction.objectStore(MOOD_STORE);
       const metadataStore = transaction.objectStore(INTAKE_DATASET_STORE);
       const stateRequest = metadataStore.get(INTAKE_DATASET_STATE_ID);
       let reservation: ReservedGuestMedicationDataset | null = null;
@@ -470,6 +484,7 @@ export async function reserveGuestMedicationDatasetForUser(
           || (
             state.medicationIds.length === 0
             && state.intakeRecordIds.length === 0
+            && state.moodRecordIds.length === 0
             && state.visitMutation === null
           )
         ) return;
@@ -491,19 +506,26 @@ export async function reserveGuestMedicationDatasetForUser(
         medicationsRequest.onsuccess = () => {
           const recordsRequest = intakeStore.getAll();
           recordsRequest.onsuccess = () => {
-            const medicationIds = new Set(state.medicationIds);
-            const intakeRecordIds = new Set(state.intakeRecordIds);
-            reservation = {
-              datasetId: state.activeDatasetId,
-              medications: (medicationsRequest.result as SavedMedication[]).filter(
-                (medication) => medicationIds.has(medication.id),
-              ),
-              intakeRecords: (recordsRequest.result as MedicationIntakeRecord[]).filter(
-                (record) => intakeRecordIds.has(record.id),
-              ),
-              visitSchedule: state.visitMutation?.kind === "upsert"
-                ? state.visitMutation.schedule
-                : null,
+            const moodsRequest = moodStore.getAll();
+            moodsRequest.onsuccess = () => {
+              const medicationIds = new Set(state.medicationIds);
+              const intakeRecordIds = new Set(state.intakeRecordIds);
+              const moodRecordIds = new Set(state.moodRecordIds);
+              reservation = {
+                datasetId: state.activeDatasetId,
+                medications: (medicationsRequest.result as SavedMedication[]).filter(
+                  (medication) => medicationIds.has(medication.id),
+                ),
+                intakeRecords: (recordsRequest.result as MedicationIntakeRecord[]).filter(
+                  (record) => intakeRecordIds.has(record.id),
+                ),
+                moodRecords: (moodsRequest.result as MoodRecord[]).filter(
+                  (record) => moodRecordIds.has(record.id),
+                ),
+                visitSchedule: state.visitMutation?.kind === "upsert"
+                  ? state.visitMutation.schedule
+                  : null,
+              };
             };
           };
         };
@@ -564,6 +586,7 @@ export async function completeGuestMedicationDatasetClaim(
         activeDatasetId: createClientId(),
         medicationIds: [],
         intakeRecordIds: [],
+        moodRecordIds: [],
         createdAt: new Date().toISOString(),
         visitMutation: null,
         claims: [
@@ -572,6 +595,7 @@ export async function completeGuestMedicationDatasetClaim(
             datasetId,
             medicationIds: state.medicationIds,
             intakeRecordIds: state.intakeRecordIds,
+            moodRecordIds: state.moodRecordIds,
             reservedByUserId: state.reservedByUserId,
             claimedUserId: userId,
             claimedAt,
@@ -712,28 +736,21 @@ export async function findClaimedGuestIntakeRecoveryCandidates(
 }
 
 export async function getMoodRecordByDate(date: string): Promise<MoodRecord | null> {
-  const database = await openDatabase();
-  const result = await new Promise<MoodRecord | null>((resolve, reject) => {
-    const request = database
-      .transaction(MOOD_STORE, "readonly")
-      .objectStore(MOOD_STORE)
-      .index("date")
-      .get(date);
-    request.onsuccess = () => resolve((request.result as MoodRecord | undefined) ?? null);
-    request.onerror = () => reject(request.error ?? new Error("감정 기록을 불러오지 못했어요."));
-  });
-  database.close();
-  return result;
+  return (await getMoodRecords()).find((record) => record.date === date) ?? null;
 }
 
 export async function getMoodRecords(): Promise<MoodRecord[]> {
   const database = await openDatabase();
+  const state = await ensureGuestMedicationDatasetState(database);
   const result = await new Promise<MoodRecord[]>((resolve, reject) => {
     const request = database
       .transaction(MOOD_STORE, "readonly")
       .objectStore(MOOD_STORE)
       .getAll();
-    request.onsuccess = () => resolve(request.result as MoodRecord[]);
+    request.onsuccess = () => {
+      const activeIds = new Set(state.moodRecordIds);
+      resolve((request.result as MoodRecord[]).filter((record) => activeIds.has(record.id)));
+    };
     request.onerror = () => reject(request.error ?? new Error("감정 기록을 불러오지 못했어요."));
   });
   database.close();
@@ -741,13 +758,31 @@ export async function getMoodRecords(): Promise<MoodRecord[]> {
 }
 
 export async function saveMoodRecord(
-  record: Omit<MoodRecord, "id">,
+  record: NewMoodRecord,
 ): Promise<MoodRecord> {
   const saved: MoodRecord = { ...record, id: record.date };
   const database = await openDatabase();
+  await ensureGuestMedicationDatasetState(database);
   await new Promise<void>((resolve, reject) => {
-    const transaction = database.transaction(MOOD_STORE, "readwrite");
-    transaction.objectStore(MOOD_STORE).put(saved);
+    const transaction = database.transaction(
+      [MOOD_STORE, INTAKE_DATASET_STORE],
+      "readwrite",
+    );
+    const moodStore = transaction.objectStore(MOOD_STORE);
+    const metadataStore = transaction.objectStore(INTAKE_DATASET_STORE);
+    const stateRequest = metadataStore.get(INTAKE_DATASET_STATE_ID);
+    stateRequest.onsuccess = () => {
+      const state = stateRequest.result as GuestMedicationDatasetState | undefined;
+      if (!state) {
+        transaction.abort();
+        return;
+      }
+      moodStore.put(saved);
+      metadataStore.put({
+        ...state,
+        moodRecordIds: uniqueIds([...state.moodRecordIds, saved.id]),
+      } satisfies GuestMedicationDatasetState);
+    };
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error ?? new Error("감정 기록을 저장하지 못했어요."));
     transaction.onabort = () => reject(transaction.error ?? new Error("감정 기록 저장이 중단됐어요."));

@@ -10,6 +10,7 @@ import {
 import type { ServerMedicationRepository } from "./medications/types";
 import { toSupabaseMedicationMigrationInput } from "./medications/mapper";
 import { toSupabaseVisitScheduleMigrationInput } from "./visit-schedules/mapper";
+import { toSupabaseMoodMigrationInput } from "./moods/mapper";
 
 export type GuestDatasetMergeConflict = {
   code: string;
@@ -27,6 +28,8 @@ export type GuestDatasetMergeResult = {
   existingIntakeCount: number;
   insertedVisitCount: number;
   reusedVisitCount: number;
+  insertedMoodCount: number;
+  existingMoodCount: number;
   conflicts: GuestDatasetMergeConflict[];
   failureReason?: string;
 };
@@ -40,6 +43,8 @@ type GuestDatasetMergeRpcResult = {
   existing_intake_count?: number;
   inserted_visit_count?: number;
   reused_visit_count?: number;
+  inserted_mood_count?: number;
+  existing_mood_count?: number;
   conflicts?: GuestDatasetMergeConflict[];
   failure_reason?: string | null;
 };
@@ -56,6 +61,8 @@ function toGuestDatasetMergeResult(
     existingIntakeCount: row?.existing_intake_count ?? 0,
     insertedVisitCount: row?.inserted_visit_count ?? 0,
     reusedVisitCount: row?.reused_visit_count ?? 0,
+    insertedMoodCount: row?.inserted_mood_count ?? 0,
+    existingMoodCount: row?.existing_mood_count ?? 0,
     conflicts: row?.conflicts ?? [],
     failureReason: row?.failure_reason ?? undefined,
   };
@@ -86,6 +93,7 @@ export async function mergeGuestDataset(
     p_visit: dataset.visitSchedule
       ? toSupabaseVisitScheduleMigrationInput(dataset.visitSchedule)
       : null,
+    p_moods: dataset.moodRecords.map(toSupabaseMoodMigrationInput),
   });
   if (error) throw error;
 

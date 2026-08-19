@@ -7,9 +7,15 @@ type ToastProps = {
   message: string;
   onDismiss: () => void;
   aboveNavigation?: boolean;
+  showIcon?: boolean;
 };
 
-export function Toast({ message, onDismiss, aboveNavigation = false }: ToastProps) {
+export function Toast({
+  message,
+  onDismiss,
+  aboveNavigation = false,
+  showIcon = true,
+}: ToastProps) {
   useEffect(() => {
     const timeout = window.setTimeout(onDismiss, 3000);
     return () => window.clearTimeout(timeout);
@@ -21,7 +27,9 @@ export function Toast({ message, onDismiss, aboveNavigation = false }: ToastProp
       role="status"
       aria-live="polite"
     >
-      <Image src="/icons/visit-toast-check.svg" alt="" width={20} height={20} />
+      {showIcon ? (
+        <Image src="/icons/visit-toast-check.svg" alt="" width={20} height={20} />
+      ) : null}
       <span>{message}</span>
     </div>
   );

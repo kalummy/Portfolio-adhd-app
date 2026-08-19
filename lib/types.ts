@@ -66,6 +66,7 @@ export type MoodRecord = {
   moodLabel: string;
   recordedAt: string;
   diaryEntries?: string[];
+  memberSummary?: string;
 };
 
 export type VisitSchedule = {

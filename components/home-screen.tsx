@@ -10,9 +10,6 @@ import {
   startVisitAddAttempt,
   trackMedicationTakenOnce,
 } from "@/lib/analytics/events";
-import {
-  getMoodRecords,
-} from "@/lib/indexed-db";
 import { getDataRepositories, retryGuestDatasetSync } from "@/lib/repositories";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
 import { getWeekProgress } from "@/lib/home-week-progress";
@@ -187,7 +184,7 @@ export function HomeScreen({
           .catch(() => false),
         repositories.medications.listActive(),
         repositories.medicationIntakes.listAll(),
-        getMoodRecords(),
+        repositories.moods.listAll(),
         repositories.visitSchedules.getUpcoming(),
       ]);
       setIsAuthenticated(authenticated);
@@ -370,7 +367,12 @@ export function HomeScreen({
         <div className="home-header-brand">
           <Image src="/brand/addi-wordmark.svg" alt="ADDI" width={70} height={28} priority />
         </div>
-        <button type="button" className="calendar-button" aria-label="내원일정 준비 중" disabled>
+        <button
+          type="button"
+          className="calendar-button"
+          aria-label="달력 기능 준비 중 안내"
+          onClick={() => setToast("지금은 준비중이에요")}
+        >
           <Image className="calendar-glyph" src="/icons/calendar.svg" alt="" width={21} height={23} />
         </button>
         <Link href="/auth/login" className="home-account-link">
@@ -581,7 +583,11 @@ export function HomeScreen({
       </footer>
 
       {toast ? (
-        <Toast message={toast} onDismiss={() => setToast("")} />
+        <Toast
+          message={toast}
+          onDismiss={() => setToast("")}
+          showIcon={toast !== "지금은 준비중이에요"}
+        />
       ) : null}
     </MobileShell>
   );

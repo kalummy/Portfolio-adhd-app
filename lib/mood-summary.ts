@@ -21,6 +21,7 @@ export type MoodResultData = MoodPresentation & {
   moodType: MoodType;
   recordedAt: string;
   summaryItems: string[];
+  memberSummary: string;
 };
 
 export const MOOD_PRESENTATIONS: Record<MoodType, MoodPresentation> = {
@@ -97,7 +98,10 @@ function buildMedicationEffectPhrase(answer: MoodAnswerDraft | undefined) {
   return "";
 }
 
-function buildConciseSummary(answers: MoodAnswerDraft[]) {
+function buildConciseSummary(
+  answers: MoodAnswerDraft[],
+  includeCustomDetails = true,
+) {
   const emotion = buildEmotionPhrase(answers[0]);
   const effect = buildMedicationEffectPhrase(answers[1]);
   const sideEffects = selectedOptions(answers[2]);
@@ -113,8 +117,9 @@ function buildConciseSummary(answers: MoodAnswerDraft[]) {
       : hasConditionChange
         ? "수면·컨디션 변화"
         : "";
-  const customDetails = answers.map(selectedCustomText)
-    .filter(Boolean);
+  const customDetails = includeCustomDetails
+    ? answers.map(selectedCustomText).filter(Boolean)
+    : [];
   const mainState = [emotion, effect].filter(Boolean).join("과 ");
 
   let sentence = "";
@@ -225,12 +230,14 @@ export function buildMoodSummary(
   const moodType = determineMoodType(answers);
   const presentation = MOOD_PRESENTATIONS[moodType];
   const summaryItems = [buildConciseSummary(answers)];
+  const memberSummary = buildConciseSummary(answers, false);
 
   return {
     moodType,
     ...presentation,
     recordedAt,
     summaryItems,
+    memberSummary,
   };
 }
 
