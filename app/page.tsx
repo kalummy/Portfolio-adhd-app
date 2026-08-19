@@ -7,18 +7,27 @@ const TOAST_MESSAGES: Record<string, string> = {
   deleted: "내원일정을 삭제했어요.",
 };
 
+const MOOD_TOAST_MESSAGES: Record<string, string> = {
+  saved: "감정기록 완료!\n오늘도 고생 많으셨어요 🩷",
+};
+
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ visitToast?: string }>;
+  searchParams: Promise<{ moodToast?: string; visitToast?: string }>;
 }) {
-  const { visitToast } = await searchParams;
+  const { moodToast, visitToast } = await searchParams;
+  const initialToast = moodToast
+    ? MOOD_TOAST_MESSAGES[moodToast]
+    : visitToast
+      ? TOAST_MESSAGES[visitToast]
+      : undefined;
   return (
     <>
       <script dangerouslySetInnerHTML={{ __html: SPLASH_PREPAINT_SCRIPT }} />
       <HomeScreen
-        enableLaunchSplash
-        initialVisitToast={visitToast ? TOAST_MESSAGES[visitToast] : undefined}
+        enableLaunchSplash={!moodToast}
+        initialToast={initialToast}
       />
     </>
   );

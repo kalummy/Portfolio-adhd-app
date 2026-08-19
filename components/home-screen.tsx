@@ -11,6 +11,7 @@ import { getDataRepositories, retryGuestDatasetSync } from "@/lib/repositories";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
 import { getWeekProgress } from "@/lib/home-week-progress";
 import { MEDICATION_FALLBACK_IMAGE, medicationLabel } from "@/lib/medication-utils";
+import { getMoodPresentation } from "@/lib/mood-summary";
 import { formatVisitDday } from "@/lib/visit-date";
 import type {
   HomeDataSet,
@@ -90,7 +91,7 @@ type HomeScreenProps = {
   initialDateKey?: string;
   minimumDateKey?: string;
   maximumDateKey?: string;
-  initialVisitToast?: string;
+  initialToast?: string;
   enableLaunchSplash?: boolean;
 };
 
@@ -100,7 +101,7 @@ export function HomeScreen({
   initialDateKey,
   minimumDateKey,
   maximumDateKey,
-  initialVisitToast,
+  initialToast,
   enableLaunchSplash = false,
 }: HomeScreenProps = {}) {
   const referenceDate = useMemo(
@@ -245,10 +246,10 @@ export function HomeScreen({
   }, [enableLaunchSplash, launchSplashRequired, loading, splashMinimumElapsed]);
 
   useEffect(() => {
-    if (!initialVisitToast) return;
-    setToast(initialVisitToast);
+    if (!initialToast) return;
+    setToast(initialToast);
     window.history.replaceState(window.history.state, "", "/");
-  }, [initialVisitToast]);
+  }, [initialToast]);
 
   const selectedIntakeByMedication = useMemo(() => {
     return new Map(
@@ -489,13 +490,18 @@ export function HomeScreen({
             <div className="home-card recorded-mood-card">
               <div className={`home-card-heading ${showDateEyebrow ? "with-date" : ""}`}>
                 {showDateEyebrow && <span className="card-date-eyebrow">{formatDateEyebrow(selectedDate)}</span>}
-                <div className="home-card-title">
+                <Link href="/moods" className="home-card-title mood-history-link">
                   <strong>오늘의 감정</strong>
                   <ChevronRight />
-                </div>
+                </Link>
               </div>
               <div className="recorded-mood-item">
-                <Image src="/icons/mood-good.png" alt="" width={64} height={64} />
+                <Image
+                  src={getMoodPresentation(moodRecord.mood).imagePath}
+                  alt=""
+                  width={64}
+                  height={64}
+                />
                 <strong>{moodRecord.moodLabel}</strong>
                 <span>{formatRecordTime(moodRecord.recordedAt)} 기록</span>
               </div>
@@ -518,7 +524,7 @@ export function HomeScreen({
                 <strong>{moodEmptyTitle}</strong>
                 <p>아직 기록하지 않았어요.</p>
               </div>
-              <button type="button">감정 기록하기</button>
+              <Link href="/moods/new" className="mood-record-link">감정 기록하기</Link>
             </div>
           )}
         </section>
