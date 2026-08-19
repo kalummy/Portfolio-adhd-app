@@ -71,10 +71,7 @@ const previewMoodRecords: MoodRecord[] = [
     mood: "good",
     moodLabel: "기분 좋아요",
     recordedAt: "2026-08-14T02:05:00.000Z",
-    diaryEntries: [
-      "오늘 내 감정은 대체로 기분이 좋아요.",
-      "복용하면서 특별한 부작용을 느끼지 못했어요.",
-    ],
+    diaryEntries: ["오늘은 안정적인 기분과 집중 개선이 있었어요."],
   },
 ];
 

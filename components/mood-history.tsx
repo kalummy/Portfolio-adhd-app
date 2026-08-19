@@ -11,7 +11,7 @@ import {
   MOOD_HISTORY_PERIODS,
   type MoodHistoryPeriod,
 } from "@/lib/mood-history";
-import { getMoodPresentation } from "@/lib/mood-summary";
+import { getMoodDiarySummary, getMoodPresentation } from "@/lib/mood-summary";
 import type { MoodRecord } from "@/lib/types";
 
 type MoodHistoryProps = {
@@ -157,11 +157,7 @@ export function MoodHistory({ initialPeriod }: MoodHistoryProps) {
                 <Image src="/icons/mood-diary.svg" alt="" width={20} height={20} />
                 <h3>오늘의 일기</h3>
               </div>
-              <ul>
-                {(latestRecord.diaryEntries ?? []).map((entry, index) => (
-                  <li key={`${index}-${entry}`}>{entry}</li>
-                ))}
-              </ul>
+              <p>{getMoodDiarySummary(latestRecord.diaryEntries)}</p>
             </section>
           </section>
         ) : (

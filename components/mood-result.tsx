@@ -4,7 +4,7 @@ import Image from "next/image";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
 import { VisitDialog } from "@/components/visit-dialog";
-import type { MoodResultData } from "@/lib/mood-summary";
+import { getMoodDiarySummary, type MoodResultData } from "@/lib/mood-summary";
 
 type MoodResultProps = {
   result: MoodResultData;
@@ -55,11 +55,7 @@ export function MoodResult({
             <Image src="/icons/mood-diary.svg" alt="" width={20} height={20} />
             <h2>오늘의 일기</h2>
           </div>
-          <ul>
-            {result.summaryItems.map((item, index) => (
-              <li key={`${index}-${item}`}>{item}</li>
-            ))}
-          </ul>
+          <p>{getMoodDiarySummary(result.summaryItems)}</p>
         </section>
       </section>
 

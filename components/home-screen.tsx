@@ -11,7 +11,7 @@ import { getDataRepositories, retryGuestDatasetSync } from "@/lib/repositories";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
 import { getWeekProgress } from "@/lib/home-week-progress";
 import { MEDICATION_FALLBACK_IMAGE, medicationLabel } from "@/lib/medication-utils";
-import { getMoodPresentation } from "@/lib/mood-summary";
+import { getMoodDiarySummary, getMoodPresentation } from "@/lib/mood-summary";
 import { formatVisitDday } from "@/lib/visit-date";
 import type {
   HomeDataSet,
@@ -28,10 +28,7 @@ const SPLASH_SESSION_KEY = "addi:splash:shown:v1";
 const SPLASH_MINIMUM_MS = 800;
 
 const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
-const DEFAULT_DIARY_ENTRIES = [
-  "오늘 내 감정은 대체로 기분이 좋아요.",
-  "복용하면서 특별한 부작용을 느끼지 못했어요.",
-];
+const DEFAULT_DIARY_SUMMARY = "오늘은 감정과 신체 컨디션이 평소와 비슷했어요.";
 
 function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -92,6 +89,7 @@ type HomeScreenProps = {
   minimumDateKey?: string;
   maximumDateKey?: string;
   initialToast?: string;
+  initialToastQueryKey?: "moodToast" | "visitToast";
   enableLaunchSplash?: boolean;
 };
 
@@ -102,6 +100,7 @@ export function HomeScreen({
   minimumDateKey,
   maximumDateKey,
   initialToast,
+  initialToastQueryKey,
   enableLaunchSplash = false,
 }: HomeScreenProps = {}) {
   const referenceDate = useMemo(
@@ -246,10 +245,29 @@ export function HomeScreen({
   }, [enableLaunchSplash, launchSplashRequired, loading, splashMinimumElapsed]);
 
   useEffect(() => {
-    if (!initialToast) return;
+    if (!initialToast || !initialToastQueryKey) return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has(initialToastQueryKey)) return;
     setToast(initialToast);
-    window.history.replaceState(window.history.state, "", "/");
-  }, [initialToast]);
+    url.searchParams.delete(initialToastQueryKey);
+    const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+    window.history.replaceState(window.history.state, "", nextUrl);
+  }, [initialToast, initialToastQueryKey]);
+
+  useEffect(() => {
+    if (!initialToastQueryKey) return;
+    const clearConsumedToast = () => {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has(initialToastQueryKey)) setToast("");
+    };
+
+    window.addEventListener("pagehide", clearConsumedToast);
+    window.addEventListener("pageshow", clearConsumedToast);
+    return () => {
+      window.removeEventListener("pagehide", clearConsumedToast);
+      window.removeEventListener("pageshow", clearConsumedToast);
+    };
+  }, [initialToastQueryKey]);
 
   const selectedIntakeByMedication = useMemo(() => {
     return new Map(
@@ -510,11 +528,9 @@ export function HomeScreen({
                   <Image src="/icons/mood-diary.svg" alt="" width={20} height={20} />
                   <strong>오늘의 일기</strong>
                 </div>
-                <ul>
-                  {(moodRecord.diaryEntries?.length ? moodRecord.diaryEntries : DEFAULT_DIARY_ENTRIES).map((entry) => (
-                    <li key={entry}>{entry}</li>
-                  ))}
-                </ul>
+                <p>{moodRecord.diaryEntries?.length
+                  ? getMoodDiarySummary(moodRecord.diaryEntries)
+                  : DEFAULT_DIARY_SUMMARY}</p>
               </div>
             </div>
           ) : (
@@ -532,9 +548,9 @@ export function HomeScreen({
 
       <footer className="home-footer">
         <div className="footer-links">
-          <span>서비스이용약관</span>
+          <Link href="/terms">서비스이용약관</Link>
           <i />
-          <span>개인정보처리방침</span>
+          <Link href="/privacy">개인정보처리방침</Link>
         </div>
         <Image src="/brand/addi-footer.svg" alt="아디" width={64} height={24} />
         <p>Copyright ⓒ Kalummy ALL RIGHTS RESERVED.</p>
