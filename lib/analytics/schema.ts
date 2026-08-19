@@ -9,6 +9,7 @@ export const ANALYTICS_EVENT_NAMES = [
   "mood_step_completed",
   "mood_result_viewed",
   "mood_saved",
+  "visit_add_started",
   "visit_added",
 ] as const;
 
@@ -43,6 +44,7 @@ type EventSpecificProperties = {
   mood_step_completed: { step: MoodStep };
   mood_result_viewed: Record<never, never>;
   mood_saved: Record<never, never>;
+  visit_add_started: Record<never, never>;
   visit_added: Record<never, never>;
 };
 

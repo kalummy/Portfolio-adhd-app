@@ -6,14 +6,18 @@ import {
   addDeduplicationKey,
   createMedicationAttempt,
   createMoodAttempt,
+  createVisitAttempt,
   markMedicationAdded,
   markMedicationAttemptStarted,
   markMoodAttemptStarted,
   markMoodResultViewed,
   markMoodSaved,
   markMoodStepCompleted,
+  markVisitAttemptCompleted,
+  markVisitAttemptStarted,
   type MedicationAttemptState,
   type MoodAttemptState,
+  type VisitAttemptState,
 } from "./attempts";
 import { trackAnalyticsEvent } from "./mixpanel";
 import type {
@@ -27,6 +31,7 @@ import type {
 const LOGIN_COMPLETED_STORAGE_KEY = "addi:analytics:login-completed:v1";
 const MEDICATION_ATTEMPT_STORAGE_KEY = "addi:analytics:medication-attempt:v1";
 const MOOD_ATTEMPT_STORAGE_KEY = "addi:analytics:mood-attempt:v1";
+const VISIT_ATTEMPT_STORAGE_KEY = "addi:analytics:visit-attempt:v1";
 const INTAKE_DEDUPLICATION_STORAGE_KEY = "addi:analytics:intake-dedupe:v1";
 const START_THROTTLE_MS = 1_000;
 
@@ -101,6 +106,22 @@ function readMoodAttempt(): MoodAttemptState | null {
 
 function writeMoodAttempt(state: MoodAttemptState) {
   writeSessionValue(MOOD_ATTEMPT_STORAGE_KEY, JSON.stringify(state));
+}
+
+function readVisitAttempt(): VisitAttemptState | null {
+  try {
+    const parsed = JSON.parse(readSessionValue(VISIT_ATTEMPT_STORAGE_KEY) ?? "null") as Partial<VisitAttemptState> | null;
+    if (!parsed || typeof parsed.active !== "boolean" || typeof parsed.started !== "boolean") {
+      return null;
+    }
+    return parsed as VisitAttemptState;
+  } catch {
+    return null;
+  }
+}
+
+function writeVisitAttempt(state: VisitAttemptState) {
+  writeSessionValue(VISIT_ATTEMPT_STORAGE_KEY, JSON.stringify(state));
 }
 
 async function resolveAnalyticsAuthState(): Promise<"guest" | "member"> {
@@ -245,6 +266,30 @@ export function trackMoodSaved() {
   writeMoodAttempt(result.state);
   if (result.shouldTrack) return queueResolvedEvent("mood_saved", {});
   return Promise.resolve();
+}
+
+function emitVisitAttemptStarted(state: VisitAttemptState) {
+  const result = markVisitAttemptStarted(state);
+  writeVisitAttempt(result.state);
+  if (result.shouldTrack) queueResolvedEvent("visit_add_started", {});
+}
+
+export function startVisitAddAttempt() {
+  const current = readVisitAttempt();
+  if (current?.active && current.started) return;
+  emitVisitAttemptStarted(createVisitAttempt());
+}
+
+export function ensureVisitAddAttempt() {
+  const current = readVisitAttempt();
+  if (current?.active && current.started) return;
+  emitVisitAttemptStarted(createVisitAttempt());
+}
+
+export function completeVisitAddAttempt() {
+  const current = readVisitAttempt();
+  if (!current) return;
+  writeVisitAttempt(markVisitAttemptCompleted(current));
 }
 
 export function trackVisitAdded() {
