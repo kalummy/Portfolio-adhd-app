@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MobileShell } from "@/components/mobile-shell";
 import { startMoodAttempt } from "@/lib/analytics/events";
-import { getMoodRecords } from "@/lib/indexed-db";
+import { getMoodRepository } from "@/lib/repositories";
 import {
   filterMoodRecordsByPeriod,
   getMoodHistoryPeriod,
@@ -38,7 +38,8 @@ export function MoodHistory({ initialPeriod }: MoodHistoryProps) {
 
   useEffect(() => {
     let active = true;
-    void getMoodRecords()
+    void getMoodRepository()
+      .then((repository) => repository.listAll())
       .then((savedRecords) => {
         if (active) setRecords(savedRecords);
       })

@@ -18,6 +18,9 @@ import type { MedicationIntakeRepository } from "./intake-records/types";
 import { indexedDbMedicationRepository } from "./medications/indexed-db";
 import { createSupabaseMedicationRepository } from "./medications/supabase";
 import type { MedicationRepository, ServerMedicationRepository } from "./medications/types";
+import { indexedDbMoodRepository } from "./moods/indexed-db";
+import { createSupabaseMoodRepository } from "./moods/supabase";
+import type { MoodRepository } from "./moods/types";
 import { indexedDbVisitScheduleRepository } from "./visit-schedules/indexed-db";
 import { createSupabaseVisitScheduleRepository } from "./visit-schedules/supabase";
 import type { VisitScheduleRepository } from "./visit-schedules/types";
@@ -25,6 +28,7 @@ import type { VisitScheduleRepository } from "./visit-schedules/types";
 export type DataRepositories = {
   medications: MedicationRepository;
   medicationIntakes: MedicationIntakeRepository;
+  moods: MoodRepository;
   visitSchedules: VisitScheduleRepository;
   guestDatasetSync: GuestDatasetBootstrapResult;
 };
@@ -108,6 +112,7 @@ export async function getDataRepositories(): Promise<DataRepositories> {
     return {
       medications: indexedDbMedicationRepository,
       medicationIntakes: indexedDbMedicationIntakeRepository,
+      moods: indexedDbMoodRepository,
       visitSchedules: indexedDbVisitScheduleRepository,
       guestDatasetSync: { status: "no-local-data" },
     };
@@ -120,6 +125,7 @@ export async function getDataRepositories(): Promise<DataRepositories> {
 
   const medicationRepository = createSupabaseMedicationRepository(userData.user.id);
   const intakeRepository = createSupabaseMedicationIntakeRepository(userData.user.id);
+  const moodRepository = createSupabaseMoodRepository(userData.user.id);
   const visitScheduleRepository = createSupabaseVisitScheduleRepository(userData.user.id);
   const guestDatasetSync = await migrateInitialLocalData(
     userData.user.id,
@@ -130,6 +136,7 @@ export async function getDataRepositories(): Promise<DataRepositories> {
   return {
     medications: medicationRepository,
     medicationIntakes: intakeRepository,
+    moods: moodRepository,
     visitSchedules: visitScheduleRepository,
     guestDatasetSync,
   };
@@ -160,6 +167,10 @@ export async function getMedicationIntakeRepository(): Promise<MedicationIntakeR
   return (await getDataRepositories()).medicationIntakes;
 }
 
+export async function getMoodRepository(): Promise<MoodRepository> {
+  return (await getDataRepositories()).moods;
+}
+
 export async function getVisitScheduleRepository(): Promise<VisitScheduleRepository> {
   return (await getDataRepositories()).visitSchedules;
 }
@@ -167,4 +178,5 @@ export async function getVisitScheduleRepository(): Promise<VisitScheduleReposit
 export { diagnoseClaimedGuestIntakeRecoveryCandidates } from "./guest-dataset";
 export type { MedicationIntakeRepository } from "./intake-records/types";
 export type { MedicationRepository } from "./medications/types";
+export type { MoodRepository } from "./moods/types";
 export type { VisitScheduleRepository } from "./visit-schedules/types";

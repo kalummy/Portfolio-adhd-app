@@ -60,8 +60,9 @@ try {
   const selectedCustomDraft = draft(answer(["good", "custom"], "마음이 편안해요"));
   const selectedCustom = summary.buildMoodSummary(selectedCustomDraft, recordedAt);
   assert.equal(selectedCustom.summaryItems[0].includes("마음이 편안해요"), true);
+  assert.equal(selectedCustom.memberSummary.includes("마음이 편안해요"), false);
   assert.equal(selectedCustom.summaryItems.some((item) => item.includes("약이 좀 센")), false);
-  console.log("PASS summary uses selected answers and selected custom text only");
+  console.log("PASS local summary keeps selected custom text while member summary excludes it");
 
   const clinicianReady = summary.buildMoodSummary([
     answer(["good", "lethargic", "depressed-irritable"]),
@@ -127,9 +128,11 @@ try {
   const flowSource = await readFile(new URL("components/mood-question-flow.tsx", projectRoot), "utf8");
   assert.match(indexedDbSource, /createIndex\("date", "date", \{ unique: true \}\)/);
   assert.match(indexedDbSource, /const saved: MoodRecord = \{ \.\.\.record, id: record\.date \}/);
-  assert.match(indexedDbSource, /objectStore\(MOOD_STORE\)\.put\(saved\)/);
-  assert.ok(flowSource.indexOf("await saveMoodRecord") < flowSource.indexOf("window.location.assign"));
-  console.log("PASS same-date MoodRecord upsert and navigation-after-commit structure");
+  assert.match(indexedDbSource, /moodStore\.put\(saved\)/);
+  assert.match(indexedDbSource, /moodRecordIds: uniqueIds/);
+  assert.match(indexedDbSource, /Never infer ownership by scanning the raw mood store/);
+  assert.ok(flowSource.indexOf("await repository.save") < flowSource.indexOf("window.location.assign"));
+  console.log("PASS same-date MoodRecord upsert, ownership registration, and navigation-after-commit structure");
 
   console.log("mood flow fixture cases: 11/11 passed");
 } finally {
