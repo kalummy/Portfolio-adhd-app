@@ -63,6 +63,20 @@ try {
   assert.equal(selectedCustom.summaryItems.some((item) => item.includes("약이 좀 센")), false);
   console.log("PASS summary uses selected answers and selected custom text only");
 
+  const clinicianReady = summary.buildMoodSummary([
+    answer(["good", "lethargic", "depressed-irritable"]),
+    answer(["focused", "wore-off-early"]),
+    answer(["low-appetite", "headache"]),
+    answer(["trouble-sleeping", "tired", "anxious"]),
+  ], recordedAt);
+  assert.equal(clinicianReady.summaryItems.length, 1);
+  assert.equal(clinicianReady.summaryItems.every((item) => item.length < 90), true);
+  assert.equal(clinicianReady.summaryItems[0].includes("기분 기복·무기력·우울감"), true);
+  assert.equal(clinicianReady.summaryItems[0].includes("오후 약효 저하"), true);
+  assert.equal(clinicianReady.summaryItems[0].includes("신체·수면·컨디션 변화"), true);
+  assert.equal(clinicianReady.summaryItems.some((item) => item.includes("오늘 내 감정은 대체로")), false);
+  console.log("PASS summary synthesizes clinician-ready context in a concise diary line");
+
   const now = new Date(2026, 7, 19, 12, 0, 0);
   const moodRecord = (date, suffix) => ({
     id: date,

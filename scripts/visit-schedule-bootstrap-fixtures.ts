@@ -64,8 +64,14 @@ function dependencies(state: State) {
       if (state.claims.has(reservation.datasetId)) {
         return { success: true, claimed: true, failureReason: "already_claimed" };
       }
-      if (reservation.visit.visitDate !== state.serverVisit.visitDate) {
-        return { success: false, claimed: false, failureReason: "guest_dataset_conflict" };
+      if (
+        reservation.visit.visitDate !== state.serverVisit.visitDate
+        && Date.parse(reservation.visit.updatedAt) > Date.parse(state.serverVisit.updatedAt)
+      ) {
+        state.serverVisit = {
+          ...reservation.visit,
+          createdAt: state.serverVisit.createdAt,
+        };
       }
       state.claims.add(reservation.datasetId);
       return { success: true, claimed: true };
@@ -120,18 +126,16 @@ const cases: Array<[string, () => Promise<void>]> = [
     assert.equal(state.rotations, 1);
     assert.ok(visit);
   }],
-  ["different-date conflict preserves local data and still reads server visit", async () => {
+  ["newer different-date guest visit replaces server and completes the claim", async () => {
     const state = createState("dataset-conflict", "2026-09-02");
-    const reservation = state.activeReservation;
-    const before = structuredClone(state.serverVisit);
     const { result, visit } = await runLoginBootstrap(state);
-    assert.equal(result.status, "failed");
-    assert.equal(state.claims.size, 0);
-    assert.equal(state.activeReservation, reservation);
-    assert.equal(state.rotations, 0);
-    assert.equal(state.releases, 1);
-    assert.deepEqual(state.serverVisit, before);
-    assert.deepEqual(visit, before);
+    assert.equal(result.status, "merged");
+    assert.equal(state.claims.size, 1);
+    assert.equal(state.activeReservation, null);
+    assert.equal(state.rotations, 1);
+    assert.equal(state.releases, 0);
+    assert.equal(state.serverVisit.visitDate, "2026-09-02");
+    assert.deepEqual(visit, state.serverVisit);
   }],
   ["merge exception preserves local data and still reads server visit", async () => {
     const state = createState("dataset-error");
