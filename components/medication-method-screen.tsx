@@ -2,12 +2,18 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { FlowHeader } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
+import { ensureMedicationAddAttempt } from "@/lib/analytics/events";
 import { resetDraft } from "@/lib/registration-session";
 
 export function MedicationMethodScreen({ returnHref }: { returnHref: "/" | "/medications" }) {
   const router = useRouter();
+
+  useEffect(() => {
+    ensureMedicationAddAttempt(returnHref === "/medications" ? "medication_list" : "home");
+  }, [returnHref]);
 
   function start(path: "/medications/new/photo" | "/medications/new/search") {
     resetDraft();

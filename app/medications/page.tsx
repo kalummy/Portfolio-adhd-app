@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { FlowHeader } from "@/components/flow-ui";
 import { MedicationSummaryCard } from "@/components/medication-card";
 import { MobileShell } from "@/components/mobile-shell";
+import { startMedicationAddAttempt } from "@/lib/analytics/events";
 import { getDataRepositories } from "@/lib/repositories";
 import { getMedicationRepository } from "@/lib/repositories/medications";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
@@ -80,6 +81,7 @@ export default function MedicationListPage() {
   }
 
   function startEmptyRegistration(path: "/medications/new/photo" | "/medications/new/search") {
+    startMedicationAddAttempt("medication_list");
     resetDraft();
     router.push(path);
   }
@@ -154,6 +156,7 @@ export default function MedicationListPage() {
             <Link
               href="/medications/new?origin=medications"
               className="primary-button soft medication-add-link"
+              onClick={() => startMedicationAddAttempt("medication_list")}
             >
               다른 약 추가
             </Link>

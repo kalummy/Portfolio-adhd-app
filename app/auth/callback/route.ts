@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { LOGIN_COMPLETED_QUERY_KEY } from "@/lib/analytics/schema";
 import { getSafeNextPath } from "@/lib/auth/redirect";
 import { ensureUserProfile } from "@/lib/auth/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -23,7 +24,9 @@ export async function GET(request: NextRequest) {
     const { error: profileError } = await ensureUserProfile(supabase, data.user.id);
     if (profileError) return loginFallback(request, "profile");
 
-    return NextResponse.redirect(new URL(nextPath, request.url));
+    const destination = new URL(nextPath, request.url);
+    destination.searchParams.set(LOGIN_COMPLETED_QUERY_KEY, "1");
+    return NextResponse.redirect(destination);
   } catch {
     return loginFallback(request, "configuration");
   }

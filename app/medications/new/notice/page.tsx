@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
+import { trackMedicationAdded } from "@/lib/analytics/events";
 import {
   createSavedMedicationsFromDraft,
   getMedicationRepository,
@@ -43,6 +44,7 @@ export default function MedicationNoticePage() {
       const repository = await getMedicationRepository();
       const saved = await repository.createMany(medications);
       setLastSavedMedicationIds(saved.map((medication) => medication.id));
+      trackMedicationAdded();
       clearDraft();
       router.push(registrationHref("/medications/new/complete"));
     } catch {

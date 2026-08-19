@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "analytics:fixtures": "node scripts/analytics-fixtures.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -11,6 +12,7 @@
   "dependencies": {
     "@supabase/ssr": "0.12.4",
     "@supabase/supabase-js": "2.112.3",
+    "mixpanel-browser": "^2.82.0",
     "next": "latest",
     "pretendard": "^1.3.9",
     "react": "latest",
