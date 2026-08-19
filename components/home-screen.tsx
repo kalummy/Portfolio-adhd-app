@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { getAuthState } from "@/lib/auth/client";
 import {
   getMoodRecords,
 } from "@/lib/indexed-db";
@@ -10,6 +11,7 @@ import { getDataRepositories, retryGuestDatasetSync } from "@/lib/repositories";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
 import { getWeekProgress } from "@/lib/home-week-progress";
 import { MEDICATION_FALLBACK_IMAGE, medicationLabel } from "@/lib/medication-utils";
+import { getMoodPresentation } from "@/lib/mood-summary";
 import { formatVisitDday } from "@/lib/visit-date";
 import type {
   HomeDataSet,
@@ -89,7 +91,7 @@ type HomeScreenProps = {
   initialDateKey?: string;
   minimumDateKey?: string;
   maximumDateKey?: string;
-  initialVisitToast?: string;
+  initialToast?: string;
   enableLaunchSplash?: boolean;
 };
 
@@ -99,7 +101,7 @@ export function HomeScreen({
   initialDateKey,
   minimumDateKey,
   maximumDateKey,
-  initialVisitToast,
+  initialToast,
   enableLaunchSplash = false,
 }: HomeScreenProps = {}) {
   const referenceDate = useMemo(
@@ -121,6 +123,7 @@ export function HomeScreen({
   const [toast, setToast] = useState("");
   const [syncError, setSyncError] = useState("");
   const [syncRetrying, setSyncRetrying] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [launchSplashRequired, setLaunchSplashRequired] = useState(enableLaunchSplash);
   const [splashMinimumElapsed, setSplashMinimumElapsed] = useState(!enableLaunchSplash);
   const [failedMedicationImages, setFailedMedicationImages] = useState<Set<string>>(
@@ -173,12 +176,16 @@ export function HomeScreen({
       setSyncError(repositories.guestDatasetSync.status === "failed"
         ? "저장한 정보를 불러오지 못했어요. 다시 시도해 주세요."
         : "");
-      const [savedMedications, savedIntakes, savedMoods, savedVisit] = await Promise.all([
+      const [authenticated, savedMedications, savedIntakes, savedMoods, savedVisit] = await Promise.all([
+        getAuthState()
+          .then((state) => state.isAuthenticated)
+          .catch(() => false),
         repositories.medications.listActive(),
         repositories.medicationIntakes.listAll(),
         getMoodRecords(),
         repositories.visitSchedules.getUpcoming(),
       ]);
+      setIsAuthenticated(authenticated);
       setMedications(savedMedications);
       void enrichOfficialMedications(savedMedications).then((enrichedMedications) => {
         const enrichedById = new Map(
@@ -239,10 +246,10 @@ export function HomeScreen({
   }, [enableLaunchSplash, launchSplashRequired, loading, splashMinimumElapsed]);
 
   useEffect(() => {
-    if (!initialVisitToast) return;
-    setToast(initialVisitToast);
+    if (!initialToast) return;
+    setToast(initialToast);
     window.history.replaceState(window.history.state, "", "/");
-  }, [initialVisitToast]);
+  }, [initialToast]);
 
   const selectedIntakeByMedication = useMemo(() => {
     return new Map(
@@ -333,10 +340,15 @@ export function HomeScreen({
   return (
     <MobileShell className="home-screen">
       <header className="home-header">
-        <Image src="/brand/addi-wordmark.svg" alt="ADDI" width={70} height={28} priority />
-        <button type="button" className="calendar-button" aria-label="캘린더 열기">
+        <div className="home-header-brand">
+          <Image src="/brand/addi-wordmark.svg" alt="ADDI" width={70} height={28} priority />
+        </div>
+        <button type="button" className="calendar-button" aria-label="내원일정 준비 중" disabled>
           <Image className="calendar-glyph" src="/icons/calendar.svg" alt="" width={21} height={23} />
         </button>
+        <Link href="/auth/login" className="home-account-link">
+          {isAuthenticated ? "계정" : "로그인"}
+        </Link>
       </header>
 
       <section className="week-strip" aria-label="이번 주">
@@ -478,13 +490,18 @@ export function HomeScreen({
             <div className="home-card recorded-mood-card">
               <div className={`home-card-heading ${showDateEyebrow ? "with-date" : ""}`}>
                 {showDateEyebrow && <span className="card-date-eyebrow">{formatDateEyebrow(selectedDate)}</span>}
-                <div className="home-card-title">
+                <Link href="/moods" className="home-card-title mood-history-link">
                   <strong>오늘의 감정</strong>
                   <ChevronRight />
-                </div>
+                </Link>
               </div>
               <div className="recorded-mood-item">
-                <Image src="/icons/mood-good.png" alt="" width={64} height={64} />
+                <Image
+                  src={getMoodPresentation(moodRecord.mood).imagePath}
+                  alt=""
+                  width={64}
+                  height={64}
+                />
                 <strong>{moodRecord.moodLabel}</strong>
                 <span>{formatRecordTime(moodRecord.recordedAt)} 기록</span>
               </div>
@@ -507,7 +524,7 @@ export function HomeScreen({
                 <strong>{moodEmptyTitle}</strong>
                 <p>아직 기록하지 않았어요.</p>
               </div>
-              <button type="button">감정 기록하기</button>
+              <Link href="/moods/new" className="mood-record-link">감정 기록하기</Link>
             </div>
           )}
         </section>
@@ -518,21 +535,13 @@ export function HomeScreen({
           <span>서비스이용약관</span>
           <i />
           <span>개인정보처리방침</span>
-          <i />
-          <Link href="/auth/login">계정</Link>
         </div>
         <Image src="/brand/addi-footer.svg" alt="아디" width={64} height={24} />
         <p>Copyright ⓒ Kalummy ALL RIGHTS RESERVED.</p>
       </footer>
 
-      <nav className="bottom-nav" aria-label="주요 메뉴">
-        <Link href="/" className="active"><span className="nav-icon"><Image className="nav-home-icon" src="/icons/nav-home.svg" alt="" width={23} height={23} /></span>홈</Link>
-        <button type="button"><span className="nav-icon"><Image className="nav-heart-icon" src="/icons/nav-heart.svg" alt="" width={23} height={19} /></span>감정기록</button>
-        <button type="button"><span className="nav-icon"><Image className="nav-settings-icon" src="/icons/nav-settings.svg" alt="" width={24} height={24} /></span>설정</button>
-      </nav>
-
       {toast ? (
-        <Toast message={toast} onDismiss={() => setToast("")} aboveNavigation />
+        <Toast message={toast} onDismiss={() => setToast("")} />
       ) : null}
     </MobileShell>
   );
