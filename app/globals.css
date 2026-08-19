@@ -885,6 +885,17 @@ html[data-addi-splash="skip"] .splash-screen {
   align-items: center;
   gap: 12px;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.agreement-row:has(input:focus-visible) {
+  border-radius: 4px;
+  outline: 2px solid var(--color-border-focus-default);
+  outline-offset: 4px;
 }
 
 .agreement-row input {
@@ -901,6 +912,13 @@ html[data-addi-splash="skip"] .splash-screen {
   border: 0;
   border-radius: 0;
   background: transparent;
+  animation: none;
+  transition: none;
+}
+
+.checkbox-mark img {
+  display: block;
+  pointer-events: none;
 }
 
 .agreement-row input:checked + .checkbox-mark {
@@ -2907,9 +2925,21 @@ html[data-addi-splash="skip"] .splash-screen {
 
 .mood-history-header {
   display: flex;
+  gap: 16px;
   height: calc(56px + env(safe-area-inset-top));
   padding: calc(16px + env(safe-area-inset-top)) 20px 16px;
   align-items: center;
+}
+
+.mood-history-back {
+  flex: 0 0 auto;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mood-history-back:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--color-border-focus-default);
+  outline-offset: 4px;
 }
 
 .mood-history-header strong {

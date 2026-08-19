@@ -110,6 +110,9 @@ export function MoodHistory({ initialPeriod }: MoodHistoryProps) {
   return (
     <MobileShell className={`mood-history-screen ${selectedPeriod ? "has-selection" : ""} ${sheetOpen ? "sheet-open" : ""}`}>
       <header className="mood-history-header">
+        <Link href="/" className="icon-button mood-history-back" aria-label="홈으로 돌아가기">
+          <Image src="/icons/back.svg" alt="" width={18} height={14} />
+        </Link>
         <strong>오늘의 감정</strong>
       </header>
 

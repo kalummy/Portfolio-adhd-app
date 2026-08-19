@@ -46,48 +46,80 @@ export const MOOD_PRESENTATIONS: Record<MoodType, MoodPresentation> = {
   },
 };
 
-const QUESTION_OPTION_LABELS: Array<Record<string, string>> = [
-  {
-    good: "기분이 좋아요",
-    same: "평소와 똑같아요",
-    lethargic: "무기력해요",
-    "depressed-irritable": "우울하거나 예민해요",
-  },
-  {
-    focused: "집중이 잘 됐어요",
-    "too-strong": "약이 좀 센 것 같아요",
-    "no-effect": "큰 효과를 느끼지 못했어요",
-    "wore-off-early": "오후에 약 효과가 빨리 내려갔어요",
-  },
-  {
-    "low-appetite": "식욕이 줄었어요",
-    headache: "두통이 있었어요",
-    "chest-pain": "가슴 통증이 있었어요",
-    none: "특별한 부작용은 없었어요",
-  },
-  {
-    "trouble-sleeping": "잠들기 어려웠어요",
-    tired: "피곤했어요",
-    anxious: "긴장되거나 초조했어요",
-    same: "평소와 똑같았어요",
-  },
-];
+function selectedOptions(answer: MoodAnswerDraft | undefined) {
+  return new Set(answer?.selected ?? []);
+}
 
-function selectedAnswerText(answer: MoodAnswerDraft, questionIndex: number) {
-  const labels = QUESTION_OPTION_LABELS[questionIndex] ?? {};
-  const items = answer.selected
-    .filter((id) => id !== CUSTOM_MOOD_OPTION_ID)
-    .map((id) => labels[id])
-    .filter((label): label is string => Boolean(label));
+function selectedCustomText(answer: MoodAnswerDraft | undefined) {
+  if (!answer?.selected.includes(CUSTOM_MOOD_OPTION_ID)) return "";
+  return answer.customText.replace(/\s+/gu, " ").trim();
+}
 
-  if (
-    answer.selected.includes(CUSTOM_MOOD_OPTION_ID)
-    && answer.customText.trim()
-  ) {
-    items.push(answer.customText.trim());
+function buildEmotionPhrase(answer: MoodAnswerDraft | undefined) {
+  const selected = selectedOptions(answer);
+  const hasLethargy = selected.has("lethargic");
+  const hasDepression = selected.has("depressed-irritable");
+  const hasStableMoment = selected.has("good") || selected.has("same");
+
+  if (hasLethargy && hasDepression) {
+    return hasStableMoment
+      ? "기분 기복·무기력·우울감"
+      : "무기력·우울감";
+  }
+  if (hasLethargy) return hasStableMoment ? "기분 기복·무기력감" : "무기력감";
+  if (hasDepression) return hasStableMoment ? "기분 기복·우울·예민함" : "우울·예민함";
+  if (selected.has("good")) return "안정적인 기분";
+  if (selected.has("same")) return "평소와 비슷한 기분";
+  return "";
+}
+
+function buildMedicationEffectPhrase(answer: MoodAnswerDraft | undefined) {
+  const selected = selectedOptions(answer);
+  const focused = selected.has("focused");
+  const concerns = ["too-strong", "no-effect", "wore-off-early"]
+    .filter((id) => selected.has(id));
+
+  if (concerns.length > 1) return "고르지 않은 약효";
+  if (selected.has("too-strong")) return "강한 약효";
+  if (selected.has("no-effect")) return "불충분한 약효";
+  if (selected.has("wore-off-early")) return "오후 약효 저하";
+  if (focused) return "집중 개선";
+  return "";
+}
+
+function buildConciseSummary(answers: MoodAnswerDraft[]) {
+  const emotion = buildEmotionPhrase(answers[0]);
+  const effect = buildMedicationEffectPhrase(answers[1]);
+  const sideEffects = selectedOptions(answers[2]);
+  const conditions = selectedOptions(answers[3]);
+  const hasSideEffect = ["low-appetite", "headache", "chest-pain"]
+    .some((id) => sideEffects.has(id));
+  const hasConditionChange = ["trouble-sleeping", "tired", "anxious"]
+    .some((id) => conditions.has(id));
+  const change = hasSideEffect && hasConditionChange
+    ? "신체·수면·컨디션 변화"
+    : hasSideEffect
+      ? "신체 변화"
+      : hasConditionChange
+        ? "수면·컨디션 변화"
+        : "";
+  const customDetails = answers.map(selectedCustomText)
+    .filter(Boolean);
+  const mainState = [emotion, effect].filter(Boolean).join("·");
+
+  let sentence = "";
+  if (mainState && change) {
+    sentence = `오늘은 ${mainState} 양상이었고, ${change}도 동반됐어요.`;
+  } else if (mainState) {
+    sentence = `오늘은 ${mainState} 양상이었어요.`;
+  } else if (change) {
+    sentence = `오늘은 ${change}가 동반됐어요.`;
+  } else {
+    sentence = "오늘은 감정과 신체 컨디션이 평소와 비슷했어요.";
   }
 
-  return items.join(", ").replace(/[.!?。]+$/u, "");
+  const customSentence = customDetails.length > 0 ? ` 추가 기록: ${customDetails.join(" / ")}` : "";
+  return `${sentence}${customSentence}`.trim();
 }
 
 export function determineMoodType(answers: MoodAnswerDraft[]): MoodType {
@@ -123,17 +155,7 @@ export function buildMoodSummary(
 ): MoodResultData {
   const moodType = determineMoodType(answers);
   const presentation = MOOD_PRESENTATIONS[moodType];
-  const prefixes = [
-    "오늘 내 감정은 대체로",
-    "약을 먹고",
-    "복용하면서",
-    "오늘은",
-  ];
-  const summaryItems = answers.flatMap((answer, index) => {
-    const answerText = selectedAnswerText(answer, index);
-    if (!answerText) return [];
-    return [`${prefixes[index]} ${answerText}.`];
-  });
+  const summaryItems = [buildConciseSummary(answers)];
 
   return {
     moodType,

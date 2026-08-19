@@ -62,6 +62,7 @@ function mergeGuestDataset(
   }
 
   const user = userData(db, userId);
+  let guestVisitIsNewer = false;
   if (guestVisit) {
     const validVisit = guestVisit.visit_id === "upcoming"
       && validDateKey(guestVisit.visit_date)
@@ -72,8 +73,7 @@ function mergeGuestDataset(
       return { success: false, claimed: false, failureReason: "invalid_guest_visit" };
     }
     if (user.visit && user.visit.visit_date !== guestVisit.visit_date) {
-      Object.assign(db, before);
-      return { success: false, claimed: false, failureReason: "guest_dataset_conflict" };
+      guestVisitIsNewer = Date.parse(guestVisit.updated_at) > Date.parse(user.visit.updated_at);
     }
   }
 
@@ -101,6 +101,9 @@ function mergeGuestDataset(
     }
     const reusedVisit = Boolean(user.visit && guestVisit);
     if (!user.visit && guestVisit) user.visit = guestVisit;
+    else if (user.visit && guestVisitIsNewer) {
+      user.visit = { ...guestVisit, created_at: user.visit.created_at };
+    }
     db.claims.set(datasetId, userId);
     return {
       success: true,
@@ -144,15 +147,32 @@ const cases = [
     assert.equal(result.reusedVisitCount, 1);
     assert.deepEqual(userData(db, "user-a").visit, serverVisit);
   }],
-  ["D different visit date conflicts and rolls back", () => {
+  ["D newer guest visit replaces the server visit and claims", () => {
     const db = freshDb();
-    userData(db, "user-a").visit = visit("2026-09-01");
-    const before = clone(db);
-    const result = mergeGuestDataset(db, "user-a", "dataset-d", {
-      guestVisit: visit("2026-09-02"),
+    const serverCreatedAt = "2026-08-01T00:00:00.000Z";
+    userData(db, "user-a").visit = visit("2026-09-01", {
+      created_at: serverCreatedAt,
+      updated_at: "2026-08-18T00:00:00.000Z",
     });
-    assert.equal(result.failureReason, "guest_dataset_conflict");
-    assertUnchanged(db, before);
+    const result = mergeGuestDataset(db, "user-a", "dataset-d", {
+      guestVisit: visit("2026-09-02", { updated_at: "2026-08-19T00:00:00.000Z" }),
+    });
+    assert.equal(result.success, true);
+    assert.equal(result.reusedVisitCount, 1);
+    assert.equal(userData(db, "user-a").visit.visit_date, "2026-09-02");
+    assert.equal(userData(db, "user-a").visit.created_at, serverCreatedAt);
+    assert.equal(db.claims.get("dataset-d"), "user-a");
+  }],
+  ["D2 newer server visit remains while the guest dataset is claimed", () => {
+    const db = freshDb();
+    const serverVisit = visit("2026-09-01", { updated_at: "2026-08-20T00:00:00.000Z" });
+    userData(db, "user-a").visit = serverVisit;
+    const result = mergeGuestDataset(db, "user-a", "dataset-d2", {
+      guestVisit: visit("2026-09-02", { updated_at: "2026-08-19T00:00:00.000Z" }),
+    });
+    assert.equal(result.success, true);
+    assert.deepEqual(userData(db, "user-a").visit, serverVisit);
+    assert.equal(db.claims.get("dataset-d2"), "user-a");
   }],
   ["E guest create then delete does not delete server", () => {
     const db = freshDb();
@@ -201,18 +221,21 @@ const cases = [
     assert.equal(userData(db, "user-a").intakes.length, 1);
     assert.equal(userData(db, "user-a").visit.visit_date, "2026-09-01");
   }],
-  ["J visit conflict rolls back medication and intake", () => {
+  ["J newer guest visit merges with medication and intake atomically", () => {
     const db = freshDb();
-    userData(db, "user-a").visit = visit("2026-09-01");
-    const before = clone(db);
+    userData(db, "user-a").visit = visit("2026-09-01", {
+      updated_at: "2026-08-18T00:00:00.000Z",
+    });
     const med = medication();
     const result = mergeGuestDataset(db, "user-a", "dataset-j", {
       medications: [med],
       intakes: [intake(med.id)],
-      guestVisit: visit("2026-09-02"),
+      guestVisit: visit("2026-09-02", { updated_at: "2026-08-19T00:00:00.000Z" }),
     });
-    assert.equal(result.success, false);
-    assertUnchanged(db, before);
+    assert.equal(result.success, true);
+    assert.equal(userData(db, "user-a").medications.length, 1);
+    assert.equal(userData(db, "user-a").intakes.length, 1);
+    assert.equal(userData(db, "user-a").visit.visit_date, "2026-09-02");
   }],
   ["K same dataset request is idempotent", () => {
     const db = freshDb();
