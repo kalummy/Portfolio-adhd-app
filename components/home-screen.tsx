@@ -7,6 +7,7 @@ import { getAuthState } from "@/lib/auth/client";
 import {
   startMedicationAddAttempt,
   startMoodAttempt,
+  startVisitAddAttempt,
   trackMedicationTakenOnce,
 } from "@/lib/analytics/events";
 import {
@@ -390,6 +391,9 @@ export function HomeScreen({
         className="appointment-row"
         href={visitSchedule ? "/visits" : "/visits/new"}
         aria-label={visitSchedule ? "내원일정 확인하기" : "다음 내원일 추가하기"}
+        onClick={() => {
+          if (!visitSchedule) startVisitAddAttempt();
+        }}
       >
         <span className="clinic-icon" aria-hidden="true">
           <Image className="appointment-base" src="/icons/appointment-base.svg" alt="" width={20} height={20} />

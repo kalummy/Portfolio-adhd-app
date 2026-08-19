@@ -69,6 +69,24 @@ export function markMedicationAdded(state: MedicationAttemptState) {
   };
 }
 
+export type VisitAttemptState = {
+  active: boolean;
+  started: boolean;
+};
+
+export function createVisitAttempt(): VisitAttemptState {
+  return { active: true, started: false };
+}
+
+export function markVisitAttemptStarted(state: VisitAttemptState) {
+  if (state.started) return { state, shouldTrack: false };
+  return { state: { ...state, started: true }, shouldTrack: true };
+}
+
+export function markVisitAttemptCompleted(state: VisitAttemptState): VisitAttemptState {
+  return { ...state, active: false };
+}
+
 export function addDeduplicationKey(keys: readonly string[], key: string, limit = 500) {
   if (keys.includes(key)) return { keys: [...keys], shouldTrack: false };
   return { keys: [...keys, key].slice(-limit), shouldTrack: true };

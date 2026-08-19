@@ -45,7 +45,7 @@ try {
   }
   console.log(`PASS route sanitizer ${routeCases.length}/${routeCases.length}`);
 
-  assert.equal(schema.ANALYTICS_EVENT_NAMES.length, 11);
+  assert.equal(schema.ANALYTICS_EVENT_NAMES.length, 12);
   assert.deepEqual(schema.ANALYTICS_EVENT_NAMES, [
     "app_opened",
     "login_started",
@@ -57,6 +57,7 @@ try {
     "mood_step_completed",
     "mood_result_viewed",
     "mood_saved",
+    "visit_add_started",
     "visit_added",
   ]);
 
@@ -105,6 +106,22 @@ try {
     eventName: "mood_step_completed",
     properties: { step: 5 },
   }), null);
+  assert.deepEqual(schema.buildAnalyticsPayload({
+    environment: "development",
+    pathname: "/visits/new?date=private#confirm",
+    authState: "guest",
+    eventName: "visit_add_started",
+    properties: {
+      visitDate: "blocked",
+      visitId: "blocked",
+      hospitalName: "blocked",
+      source: "blocked",
+    },
+  }), {
+    environment: "development",
+    route: "visit_add",
+    auth_state: "guest",
+  });
   console.log("PASS event schema and runtime property allowlist");
 
   let mood = attempts.createMoodAttempt("home");
@@ -141,6 +158,15 @@ try {
   const firstIntake = attempts.addDeduplicationKey([], "hashed-logical-record");
   assert.equal(firstIntake.shouldTrack, true);
   assert.equal(attempts.addDeduplicationKey(firstIntake.keys, "hashed-logical-record").shouldTrack, false);
+
+  let visit = attempts.createVisitAttempt();
+  let visitTransition = attempts.markVisitAttemptStarted(visit);
+  assert.equal(visitTransition.shouldTrack, true);
+  visit = visitTransition.state;
+  assert.equal(attempts.markVisitAttemptStarted(visit).shouldTrack, false);
+  visit = attempts.markVisitAttemptCompleted(visit);
+  assert.equal(visit.active, false);
+  assert.equal(attempts.markVisitAttemptStarted(attempts.createVisitAttempt()).shouldTrack, true);
   console.log("PASS duplicate prevention for attempts, steps, results, saves, and intake records");
 
   const mixpanelSource = await readFile(new URL("../lib/analytics/mixpanel.ts", import.meta.url), "utf8");
@@ -173,7 +199,15 @@ try {
   assert.match(completionSource, /removeCompletionMarker[\s\S]*searchParams\.delete/);
   console.log("PASS login start, callback marker, member confirmation, and marker consumption order");
 
-  console.log("analytics fixture cases: 5/5 groups passed");
+  const homeSource = await readFile(new URL("../components/home-screen.tsx", import.meta.url), "utf8");
+  const visitSource = await readFile(new URL("../components/visit-calendar-screen.tsx", import.meta.url), "utf8");
+  assert.match(homeSource, /if \(!visitSchedule\) startVisitAddAttempt\(\)/);
+  assert.match(visitSource, /if \(mode !== "new"\) return;\s*ensureVisitAddAttempt\(\)/);
+  assert.ok(visitSource.indexOf("await repository.saveUpcoming(selectedDate)") < visitSource.indexOf("trackVisitAdded()"));
+  assert.match(visitSource, /if \(mode === "new"\) \{\s*trackVisitAdded\(\);\s*completeVisitAddAttempt\(\);/);
+  console.log("PASS visit start, new-only fallback, save-success completion, and edit exclusion wiring");
+
+  console.log("analytics fixture cases: 6/6 groups passed");
 } finally {
   await rm(fixtureDirectory, { recursive: true, force: true });
 }
