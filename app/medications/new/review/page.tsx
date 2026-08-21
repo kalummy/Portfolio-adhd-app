@@ -1,16 +1,18 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MedicationSummaryCard } from "@/components/medication-card";
 import { MobileShell } from "@/components/mobile-shell";
 import {
+  commitProvisionalMedications,
   getDraft,
   prepareScheduleQueue,
   registrationHref,
   removeDraftMedication,
+  rollbackProvisionalMedications,
   updateDraft,
 } from "@/lib/registration-session";
 import type { DraftMedication, MedicationDraft } from "@/lib/types";
@@ -30,9 +32,19 @@ export default function MedicationReviewPage() {
     setDraft(current);
   }, [router]);
 
+  useLayoutEffect(() => {
+    function handlePopState() {
+      rollbackProvisionalMedications();
+    }
+
+    window.addEventListener("popstate", handlePopState, true);
+    return () => window.removeEventListener("popstate", handlePopState, true);
+  }, []);
+
   if (!draft) return <MobileShell className="flow-screen">{null}</MobileShell>;
 
   function addAnotherMedication() {
+    commitProvisionalMedications();
     updateDraft({
       pendingCandidates: [],
       activeScheduleDraftId: undefined,
@@ -62,6 +74,7 @@ export default function MedicationReviewPage() {
   }
 
   function continueToSchedule() {
+    commitProvisionalMedications();
     const next = prepareScheduleQueue();
     if (!next.activeScheduleDraftId) return;
     router.push(registrationHref("/medications/new/schedule"));
@@ -69,7 +82,7 @@ export default function MedicationReviewPage() {
 
   return (
     <MobileShell className="flow-screen review-screen">
-      <FlowHeader />
+      <FlowHeader beforeBack={rollbackProvisionalMedications} />
       <section className="flow-content review-content">
         <h1>복용중인 약이 맞는지<br />이름과 용량을 확인해주세요</h1>
         <div className="review-medication-section">

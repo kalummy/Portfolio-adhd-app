@@ -34,6 +34,7 @@ export type DraftMedication = MedicationCandidate & {
 export type MedicationDraft = {
   draftMedications: DraftMedication[];
   pendingCandidates: DraftMedication[];
+  provisionalDraftIds: string[];
   activeScheduleDraftId?: string;
   scheduleQueueDraftIds: string[];
   searchQuery: string;

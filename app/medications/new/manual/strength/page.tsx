@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
@@ -9,6 +9,7 @@ import {
   confirmPendingCandidates,
   getDraft,
   registrationHref,
+  rollbackProvisionalMedications,
   setPendingCandidates,
   updateDraft,
 } from "@/lib/registration-session";
@@ -25,6 +26,16 @@ export default function ManualMedicationStrengthPage() {
   const [matching, setMatching] = useState(false);
 
   useEffect(() => setStrength(getDraft().manualStrength), []);
+
+  useLayoutEffect(() => {
+    rollbackProvisionalMedications();
+    function handlePageShow() {
+      rollbackProvisionalMedications();
+    }
+
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
 
   async function continueToConfirm() {
     if (matching) return;

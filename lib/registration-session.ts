@@ -22,6 +22,7 @@ export function registrationHref(path: string) {
 const EMPTY_DRAFT: MedicationDraft = {
   draftMedications: [],
   pendingCandidates: [],
+  provisionalDraftIds: [],
   scheduleQueueDraftIds: [],
   searchQuery: "",
   manualName: "",
@@ -62,6 +63,9 @@ function normalizeDraft(raw: Partial<MedicationDraft> & {
     ...raw,
     draftMedications,
     pendingCandidates: Array.isArray(raw.pendingCandidates) ? raw.pendingCandidates : [],
+    provisionalDraftIds: Array.isArray(raw.provisionalDraftIds)
+      ? raw.provisionalDraftIds
+      : [],
     scheduleQueueDraftIds: Array.isArray(raw.scheduleQueueDraftIds)
       ? raw.scheduleQueueDraftIds
       : [],
@@ -105,6 +109,31 @@ export function clearPendingCandidates() {
   return updateDraft({ pendingCandidates: [] });
 }
 
+export function commitProvisionalMedications() {
+  return updateDraft({ provisionalDraftIds: [] });
+}
+
+export function rollbackProvisionalMedications() {
+  const draft = getDraft();
+  const provisionalIds = new Set(draft.provisionalDraftIds);
+  if (provisionalIds.size === 0 && draft.pendingCandidates.length === 0) return draft;
+
+  return updateDraft({
+    draftMedications: draft.draftMedications.filter(
+      (medication) => !provisionalIds.has(medication.draftId),
+    ),
+    pendingCandidates: [],
+    provisionalDraftIds: [],
+    scheduleQueueDraftIds: draft.scheduleQueueDraftIds.filter(
+      (draftId) => !provisionalIds.has(draftId),
+    ),
+    activeScheduleDraftId:
+      draft.activeScheduleDraftId && provisionalIds.has(draft.activeScheduleDraftId)
+        ? undefined
+        : draft.activeScheduleDraftId,
+  });
+}
+
 export function discardScheduleQueueCandidates() {
   const draft = getDraft();
   const queuedIds = new Set(draft.scheduleQueueDraftIds);
@@ -138,6 +167,7 @@ export function confirmPendingCandidates() {
   const next = updateDraft({
     draftMedications: [...draft.draftMedications, ...added],
     pendingCandidates: [],
+    provisionalDraftIds: added.map((medication) => medication.draftId),
     scheduleQueueDraftIds: added.map((medication) => medication.draftId),
     activeScheduleDraftId: added[0]?.draftId,
   });
@@ -172,6 +202,7 @@ export function removeDraftMedication(draftId: string) {
     draftMedications: draft.draftMedications.filter(
       (medication) => medication.draftId !== draftId,
     ),
+    provisionalDraftIds: draft.provisionalDraftIds.filter((id) => id !== draftId),
     scheduleQueueDraftIds: draft.scheduleQueueDraftIds.filter((id) => id !== draftId),
     activeScheduleDraftId:
       draft.activeScheduleDraftId === draftId ? undefined : draft.activeScheduleDraftId,

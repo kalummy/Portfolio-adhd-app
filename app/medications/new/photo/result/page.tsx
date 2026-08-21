@@ -7,6 +7,7 @@ import { MedicationSummaryCard } from "@/components/medication-card";
 import { MobileShell } from "@/components/mobile-shell";
 import {
   clearPendingCandidates,
+  commitProvisionalMedications,
   confirmPendingCandidates,
   discardScheduleQueueCandidates,
   getDraft,
@@ -48,6 +49,7 @@ export default function MedicationPhotoResultPage() {
   function confirmRecognizedMedications() {
     if (draft!.pendingCandidates.length > 0) {
       const { added } = confirmPendingCandidates();
+      commitProvisionalMedications();
       router.push(registrationHref(
         added.length > 0 ? "/medications/new/schedule" : "/medications/new/review",
       ));

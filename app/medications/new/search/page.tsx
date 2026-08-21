@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useLayoutEffect, useState } from "react";
 import { FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
 import { FREQUENT_MEDICATIONS } from "@/lib/frequent-medications";
@@ -12,6 +12,7 @@ import {
   confirmPendingCandidates,
   getDraft,
   registrationHref,
+  rollbackProvisionalMedications,
   setManualReturnHref,
   setPendingCandidates,
   updateDraft,
@@ -90,6 +91,20 @@ export default function MedicationSearchPage() {
     );
   }, []);
 
+  useLayoutEffect(() => {
+    rollbackProvisionalMedications();
+    function handlePageShow() {
+      rollbackProvisionalMedications();
+    }
+
+    window.addEventListener("pageshow", handlePageShow);
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+      setSelectedMedicationKey(undefined);
+      setActivatingMedicationKey(undefined);
+    };
+  }, []);
+
   useEffect(() => {
     const normalizedQuery = query.trim();
     if (!normalizedQuery) {
@@ -139,6 +154,7 @@ export default function MedicationSearchPage() {
     setQuery(value);
     setSubmitted(false);
     setSelectedMedicationKey(undefined);
+    setActivatingMedicationKey(undefined);
     setResults([]);
     setResolvedQuery("");
     updateDraft({ searchQuery: value, pendingCandidates: [] });
@@ -163,11 +179,15 @@ export default function MedicationSearchPage() {
 
     const shouldReduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (shouldReduceMotion) {
+      setSelectedMedicationKey(undefined);
+      setActivatingMedicationKey(undefined);
       router.push(registrationHref("/medications/new/review"));
       return;
     }
 
     window.setTimeout(() => {
+      setSelectedMedicationKey(undefined);
+      setActivatingMedicationKey(undefined);
       router.push(registrationHref("/medications/new/review"));
     }, SELECTION_FEEDBACK_MS);
   }
