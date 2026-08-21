@@ -1,14 +1,21 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MedicationSummaryCard } from "@/components/medication-card";
 import { MobileShell } from "@/components/mobile-shell";
+import { trackMedicationAdded } from "@/lib/analytics/events";
 import {
+  createSavedMedicationsFromDraft,
+  getMedicationRepository,
+} from "@/lib/repositories/medications";
+import {
+  clearDraft,
   getDraft,
   registrationHref,
+  setLastSavedMedicationIds,
   updateDraft,
   updateDraftMedication,
 } from "@/lib/registration-session";
@@ -23,6 +30,9 @@ const schedules: Array<{ value: MedicationSchedule; label: string }> = [
 export default function MedicationSchedulePage() {
   const router = useRouter();
   const [draft, setDraft] = useState<MedicationDraft | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const savingRef = useRef(false);
 
   useEffect(() => {
     const current = getDraft();
@@ -67,12 +77,12 @@ export default function MedicationSchedulePage() {
     router.replace(registrationHref(
       activeMedication!.source === "photo"
         ? "/medications/new/photo/result"
-        : "/medications/new/confirm",
+        : "/medications/new/review",
     ));
   }
 
-  function continueSchedule() {
-    if (!activeMedication!.schedule) return;
+  async function continueSchedule() {
+    if (!activeMedication!.schedule || savingRef.current) return;
     const nextDraftId = draft!.scheduleQueueDraftIds[queueIndex + 1];
     if (nextDraftId) {
       const next = updateDraft({ activeScheduleDraftId: nextDraftId });
@@ -80,8 +90,28 @@ export default function MedicationSchedulePage() {
       return;
     }
 
-    updateDraft({ activeScheduleDraftId: undefined, scheduleQueueDraftIds: [] });
-    router.push(registrationHref("/medications/new/review"));
+    savingRef.current = true;
+    setSaving(true);
+    setError("");
+    try {
+      const completedDraft = updateDraft({
+        activeScheduleDraftId: undefined,
+        scheduleQueueDraftIds: [],
+      });
+      const medications = createSavedMedicationsFromDraft(completedDraft);
+      const repository = await getMedicationRepository();
+      const saved = await repository.createMany(medications);
+      setLastSavedMedicationIds(saved.map((medication) => medication.id));
+      trackMedicationAdded();
+      const startedFromMedications = new URLSearchParams(window.location.search).get("origin")
+        === "medications";
+      clearDraft();
+      router.replace(startedFromMedications ? "/medications" : "/?medicationToast=added");
+    } catch {
+      savingRef.current = false;
+      setSaving(false);
+      setError("저장하지 못했어요. 잠시 후 다시 시도해주세요.");
+    }
   }
 
   return (
@@ -116,12 +146,14 @@ export default function MedicationSchedulePage() {
         </div>
       </section>
       <BottomActions>
+        {error ? <p className="save-error" role="alert">{error}</p> : null}
         <PrimaryButton
           type="button"
-          disabled={!activeMedication.schedule}
-          onClick={continueSchedule}
+          disabled={!activeMedication.schedule || saving}
+          aria-busy={saving}
+          onClick={() => void continueSchedule()}
         >
-          다음
+          {saving ? "저장 중..." : "다음"}
         </PrimaryButton>
       </BottomActions>
     </MobileShell>

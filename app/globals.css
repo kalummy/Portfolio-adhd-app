@@ -523,6 +523,25 @@ html[data-addi-splash="skip"] .splash-screen {
   padding-top: 32px;
 }
 
+.frequent-medications {
+  padding-top: 32px;
+}
+
+.frequent-medications h1 {
+  height: 34px;
+  margin: 0;
+  padding: 8px 20px;
+  color: var(--color-font-primary);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+
+.frequent-medication-list {
+  padding-top: 0;
+}
+
 .search-result-row {
   display: flex;
   align-items: center;
@@ -726,7 +745,7 @@ html[data-addi-splash="skip"] .splash-screen {
 }
 
 .medication-image {
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .medication-image.fallback {
@@ -1523,7 +1542,7 @@ html[data-addi-splash="skip"] .splash-screen {
 }
 
 .review-content {
-  padding-top: 20px;
+  padding-top: 40px;
 }
 
 .review-content > p {
@@ -1537,6 +1556,10 @@ html[data-addi-splash="skip"] .splash-screen {
 
 .review-medication-section {
   margin-top: 36px;
+}
+
+.review-content > h1 {
+  color: var(--color-font-base-03);
 }
 
 .review-medication-section > span {
@@ -2317,7 +2340,7 @@ html[data-addi-splash="skip"] .splash-screen {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  width: min(320px, calc(100% - 40px));
+  width: fit-content;
   max-width: calc(100% - 40px);
   padding: 12px 16px;
   transform: translateX(-50%);
@@ -3365,6 +3388,10 @@ html[data-addi-splash="skip"] .splash-screen {
 
 .home-medication-image img {
   object-fit: cover;
+}
+
+.home-medication-image.fallback img {
+  object-fit: contain;
 }
 
 .home-medication-copy {

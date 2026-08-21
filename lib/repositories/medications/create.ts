@@ -3,8 +3,7 @@ import type { MedicationDraft, SavedMedication } from "@/lib/types";
 
 export function createSavedMedicationsFromDraft(draft: MedicationDraft): SavedMedication[] {
   if (
-    !draft.noticeAccepted
-    || draft.draftMedications.length === 0
+    draft.draftMedications.length === 0
     || draft.draftMedications.some((medication) => !medication.source || !medication.schedule)
   ) {
     throw new Error("저장할 복용약 정보가 완성되지 않았어요.");

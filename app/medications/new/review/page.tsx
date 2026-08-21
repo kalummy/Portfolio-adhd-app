@@ -8,6 +8,7 @@ import { MedicationSummaryCard } from "@/components/medication-card";
 import { MobileShell } from "@/components/mobile-shell";
 import {
   getDraft,
+  prepareScheduleQueue,
   registrationHref,
   removeDraftMedication,
   updateDraft,
@@ -40,7 +41,7 @@ export default function MedicationReviewPage() {
       manualName: "",
       manualStrength: "",
     });
-    router.push(registrationHref("/medications/new/search"));
+    router.push(registrationHref("/medications/new/search?return=review"));
   }
 
   function confirmDelete() {
@@ -60,12 +61,17 @@ export default function MedicationReviewPage() {
     setDraft(next);
   }
 
+  function continueToSchedule() {
+    const next = prepareScheduleQueue();
+    if (!next.activeScheduleDraftId) return;
+    router.push(registrationHref("/medications/new/schedule"));
+  }
+
   return (
     <MobileShell className="flow-screen review-screen">
       <FlowHeader />
       <section className="flow-content review-content">
-        <h1>현재 추가한 약을 확인해주세요</h1>
-        <p>잘못 추가한 약은 삭제 아이콘을 눌러주세요.</p>
+        <h1>복용중인 약이 맞는지<br />이름과 용량을 확인해주세요</h1>
         <div className="review-medication-section">
           <span>현재 추가한 약</span>
           <div className="review-medication-list">
@@ -92,7 +98,7 @@ export default function MedicationReviewPage() {
           </PrimaryButton>
           <PrimaryButton
             type="button"
-            onClick={() => router.push(registrationHref("/medications/new/notice"))}
+            onClick={continueToSchedule}
           >
             다음으로
           </PrimaryButton>
@@ -106,13 +112,14 @@ export default function MedicationReviewPage() {
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="delete-medication-title"
+            aria-describedby="delete-medication-description"
           >
             <header>
               <h2 id="delete-medication-title">
                 {medicationLabel(deleteTarget)}을 삭제할까요?
               </h2>
             </header>
-            <p>삭제하면 다시 약을 등록해야해요.</p>
+            <p id="delete-medication-description">삭제하면 다시 약을 등록해야해요.</p>
             <div className="review-delete-actions">
               <button type="button" className="cancel" onClick={() => setDeleteTarget(null)}>
                 취소

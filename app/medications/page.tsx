@@ -83,7 +83,7 @@ export default function MedicationListPage() {
   function startEmptyRegistration(path: "/medications/new/photo" | "/medications/new/search") {
     startMedicationAddAttempt("medication_list");
     resetDraft();
-    router.push(path);
+    router.push(`${path}?origin=medications`);
   }
 
   return (
@@ -154,9 +154,12 @@ export default function MedicationListPage() {
         <div className="bottom-actions medication-list-actions">
           <div className="bottom-actions-inner">
             <Link
-              href="/medications/new?origin=medications"
+              href="/medications/new/search?origin=medications"
               className="primary-button soft medication-add-link"
-              onClick={() => startMedicationAddAttempt("medication_list")}
+              onClick={() => {
+                resetDraft();
+                startMedicationAddAttempt("medication_list");
+              }}
             >
               다른 약 추가
             </Link>

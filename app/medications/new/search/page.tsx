@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
+import { FREQUENT_MEDICATIONS } from "@/lib/frequent-medications";
+import { enrichOfficialMedication } from "@/lib/medication-enrichment";
 import { medicationLabel } from "@/lib/medication-utils";
 import {
+  confirmPendingCandidates,
   getDraft,
   registrationHref,
   setManualReturnHref,
@@ -54,25 +57,36 @@ function HighlightedMedicationName({ label, query }: { label: string; query: str
   );
 }
 
+function medicationSelectionKey(medication: MedicationCandidate) {
+  return medication.catalogId
+    ?? `${medication.name}:${medication.strengthValue}:${medication.strengthUnit}`;
+}
+
 export default function MedicationSearchPage() {
   const router = useRouter();
-  const [methodHref, setMethodHref] = useState("/medications/new");
+  const [returnHref, setReturnHref] = useState("/");
   const [query, setQuery] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [selectedCatalogId, setSelectedCatalogId] = useState<string>();
-  const [activatingCatalogId, setActivatingCatalogId] = useState<string>();
+  const [selectedMedicationKey, setSelectedMedicationKey] = useState<string>();
+  const [activatingMedicationKey, setActivatingMedicationKey] = useState<string>();
   const [results, setResults] = useState<MedicationCandidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [resolvedQuery, setResolvedQuery] = useState("");
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("origin") === "medications") {
-      setMethodHref("/medications/new?origin=medications");
+    const searchParameters = new URLSearchParams(window.location.search);
+    if (searchParameters.get("return") === "review") {
+      setReturnHref(registrationHref("/medications/new/review"));
+    } else if (searchParameters.get("origin") === "medications") {
+      setReturnHref("/medications");
     }
     const draft = getDraft();
     setQuery(draft.searchQuery);
-    setSelectedCatalogId(
-      draft.pendingCandidates.find((medication) => medication.source === "search")?.catalogId,
+    const pendingMedication = draft.pendingCandidates.find(
+      (medication) => medication.source === "search",
+    );
+    setSelectedMedicationKey(
+      pendingMedication ? medicationSelectionKey(pendingMedication) : undefined,
     );
   }, []);
 
@@ -124,7 +138,7 @@ export default function MedicationSearchPage() {
   function handleQuery(value: string) {
     setQuery(value);
     setSubmitted(false);
-    setSelectedCatalogId(undefined);
+    setSelectedMedicationKey(undefined);
     setResults([]);
     setResolvedQuery("");
     updateDraft({ searchQuery: value, pendingCandidates: [] });
@@ -136,21 +150,25 @@ export default function MedicationSearchPage() {
     setSubmitted(true);
   }
 
-  function selectMedication(medication: MedicationCandidate) {
-    if (activatingCatalogId) return;
-    setSelectedCatalogId(medication.catalogId);
-    setPendingCandidates([medication], "search");
+  async function selectMedication(medication: MedicationCandidate) {
+    if (activatingMedicationKey) return;
+    const selectionKey = medicationSelectionKey(medication);
+    setSelectedMedicationKey(selectionKey);
+    setActivatingMedicationKey(selectionKey);
+
+    const enrichedMedication = await enrichOfficialMedication(medication);
+    setPendingCandidates([enrichedMedication], "search");
     updateDraft({ searchQuery: query });
+    confirmPendingCandidates();
 
     const shouldReduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (shouldReduceMotion) {
-      router.push(registrationHref("/medications/new/confirm"));
+      router.push(registrationHref("/medications/new/review"));
       return;
     }
 
-    setActivatingCatalogId(medication.catalogId);
     window.setTimeout(() => {
-      router.push(registrationHref("/medications/new/confirm"));
+      router.push(registrationHref("/medications/new/review"));
     }, SELECTION_FEEDBACK_MS);
   }
 
@@ -161,7 +179,7 @@ export default function MedicationSearchPage() {
 
   return (
     <MobileShell className="flow-screen search-screen">
-      <FlowHeader fallbackHref={methodHref} />
+      <FlowHeader fallbackHref={returnHref} />
       <form className="search-form" onSubmit={submitSearch}>
         <input
           value={query}
@@ -183,18 +201,50 @@ export default function MedicationSearchPage() {
         ) : null}
       </form>
 
-      {query && !showNoResults ? (
+      {!query.trim() ? (
+        <section className="frequent-medications" aria-labelledby="frequent-medications-title">
+          <h1 id="frequent-medications-title">자주 찾는 약</h1>
+          <div className="search-results frequent-medication-list">
+            {FREQUENT_MEDICATIONS.map((medication) => {
+              const selectionKey = medicationSelectionKey(medication);
+              const isSelected = selectedMedicationKey === selectionKey;
+              const isActivating = activatingMedicationKey === selectionKey;
+              return (
+                <button
+                  type="button"
+                  className={`search-result-row ${isSelected ? "selected" : ""} ${isActivating ? "activating" : ""}`}
+                  key={selectionKey}
+                  onClick={() => void selectMedication(medication)}
+                  aria-pressed={isSelected}
+                  aria-busy={isActivating}
+                >
+                  <span className="search-result-content">
+                    <span className="search-result-icon" aria-hidden="true">
+                      <Image src="/icons/pill.svg" alt="" width={16} height={20} />
+                    </span>
+                    <span className="search-result-copy">
+                      <span className="search-result-name">{medicationLabel(medication)}</span>
+                      <small>{medication.manufacturer}</small>
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ) : !showNoResults ? (
         <section className="search-results" aria-label="약 검색 결과" aria-busy={loading}>
           {results.map((medication) => {
             const label = medicationLabel(medication);
-            const isSelected = selectedCatalogId === medication.catalogId;
-            const isActivating = activatingCatalogId === medication.catalogId;
+            const selectionKey = medicationSelectionKey(medication);
+            const isSelected = selectedMedicationKey === selectionKey;
+            const isActivating = activatingMedicationKey === selectionKey;
             return (
               <button
                 type="button"
                 className={`search-result-row ${isSelected ? "selected" : ""} ${isActivating ? "activating" : ""}`}
-                key={medication.catalogId}
-                onClick={() => selectMedication(medication)}
+                key={selectionKey}
+                onClick={() => void selectMedication(medication)}
                 aria-pressed={isSelected}
                 aria-busy={isActivating}
               >

@@ -1,3 +1,4 @@
+import Script from "next/script";
 import { HomeScreen } from "@/components/home-screen";
 
 const SPLASH_PREPAINT_SCRIPT = `try{if(sessionStorage.getItem("addi:splash:shown:v1")==="1"){document.documentElement.dataset.addiSplash="skip"}else{document.documentElement.removeAttribute("data-addi-splash")}}catch{}`;
@@ -11,27 +12,39 @@ const MOOD_TOAST_MESSAGES: Record<string, string> = {
   saved: "감정기록 완료!\n오늘도 고생 많으셨어요 🩷",
 };
 
+const MEDICATION_TOAST_MESSAGES: Record<string, string> = {
+  added: "약을 등록했어요!",
+};
+
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ moodToast?: string; visitToast?: string }>;
+  searchParams: Promise<{
+    medicationToast?: string;
+    moodToast?: string;
+    visitToast?: string;
+  }>;
 }) {
-  const { moodToast, visitToast } = await searchParams;
-  const initialToast = moodToast
-    ? MOOD_TOAST_MESSAGES[moodToast]
-    : visitToast
-      ? TOAST_MESSAGES[visitToast]
-      : undefined;
-  const initialToastQueryKey = moodToast
-    ? "moodToast" as const
-    : visitToast
-      ? "visitToast" as const
-      : undefined;
+  const { medicationToast, moodToast, visitToast } = await searchParams;
+  const initialToast = medicationToast
+    ? MEDICATION_TOAST_MESSAGES[medicationToast]
+    : moodToast
+      ? MOOD_TOAST_MESSAGES[moodToast]
+      : visitToast
+        ? TOAST_MESSAGES[visitToast]
+        : undefined;
+  const initialToastQueryKey = medicationToast
+    ? "medicationToast" as const
+    : moodToast
+      ? "moodToast" as const
+      : visitToast
+        ? "visitToast" as const
+        : undefined;
   return (
     <>
-      <script dangerouslySetInnerHTML={{ __html: SPLASH_PREPAINT_SCRIPT }} />
+      <Script id="addi-splash-prepaint">{SPLASH_PREPAINT_SCRIPT}</Script>
       <HomeScreen
-        enableLaunchSplash={!moodToast}
+        enableLaunchSplash={!medicationToast && !moodToast}
         initialToast={initialToast}
         initialToastQueryKey={initialToastQueryKey}
       />
