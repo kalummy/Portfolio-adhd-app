@@ -7,6 +7,7 @@ import { MedicationSummaryCard } from "@/components/medication-card";
 import { MobileShell } from "@/components/mobile-shell";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
 import {
+  commitProvisionalMedications,
   confirmPendingCandidates,
   discardScheduleQueueCandidates,
   getDraft,
@@ -68,6 +69,7 @@ export default function MedicationConfirmPage() {
   function confirmCandidates() {
     if (draft!.pendingCandidates.length > 0) {
       const { added } = confirmPendingCandidates();
+      commitProvisionalMedications();
       router.push(registrationHref(
         added.length > 0 ? "/medications/new/schedule" : "/medications/new/review",
       ));
