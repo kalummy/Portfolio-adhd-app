@@ -13,7 +13,11 @@ import {
 import { getDataRepositories, retryGuestDatasetSync } from "@/lib/repositories";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
 import { getWeekProgress } from "@/lib/home-week-progress";
-import { MEDICATION_FALLBACK_IMAGE, medicationLabel } from "@/lib/medication-utils";
+import {
+  MEDICATION_FALLBACK_IMAGE,
+  medicationLabel,
+  medicationScheduleLabel,
+} from "@/lib/medication-utils";
 import { getMoodDiarySummary, getMoodPresentation } from "@/lib/mood-summary";
 import { formatVisitDday } from "@/lib/visit-date";
 import type {
@@ -23,6 +27,7 @@ import type {
   SavedMedication,
   VisitSchedule,
 } from "@/lib/types";
+import { resetDraft } from "@/lib/registration-session";
 import { MobileShell } from "./mobile-shell";
 import { SplashScreen } from "./splash-screen";
 import { Toast } from "./toast";
@@ -77,6 +82,24 @@ function formatRecordTime(iso: string) {
   }).format(date);
 }
 
+function formatMedicationRecordTime(iso: string) {
+  const parts = new Intl.DateTimeFormat("ko-KR", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).formatToParts(new Date(iso));
+  const part = (type: Intl.DateTimeFormatPartTypes) => (
+    parts.find((item) => item.type === type)?.value ?? ""
+  );
+  const rawDayPeriod = part("dayPeriod");
+  const dayPeriod = /^am$/i.test(rawDayPeriod)
+    ? "오전"
+    : /^pm$/i.test(rawDayPeriod)
+      ? "오후"
+      : rawDayPeriod;
+  return `${dayPeriod} ${part("hour")}:${part("minute")}`.trim();
+}
+
 function ChevronRight() {
   return (
     <span className="chevron-icon" aria-hidden="true">
@@ -92,7 +115,7 @@ type HomeScreenProps = {
   minimumDateKey?: string;
   maximumDateKey?: string;
   initialToast?: string;
-  initialToastQueryKey?: "moodToast" | "visitToast";
+  initialToastQueryKey?: "medicationToast" | "moodToast" | "visitToast";
   enableLaunchSplash?: boolean;
 };
 
@@ -122,7 +145,7 @@ export function HomeScreen({
     previewData?.visitSchedule ?? null,
   );
   const [loading, setLoading] = useState(!previewData);
-  const [toast, setToast] = useState("");
+  const [toast, setToast] = useState(initialToast ?? "");
   const [syncError, setSyncError] = useState("");
   const [syncRetrying, setSyncRetrying] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -251,26 +274,10 @@ export function HomeScreen({
     if (!initialToast || !initialToastQueryKey) return;
     const url = new URL(window.location.href);
     if (!url.searchParams.has(initialToastQueryKey)) return;
-    setToast(initialToast);
     url.searchParams.delete(initialToastQueryKey);
     const nextUrl = `${url.pathname}${url.search}${url.hash}`;
     window.history.replaceState(window.history.state, "", nextUrl);
   }, [initialToast, initialToastQueryKey]);
-
-  useEffect(() => {
-    if (!initialToastQueryKey) return;
-    const clearConsumedToast = () => {
-      const url = new URL(window.location.href);
-      if (!url.searchParams.has(initialToastQueryKey)) setToast("");
-    };
-
-    window.addEventListener("pagehide", clearConsumedToast);
-    window.addEventListener("pageshow", clearConsumedToast);
-    return () => {
-      window.removeEventListener("pagehide", clearConsumedToast);
-      window.removeEventListener("pageshow", clearConsumedToast);
-    };
-  }, [initialToastQueryKey]);
 
   const selectedIntakeByMedication = useMemo(() => {
     return new Map(
@@ -448,9 +455,12 @@ export function HomeScreen({
                 <p>약을 등록하면<br />오늘의 복용 여부를 간단히 기록할 수 있어요.</p>
               </div>
               <Link
-                href="/medications/new"
+                href="/medications/new/search"
                 className="inline-add-button"
-                onClick={() => startMedicationAddAttempt("home")}
+                onClick={() => {
+                  resetDraft();
+                  startMedicationAddAttempt("home");
+                }}
               >
                 약 등록하기
               </Link>
@@ -468,8 +478,14 @@ export function HomeScreen({
                 {medications.map((medication) => {
                   const intake = selectedIntakeByMedication.get(medication.id);
                   const isTaken = Boolean(intake);
-                  const imageKey = `${medication.id}:${medication.imagePath}`;
+                  const productImage = medication.productImage?.trim();
+                  const hasProductImage = Boolean(productImage && medication.imageType !== "fallback");
+                  const imageKey = `${medication.id}:${productImage ?? medication.imagePath}`;
                   const imageFailed = failedMedicationImages.has(imageKey);
+                  const isFallbackImage = imageFailed || !hasProductImage;
+                  const displayedImage = imageFailed || !hasProductImage
+                    ? medication.fallbackImage ?? medication.imagePath ?? MEDICATION_FALLBACK_IMAGE
+                    : productImage!;
                   return (
                     <article className="home-medication-item" key={medication.id}>
                       <button
@@ -486,14 +502,13 @@ export function HomeScreen({
                           height={20}
                         />
                       </button>
-                      <div className={`home-medication-image ${imageFailed ? "fallback" : ""}`}>
+                      <div className={`home-medication-image ${isFallbackImage ? "fallback" : ""}`}>
                         <Image
-                          src={imageFailed
-                            ? medication.fallbackImage ?? MEDICATION_FALLBACK_IMAGE
-                            : medication.imagePath}
+                          src={displayedImage}
                           alt=""
                           fill
                           sizes="64px"
+                          unoptimized={isFallbackImage}
                           onError={() => setFailedMedicationImages((current) => {
                             if (current.has(imageKey)) return current;
                             const next = new Set(current);
@@ -506,12 +521,14 @@ export function HomeScreen({
                         <strong>{medicationLabel(medication)}</strong>
                         <div className="home-medication-schedule">
                           <div className="home-medication-time">
-                            <span>{intake ? formatRecordTime(intake.recordedAt) : "복용시간"}</span>
+                            <span>{medicationScheduleLabel(medication.schedule)}</span>
                             <i aria-hidden="true" />
                             <span>1정</span>
                           </div>
                           <span className={`home-medication-status ${isTaken ? "complete" : ""}`}>
-                            {isTaken ? "복용 완료" : "아직 복용하지 않았어요"}
+                            {intake
+                              ? `복용 완료 (${formatMedicationRecordTime(intake.recordedAt)})`
+                              : "아직 복용하지 않았어요"}
                           </span>
                         </div>
                       </div>

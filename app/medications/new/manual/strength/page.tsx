@@ -6,6 +6,7 @@ import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
 import { createManualMedicationCandidate } from "@/lib/medication-candidates";
 import {
+  confirmPendingCandidates,
   getDraft,
   registrationHref,
   setPendingCandidates,
@@ -60,7 +61,8 @@ export default function ManualMedicationStrengthPage() {
 
     updateDraft({ manualStrength: strength });
     setPendingCandidates([medication], "manual");
-    router.push(registrationHref("/medications/new/confirm"));
+    confirmPendingCandidates();
+    router.push(registrationHref("/medications/new/review"));
   }
 
   return (

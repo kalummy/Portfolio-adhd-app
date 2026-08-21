@@ -13,9 +13,10 @@ const MANUAL_RETURN_HREF_KEY = "addi-manual-medication-return-href";
 
 export function registrationHref(path: string) {
   if (typeof window === "undefined") return path;
-  return new URLSearchParams(window.location.search).get("origin") === "medications"
-    ? `${path}?origin=medications`
-    : path;
+  if (new URLSearchParams(window.location.search).get("origin") !== "medications") return path;
+  const url = new URL(path, window.location.origin);
+  url.searchParams.set("origin", "medications");
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 const EMPTY_DRAFT: MedicationDraft = {
@@ -25,7 +26,6 @@ const EMPTY_DRAFT: MedicationDraft = {
   searchQuery: "",
   manualName: "",
   manualStrength: "",
-  noticeAccepted: false,
 };
 
 function createDraftId() {
@@ -120,16 +120,18 @@ export function discardScheduleQueueCandidates() {
 
 export function confirmPendingCandidates() {
   const draft = getDraft();
-  const existingCatalogIds = new Set(
-    draft.draftMedications
-      .map((medication) => medication.catalogId)
-      .filter((catalogId): catalogId is string => Boolean(catalogId)),
+  const medicationIdentity = (medication: MedicationCandidate) => medication.catalogId
+    ? `catalog:${medication.catalogId}`
+    : `manual:${medication.name.trim().toLowerCase()}:${medication.strengthValue}:${medication.strengthUnit}`;
+  const existingMedicationIdentities = new Set(
+    draft.draftMedications.map(medicationIdentity),
   );
   const added: DraftMedication[] = [];
 
   for (const candidate of draft.pendingCandidates) {
-    if (candidate.catalogId && existingCatalogIds.has(candidate.catalogId)) continue;
-    if (candidate.catalogId) existingCatalogIds.add(candidate.catalogId);
+    const identity = medicationIdentity(candidate);
+    if (existingMedicationIdentities.has(identity)) continue;
+    existingMedicationIdentities.add(identity);
     added.push(candidate);
   }
 
@@ -141,6 +143,15 @@ export function confirmPendingCandidates() {
   });
 
   return { draft: next, added };
+}
+
+export function prepareScheduleQueue() {
+  const draft = getDraft();
+  const scheduleQueueDraftIds = draft.draftMedications.map(({ draftId }) => draftId);
+  return updateDraft({
+    scheduleQueueDraftIds,
+    activeScheduleDraftId: scheduleQueueDraftIds[0],
+  });
 }
 
 export function updateDraftMedication(

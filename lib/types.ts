@@ -39,7 +39,6 @@ export type MedicationDraft = {
   searchQuery: string;
   manualName: string;
   manualStrength: string;
-  noticeAccepted: boolean;
 };
 
 export type SavedMedication = MedicationCandidate & {
