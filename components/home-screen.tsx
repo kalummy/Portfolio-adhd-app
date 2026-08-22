@@ -9,6 +9,10 @@ import {
   startMedicationAddAttempt,
   startMoodAttempt,
   startVisitAddAttempt,
+  trackHomeDateChangeConfirmed,
+  trackHomeDatePickerOpened,
+  trackHomeDateSelected,
+  trackHomeDateTodayClicked,
   trackMedicationTakenOnce,
 } from "@/lib/analytics/events";
 import { getDataRepositories, retryGuestDatasetSync } from "@/lib/repositories";
@@ -127,6 +131,7 @@ export function HomeScreen({
   );
   const [calendarOpen, setCalendarOpen] = useState(false);
   const monthSelectRef = useRef<HTMLButtonElement>(null);
+  const calendarConfirmHandledRef = useRef(false);
   const [medications, setMedications] = useState<SavedMedication[]>(previewData?.medications ?? []);
   const [intakeRecords, setIntakeRecords] = useState<MedicationIntakeRecord[]>(
     previewData?.intakeRecords ?? [],
@@ -336,13 +341,14 @@ export function HomeScreen({
   };
 
   const commitSelectedDate = useCallback((nextDateKey: string) => {
-    if (minimumDateKey && nextDateKey < minimumDateKey) return;
-    if (maximumDateKey && nextDateKey > maximumDateKey) return;
+    if (minimumDateKey && nextDateKey < minimumDateKey) return false;
+    if (maximumDateKey && nextDateKey > maximumDateKey) return false;
     setSelectedDateKey(nextDateKey);
-    if (previewData) return;
+    if (previewData) return true;
     const url = new URL(window.location.href);
     url.searchParams.set("date", nextDateKey);
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    return true;
   }, [maximumDateKey, minimumDateKey, previewData]);
 
   const handleMoveDate = (amount: number) => {
@@ -350,6 +356,8 @@ export function HomeScreen({
   };
 
   const handleOpenCalendar = () => {
+    trackHomeDatePickerOpened(selectedDateKey);
+    calendarConfirmHandledRef.current = false;
     setPendingDateKey(selectedDateKey);
     setVisibleMonthKey(startOfMonthDateKey(selectedDateKey));
     setCalendarOpen(true);
@@ -360,11 +368,23 @@ export function HomeScreen({
   }, []);
 
   const handleConfirmCalendar = () => {
-    commitSelectedDate(pendingDateKey);
+    if (calendarConfirmHandledRef.current) return;
+    calendarConfirmHandledRef.current = true;
+    const previousDateKey = selectedDateKey;
+    const applied = commitSelectedDate(pendingDateKey);
+    if (applied && previousDateKey !== pendingDateKey) {
+      trackHomeDateChangeConfirmed(previousDateKey, pendingDateKey);
+    }
     setCalendarOpen(false);
   };
 
+  const handleCalendarSelect = (dateKey: string) => {
+    trackHomeDateSelected(dateKey);
+    setPendingDateKey(dateKey);
+  };
+
   const handleCalendarToday = () => {
+    trackHomeDateTodayClicked();
     const nextTodayDateKey = getKstDateKey();
     setTodayDateKey(nextTodayDateKey);
     setPendingDateKey(nextTodayDateKey);
@@ -638,7 +658,7 @@ export function HomeScreen({
           todayKey={todayDateKey}
           intakeRecords={intakeRecords}
           moodRecords={moodRecords}
-          onSelect={setPendingDateKey}
+          onSelect={handleCalendarSelect}
           onMoveMonth={(amount) => setVisibleMonthKey((current) => moveMonthDateKey(current, amount))}
           onToday={handleCalendarToday}
           onConfirm={handleConfirmCalendar}

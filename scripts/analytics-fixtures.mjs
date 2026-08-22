@@ -19,12 +19,33 @@ try {
     "--outDir", fixtureDirectory,
     "lib/analytics/schema.ts",
     "lib/analytics/attempts.ts",
+    "lib/analytics/path-policy.ts",
   ], { cwd: projectRootPath, stdio: "pipe" });
   await copyFile(join(fixtureDirectory, "schema.js"), join(fixtureDirectory, "schema"));
   await writeFile(join(fixtureDirectory, "package.json"), '{"type":"module"}');
 
   const schema = await import(pathToFileURL(join(fixtureDirectory, "schema.js")));
   const attempts = await import(pathToFileURL(join(fixtureDirectory, "attempts.js")));
+  const pathPolicy = await import(pathToFileURL(join(fixtureDirectory, "path-policy.js")));
+
+  for (const pathname of ["/preview", "/preview/", "/preview/home", "/preview/home/empty"]) {
+    assert.equal(pathPolicy.isAnalyticsPathBlocked(pathname), true, `${pathname} must be blocked`);
+  }
+  for (const pathname of [
+    "/",
+    "/auth/login",
+    "/medications",
+    "/medications/new",
+    "/moods",
+    "/moods/new",
+    "/visits",
+    "/visits/new",
+    "/privacy",
+    "/previewish",
+  ]) {
+    assert.equal(pathPolicy.isAnalyticsPathBlocked(pathname), false, `${pathname} must remain allowed`);
+  }
+  console.log("PASS preview analytics path blocking and normal route allowlist");
 
   const routeCases = [
     ["/", "home"],
@@ -45,7 +66,7 @@ try {
   }
   console.log(`PASS route sanitizer ${routeCases.length}/${routeCases.length}`);
 
-  assert.equal(schema.ANALYTICS_EVENT_NAMES.length, 12);
+  assert.equal(schema.ANALYTICS_EVENT_NAMES.length, 16);
   assert.deepEqual(schema.ANALYTICS_EVENT_NAMES, [
     "app_opened",
     "login_started",
@@ -59,6 +80,10 @@ try {
     "mood_saved",
     "visit_add_started",
     "visit_added",
+    "home_date_picker_opened",
+    "home_date_selected",
+    "home_date_today_clicked",
+    "home_date_change_confirmed",
   ]);
 
   const common = {
@@ -122,6 +147,86 @@ try {
     route: "visit_add",
     auth_state: "guest",
   });
+  assert.deepEqual(schema.buildAnalyticsPayload({
+    environment: "production",
+    pathname: "/?date=private",
+    authState: "member",
+    eventName: "home_date_picker_opened",
+    properties: { source: "home", current_date: "2026-08-23", email: "blocked@example.com" },
+  }), {
+    environment: "production",
+    route: "home",
+    auth_state: "member",
+    source: "home",
+    current_date: "2026-08-23",
+  });
+  assert.deepEqual(schema.buildAnalyticsPayload({
+    environment: "production",
+    pathname: "/",
+    authState: "guest",
+    eventName: "home_date_selected",
+    properties: {
+      source: "home",
+      selected_date: "2026-08-20",
+      date_direction: "past",
+      days_from_today: -3,
+      user_id: "blocked",
+    },
+  }), {
+    environment: "production",
+    route: "home",
+    auth_state: "guest",
+    source: "home",
+    selected_date: "2026-08-20",
+    date_direction: "past",
+    days_from_today: -3,
+  });
+  assert.deepEqual(schema.buildAnalyticsPayload({
+    environment: "production",
+    pathname: "/",
+    authState: "member",
+    eventName: "home_date_change_confirmed",
+    properties: {
+      source: "home",
+      previous_date: "2026-08-23",
+      selected_date: "2026-08-25",
+      date_direction: "future",
+      days_from_today: 2,
+    },
+  }), {
+    environment: "production",
+    route: "home",
+    auth_state: "member",
+    source: "home",
+    previous_date: "2026-08-23",
+    selected_date: "2026-08-25",
+    date_direction: "future",
+    days_from_today: 2,
+  });
+  assert.equal(schema.buildAnalyticsPayload({
+    environment: "production",
+    pathname: "/",
+    authState: "guest",
+    eventName: "home_date_selected",
+    properties: {
+      source: "home",
+      selected_date: "2026-02-30",
+      date_direction: "future",
+      days_from_today: 1,
+    },
+  }), null);
+  assert.equal(schema.buildAnalyticsPayload({
+    environment: "production",
+    pathname: "/",
+    authState: "guest",
+    eventName: "home_date_selected",
+    properties: {
+      source: "home",
+      selected_date: "2026-08-23",
+      date_direction: "past",
+      days_from_today: 0,
+    },
+  }), null);
   console.log("PASS event schema and runtime property allowlist");
 
   let mood = attempts.createMoodAttempt("home");
@@ -186,6 +291,10 @@ try {
   assert.match(mixpanelSource, /property_blacklist: \[\.\.\.URL_PROPERTY_BLACKLIST\]/);
   assert.match(mixpanelSource, /track_pageview: false/);
   assert.match(mixpanelSource, /record_sessions_percent: 0/);
+  assert.match(mixpanelSource, /if \(isAnalyticsPathBlocked\(window\.location\.pathname\)\) return false;/);
+  assert.match(mixpanelSource, /const pathname = window\.location\.pathname;\s*if \(isAnalyticsPathBlocked\(pathname\) \|\| !initAnalytics\(\)\) return false;/);
+  assert.ok(mixpanelSource.indexOf("isAnalyticsPathBlocked(pathname)") < mixpanelSource.indexOf("mixpanel.track(eventName, payload)"));
+  assert.match(mixpanelSource, /const tracked = trackAnalyticsEvent\("app_opened", "unknown", \{\}\);\s*if \(tracked\) analyticsState\.appOpenedTracked = true;/);
   console.log("PASS URL privacy and automatic collection configuration");
 
   const authScreenSource = await readFile(new URL("../components/auth-login-screen.tsx", import.meta.url), "utf8");
@@ -207,7 +316,15 @@ try {
   assert.match(visitSource, /if \(mode === "new"\) \{\s*trackVisitAdded\(\);\s*completeVisitAddAttempt\(\);/);
   console.log("PASS visit start, new-only fallback, save-success completion, and edit exclusion wiring");
 
-  console.log("analytics fixture cases: 6/6 groups passed");
+  assert.ok(homeSource.indexOf("trackHomeDatePickerOpened(selectedDateKey)") < homeSource.indexOf("setCalendarOpen(true)"));
+  assert.match(homeSource, /trackHomeDateSelected\(dateKey\);\s*setPendingDateKey\(dateKey\);/);
+  assert.ok(homeSource.indexOf("trackHomeDateTodayClicked()") < homeSource.indexOf("setPendingDateKey(nextTodayDateKey)"));
+  assert.match(homeSource, /if \(calendarConfirmHandledRef\.current\) return;\s*calendarConfirmHandledRef\.current = true;/);
+  assert.match(homeSource, /if \(applied && previousDateKey !== pendingDateKey\) \{\s*trackHomeDateChangeConfirmed\(previousDateKey, pendingDateKey\);/);
+  assert.match(homeSource, /onSelect=\{handleCalendarSelect\}/);
+  console.log("PASS home date picker action-only wiring and unchanged-date confirmation suppression");
+
+  console.log("analytics fixture cases: 8/8 groups passed");
 } finally {
   await rm(fixtureDirectory, { recursive: true, force: true });
 }
