@@ -8,6 +8,7 @@ import { getMoodDiarySummary, type MoodResultData } from "@/lib/mood-summary";
 
 type MoodResultProps = {
   result: MoodResultData;
+  targetDateLabel: string;
   dialog: "restart" | "exit" | null;
   saving: boolean;
   onBack: () => void;
@@ -28,6 +29,7 @@ function formatRecordedAt(recordedAt: string) {
 
 export function MoodResult({
   result,
+  targetDateLabel,
   dialog,
   saving,
   onBack,
@@ -42,6 +44,7 @@ export function MoodResult({
       <FlowHeader title="감정 기록하기" beforeBack={onBack} onBackOnly />
 
       <section className="mood-result-content">
+        <span className="mood-target-date mood-result-target-date">{targetDateLabel} 기록</span>
         <div className="mood-result-item">
           <Image src={result.imagePath} alt="" width={120} height={120} priority />
           <div className="mood-result-info">
@@ -53,7 +56,7 @@ export function MoodResult({
         <section className="mood-result-summary">
           <div className="mood-result-summary-title">
             <Image src="/icons/mood-diary.svg" alt="" width={20} height={20} />
-            <h2>오늘의 일기</h2>
+            <h2>{targetDateLabel}의 일기</h2>
           </div>
           <p>{getMoodDiarySummary(result.summaryItems)}</p>
         </section>

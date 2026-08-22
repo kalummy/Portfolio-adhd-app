@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { HomeDatePickerSheet } from "@/components/home-date-picker-sheet";
 import { getAuthState } from "@/lib/auth/client";
 import {
   startMedicationAddAttempt,
@@ -14,12 +15,24 @@ import { getDataRepositories, retryGuestDatasetSync } from "@/lib/repositories";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
 import { getWeekProgress } from "@/lib/home-week-progress";
 import {
+  KST_TIME_ZONE,
+  addDaysToDateKey,
+  dateKeyDayDifference,
+  formatDateKey,
+  getDateKeyDay,
+  getKstDateKey,
+  getWeekDateKeys,
+  moveMonthDateKey,
+  parseDateKey,
+  startOfMonthDateKey,
+} from "@/lib/kst-date";
+import {
   MEDICATION_FALLBACK_IMAGE,
   medicationLabel,
   medicationScheduleLabel,
 } from "@/lib/medication-utils";
 import { getMoodDiarySummary, getMoodPresentation } from "@/lib/mood-summary";
-import { formatVisitDday } from "@/lib/visit-date";
+import { formatVisitDday, fromDateKey as fromVisitDateKey } from "@/lib/visit-date";
 import type {
   HomeDataSet,
   MedicationIntakeRecord,
@@ -38,47 +51,13 @@ const SPLASH_MINIMUM_MS = 800;
 const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 const DEFAULT_DIARY_SUMMARY = "오늘은 감정과 신체 컨디션이 평소와 비슷했어요.";
 
-function startOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function addDays(date: Date, amount: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + amount);
-  return startOfDay(next);
-}
-
-function toDateKey(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function fromDateKey(dateKey: string) {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  return new Date(year, month - 1, day);
-}
-
-function relationToReference(date: Date, referenceDate: Date) {
-  return Math.round((startOfDay(date).getTime() - startOfDay(referenceDate).getTime()) / 86_400_000);
-}
-
-function formatSelectedDate(date: Date, referenceDate: Date) {
-  if (relationToReference(date, referenceDate) === 0) return "오늘";
-  return `${date.getMonth() + 1}월 ${date.getDate()}일 ${DAY_LABELS[date.getDay()]}`;
-}
-
-function formatDateEyebrow(date: Date) {
-  return `${date.getMonth() + 1}월 ${date.getDate()}일`;
-}
-
 function formatRecordTime(iso: string) {
   const date = new Date(iso);
   return new Intl.DateTimeFormat("ko-KR", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone: KST_TIME_ZONE,
   }).format(date);
 }
 
@@ -87,6 +66,7 @@ function formatMedicationRecordTime(iso: string) {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone: KST_TIME_ZONE,
   }).formatToParts(new Date(iso));
   const part = (type: Intl.DateTimeFormatPartTypes) => (
     parts.find((item) => item.type === type)?.value ?? ""
@@ -129,13 +109,24 @@ export function HomeScreen({
   initialToastQueryKey,
   enableLaunchSplash = false,
 }: HomeScreenProps = {}) {
+  const [todayDateKey, setTodayDateKey] = useState(() => getKstDateKey());
+  const resolvedReferenceDateKey = useMemo(
+    () => referenceDateKey ?? todayDateKey,
+    [referenceDateKey, todayDateKey],
+  );
   const referenceDate = useMemo(
-    () => (referenceDateKey ? fromDateKey(referenceDateKey) : startOfDay(new Date())),
-    [referenceDateKey],
+    () => fromVisitDateKey(resolvedReferenceDateKey),
+    [resolvedReferenceDateKey],
   );
-  const [selectedDate, setSelectedDate] = useState(() =>
-    initialDateKey ? fromDateKey(initialDateKey) : referenceDate,
+  const [selectedDateKey, setSelectedDateKey] = useState(
+    initialDateKey ?? resolvedReferenceDateKey,
   );
+  const [pendingDateKey, setPendingDateKey] = useState(selectedDateKey);
+  const [visibleMonthKey, setVisibleMonthKey] = useState(
+    startOfMonthDateKey(selectedDateKey),
+  );
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const monthSelectRef = useRef<HTMLButtonElement>(null);
   const [medications, setMedications] = useState<SavedMedication[]>(previewData?.medications ?? []);
   const [intakeRecords, setIntakeRecords] = useState<MedicationIntakeRecord[]>(
     previewData?.intakeRecords ?? [],
@@ -155,8 +146,8 @@ export function HomeScreen({
     () => new Set(),
   );
 
-  const selectedDateKey = toDateKey(selectedDate);
-  const selectedRelation = relationToReference(selectedDate, referenceDate);
+  const selectedRelation = dateKeyDayDifference(selectedDateKey, todayDateKey);
+  const selectedDateParts = parseDateKey(selectedDateKey)!;
 
   useLayoutEffect(() => {
     if (!enableLaunchSplash) return;
@@ -293,22 +284,20 @@ export function HomeScreen({
   );
 
   const week = useMemo(() => {
-    const sunday = addDays(selectedDate, -selectedDate.getDay());
-
-    return Array.from({ length: 7 }, (_, index) => {
-      const date = addDays(sunday, index);
-      const dateKey = toDateKey(date);
-      const progress = getWeekProgress(dateKey, medications, intakeRecords, moodRecords);
+    return getWeekDateKeys(selectedDateKey).map((dateKey) => {
+      const date = parseDateKey(dateKey)!;
+      const progress = getWeekProgress(dateKey, intakeRecords, moodRecords);
 
       return {
-        day: DAY_LABELS[date.getDay()],
-        date: date.getDate(),
+        day: DAY_LABELS[getDateKeyDay(dateKey)],
+        date: date.day,
         dateKey,
-        isToday: dateKey === toDateKey(referenceDate),
+        isToday: dateKey === todayDateKey,
+        isSelected: dateKey === selectedDateKey,
         progress,
       };
     });
-  }, [intakeRecords, medications, moodRecords, referenceDate, selectedDate]);
+  }, [intakeRecords, moodRecords, selectedDateKey, todayDateKey]);
 
   const handleToggleMedication = async (medicationId: string) => {
     const isTaken = selectedIntakeByMedication.has(medicationId);
@@ -346,22 +335,49 @@ export function HomeScreen({
     await load();
   };
 
+  const commitSelectedDate = useCallback((nextDateKey: string) => {
+    if (minimumDateKey && nextDateKey < minimumDateKey) return;
+    if (maximumDateKey && nextDateKey > maximumDateKey) return;
+    setSelectedDateKey(nextDateKey);
+    if (previewData) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("date", nextDateKey);
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [maximumDateKey, minimumDateKey, previewData]);
+
   const handleMoveDate = (amount: number) => {
-    setSelectedDate((date) => {
-      const next = addDays(date, amount);
-      if (minimumDateKey && next < fromDateKey(minimumDateKey)) return date;
-      if (maximumDateKey && next > fromDateKey(maximumDateKey)) return date;
-      return next;
-    });
+    commitSelectedDate(addDaysToDateKey(selectedDateKey, amount));
+  };
+
+  const handleOpenCalendar = () => {
+    setPendingDateKey(selectedDateKey);
+    setVisibleMonthKey(startOfMonthDateKey(selectedDateKey));
+    setCalendarOpen(true);
+  };
+
+  const handleCloseCalendar = useCallback(() => {
+    setCalendarOpen(false);
+  }, []);
+
+  const handleConfirmCalendar = () => {
+    commitSelectedDate(pendingDateKey);
+    setCalendarOpen(false);
+  };
+
+  const handleCalendarToday = () => {
+    const nextTodayDateKey = getKstDateKey();
+    setTodayDateKey(nextTodayDateKey);
+    setPendingDateKey(nextTodayDateKey);
+    setVisibleMonthKey(startOfMonthDateKey(nextTodayDateKey));
   };
 
   const moodEmptyTitle =
     selectedRelation === 0
       ? "오늘의 감정은 어떤가요?"
       : selectedRelation < 0
-        ? "오늘의 감정은 어땠나요?"
-        : "내일 감정을 기록해주세요";
-  const medicationTitle = selectedRelation > 0 ? "내일 복용약" : "오늘 복용약";
+        ? `${formatDateKey(selectedDateKey)} 감정은 어땠나요?`
+        : `${formatDateKey(selectedDateKey)} 감정을 기록해주세요`;
+  const medicationTitle = selectedRelation === 0 ? "오늘 복용약" : "복용약";
   const showDateEyebrow = selectedRelation !== 0;
 
   if (enableLaunchSplash && launchSplashRequired) {
@@ -374,22 +390,30 @@ export function HomeScreen({
         <div className="home-header-brand">
           <Image src="/brand/addi-wordmark.svg" alt="ADDI" width={70} height={28} priority />
         </div>
-        <button
-          type="button"
-          className="calendar-button"
-          aria-label="달력 기능 준비 중 안내"
-          onClick={() => setToast("지금은 준비중이에요")}
-        >
-          <Image className="calendar-glyph" src="/icons/calendar.svg" alt="" width={21} height={23} />
-        </button>
         <Link href="/auth/login" className="home-account-link">
           {isAuthenticated ? "계정" : "로그인"}
         </Link>
       </header>
 
+      <div className="home-month-select-row">
+        <button
+          ref={monthSelectRef}
+          type="button"
+          className="home-month-select"
+          aria-haspopup="dialog"
+          aria-expanded={calendarOpen}
+          onClick={handleOpenCalendar}
+        >
+          <span>{selectedDateParts.month}월</span>
+          <span className="home-month-select-icon" aria-hidden="true">
+            <Image src="/icons/chevron-down.svg" alt="" width={10} height={5} />
+          </span>
+        </button>
+      </div>
+
       <section className="week-strip" aria-label="이번 주">
-        {week.map(({ day, date, dateKey, isToday, progress }) => (
-          <div key={dateKey} className={isToday ? "today" : ""}>
+        {week.map(({ day, date, dateKey, isToday, isSelected, progress }) => (
+          <div key={dateKey} className={`${isToday ? "today" : ""} ${isSelected ? "selected" : ""}`}>
             <span>{day}</span>
             <strong className={`week-date ${progress}`}>{date}</strong>
           </div>
@@ -437,7 +461,7 @@ export function HomeScreen({
               <Image src="/icons/date-chevron-left.svg" alt="" width={12} height={6} />
             </span>
           </button>
-          <strong>{formatSelectedDate(selectedDate, referenceDate)}</strong>
+          <strong>{selectedRelation === 0 ? "오늘" : formatDateKey(selectedDateKey)}</strong>
           <button type="button" aria-label="다음 날" onClick={() => handleMoveDate(1)}>
             <span className="date-chevron date-chevron-right" aria-hidden="true">
               <Image src="/icons/date-chevron-right.svg" alt="" width={12} height={6} />
@@ -468,7 +492,7 @@ export function HomeScreen({
           ) : (
             <div className="home-card populated-medication-card">
               <div className={`home-card-heading ${showDateEyebrow ? "with-date" : ""}`}>
-                {showDateEyebrow && <span className="card-date-eyebrow">{formatDateEyebrow(selectedDate)}</span>}
+                {showDateEyebrow && <span className="card-date-eyebrow">{formatDateKey(selectedDateKey)}</span>}
                 <Link href="/medications" className="home-card-title" aria-label="복용약 목록 열기">
                   <strong>{medicationTitle}</strong>
                   <ChevronRight />
@@ -544,9 +568,9 @@ export function HomeScreen({
           {moodRecord ? (
             <div className="home-card recorded-mood-card">
               <div className={`home-card-heading ${showDateEyebrow ? "with-date" : ""}`}>
-                {showDateEyebrow && <span className="card-date-eyebrow">{formatDateEyebrow(selectedDate)}</span>}
+                {showDateEyebrow && <span className="card-date-eyebrow">{formatDateKey(selectedDateKey)}</span>}
                 <Link href="/moods" className="home-card-title mood-history-link">
-                  <strong>오늘의 감정</strong>
+                  <strong>{selectedRelation === 0 ? "오늘의 감정" : "감정 기록"}</strong>
                   <ChevronRight />
                 </Link>
               </div>
@@ -563,7 +587,7 @@ export function HomeScreen({
               <div className="mood-diary-card">
                 <div className="mood-diary-title">
                   <Image src="/icons/mood-diary.svg" alt="" width={20} height={20} />
-                  <strong>오늘의 일기</strong>
+                  <strong>{selectedRelation === 0 ? "오늘의 일기" : "감정 일기"}</strong>
                 </div>
                 <p>{moodRecord.diaryEntries?.length
                   ? getMoodDiarySummary(moodRecord.diaryEntries)
@@ -573,12 +597,12 @@ export function HomeScreen({
           ) : (
             <div className={`home-card mood-card date-aware-mood-card ${showDateEyebrow ? "with-date" : ""}`}>
               <div className="home-card-copy">
-                {showDateEyebrow && <span className="card-date-eyebrow">{formatDateEyebrow(selectedDate)}</span>}
+                {showDateEyebrow && <span className="card-date-eyebrow">{formatDateKey(selectedDateKey)}</span>}
                 <strong>{moodEmptyTitle}</strong>
                 <p>아직 기록하지 않았어요.</p>
               </div>
               <Link
-                href="/moods/new"
+                href={`/moods/new?date=${selectedDateKey}`}
                 className="mood-record-link"
                 onClick={() => startMoodAttempt("home")}
               >
@@ -603,7 +627,22 @@ export function HomeScreen({
         <Toast
           message={toast}
           onDismiss={() => setToast("")}
-          showIcon={toast !== "지금은 준비중이에요"}
+          showIcon
+        />
+      ) : null}
+
+      {calendarOpen ? (
+        <HomeDatePickerSheet
+          visibleMonthKey={visibleMonthKey}
+          pendingDateKey={pendingDateKey}
+          todayKey={todayDateKey}
+          intakeRecords={intakeRecords}
+          moodRecords={moodRecords}
+          onSelect={setPendingDateKey}
+          onMoveMonth={(amount) => setVisibleMonthKey((current) => moveMonthDateKey(current, amount))}
+          onToday={handleCalendarToday}
+          onConfirm={handleConfirmCalendar}
+          onClose={handleCloseCalendar}
         />
       ) : null}
     </MobileShell>

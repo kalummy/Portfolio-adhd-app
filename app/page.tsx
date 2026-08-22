@@ -1,5 +1,6 @@
 import Script from "next/script";
 import { HomeScreen } from "@/components/home-screen";
+import { isValidDateKey } from "@/lib/kst-date";
 
 const SPLASH_PREPAINT_SCRIPT = `try{if(sessionStorage.getItem("addi:splash:shown:v1")==="1"){document.documentElement.dataset.addiSplash="skip"}else{document.documentElement.removeAttribute("data-addi-splash")}}catch{}`;
 
@@ -23,9 +24,10 @@ export default async function Page({
     medicationToast?: string;
     moodToast?: string;
     visitToast?: string;
+    date?: string;
   }>;
 }) {
-  const { medicationToast, moodToast, visitToast } = await searchParams;
+  const { medicationToast, moodToast, visitToast, date } = await searchParams;
   const initialToast = medicationToast
     ? MEDICATION_TOAST_MESSAGES[medicationToast]
     : moodToast
@@ -45,6 +47,7 @@ export default async function Page({
       <Script id="addi-splash-prepaint">{SPLASH_PREPAINT_SCRIPT}</Script>
       <HomeScreen
         enableLaunchSplash={!medicationToast && !moodToast}
+        initialDateKey={isValidDateKey(date) ? date : undefined}
         initialToast={initialToast}
         initialToastQueryKey={initialToastQueryKey}
       />

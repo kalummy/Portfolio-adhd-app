@@ -15,6 +15,7 @@ import {
   trackMoodStepCompleted,
 } from "@/lib/analytics/events";
 import { getMoodRepository } from "@/lib/repositories";
+import { formatDateKey, getKstDateKey } from "@/lib/kst-date";
 import {
   buildMoodSummary,
   CUSTOM_MOOD_OPTION_ID,
@@ -74,14 +75,7 @@ function createEmptyAnswers(): MoodAnswerDraft[] {
   }));
 }
 
-function toLocalDateKey(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-export function MoodQuestionFlow() {
+export function MoodQuestionFlow({ targetDateKey }: { targetDateKey: string }) {
   const [phase, setPhase] = useState<"questions" | "summarizing" | "result">("questions");
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<MoodAnswerDraft[]>(createEmptyAnswers);
@@ -94,6 +88,9 @@ export function MoodQuestionFlow() {
   const customSelected = answer.selected.includes(CUSTOM_MOOD_OPTION_ID);
   const hasStandardSelection = answer.selected.some((id) => id !== CUSTOM_MOOD_OPTION_ID);
   const canContinue = hasStandardSelection || (customSelected && answer.customText.trim().length > 0);
+  const isToday = targetDateKey === getKstDateKey();
+  const targetDateLabel = isToday ? "오늘" : formatDateKey(targetDateKey, true);
+  const homeHref = `/?date=${encodeURIComponent(targetDateKey)}`;
 
   useEffect(() => {
     ensureMoodAttempt("home");
@@ -154,10 +151,9 @@ export function MoodQuestionFlow() {
     if (!result || saving) return;
     setSaving(true);
     try {
-      const recordedDate = new Date(result.recordedAt);
       const repository = await getMoodRepository();
       await repository.save({
-        date: toLocalDateKey(recordedDate),
+        date: targetDateKey,
         mood: result.moodType,
         moodLabel: result.label,
         recordedAt: result.recordedAt,
@@ -165,25 +161,26 @@ export function MoodQuestionFlow() {
         memberSummary: result.memberSummary,
       });
       await trackMoodSaved();
-      window.location.assign("/?moodToast=saved");
+      window.location.assign(`${homeHref}&moodToast=saved`);
     } finally {
       setSaving(false);
     }
   }
 
   if (phase === "summarizing") {
-    return <MoodSummaryLoading />;
+    return <MoodSummaryLoading targetDateLabel={targetDateLabel} />;
   }
 
   if (phase === "result" && result) {
     return (
       <MoodResult
         result={result}
+        targetDateLabel={targetDateLabel}
         dialog={resultDialog}
         saving={saving}
         onBack={() => setResultDialog("exit")}
         onCancelDialog={() => setResultDialog(null)}
-        onConfirmExit={() => window.location.assign("/")}
+        onConfirmExit={() => window.location.assign(homeHref)}
         onConfirmRestart={restartQuestions}
         onRestart={() => setResultDialog("restart")}
         onSave={() => void saveResult()}
@@ -200,9 +197,17 @@ export function MoodQuestionFlow() {
       />
 
       <section className="mood-question-heading">
+        <span className="mood-target-date">{targetDateLabel} 기록</span>
         <p>{question.eyebrow}</p>
         <h1>
-          {question.title.map((line) => <span key={line}>{line}</span>)}
+          {question.title.map((line, index) => {
+            const adjustedLine = !isToday && step === 0 && index === 0
+              ? `${targetDateLabel} 기분은 어떤가요?`
+              : !isToday && step === 3 && index === 0
+                ? `${targetDateLabel} 컨디션을 체크해주세요`
+                : line;
+            return <span key={line}>{adjustedLine}</span>;
+          })}
         </h1>
       </section>
 
@@ -273,7 +278,7 @@ export function MoodQuestionFlow() {
           cancelLabel="취소"
           confirmLabel="중단하기"
           onCancel={() => setShowExitDialog(false)}
-          onConfirm={() => window.location.assign("/")}
+          onConfirm={() => window.location.assign(homeHref)}
         />
       ) : null}
     </MobileShell>
