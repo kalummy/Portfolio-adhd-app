@@ -1,6 +1,7 @@
 "use client";
 
 import mixpanel from "mixpanel-browser/src/loaders/loader-module-core";
+import { isAnalyticsPathBlocked } from "./path-policy";
 import {
   buildAnalyticsPayload,
   type AnalyticsAuthState,
@@ -77,8 +78,9 @@ export function getAnalyticsEnvironment(): AnalyticsEnvironment {
 }
 
 export function initAnalytics(): boolean {
-  if (analyticsState.initialized) return true;
   if (!isBrowser()) return false;
+  if (isAnalyticsPathBlocked(window.location.pathname)) return false;
+  if (analyticsState.initialized) return true;
 
   const token = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN?.trim();
   if (!token) return false;
@@ -112,13 +114,15 @@ export function trackAnalyticsEvent<T extends AnalyticsEventName>(
   authState: AnalyticsAuthState,
   properties: AnalyticsEventProperties<T>,
 ): boolean {
-  if (!initAnalytics() || !isBrowser()) return false;
+  if (!isBrowser()) return false;
+  const pathname = window.location.pathname;
+  if (isAnalyticsPathBlocked(pathname) || !initAnalytics()) return false;
 
   const payload = buildAnalyticsPayload({
     authState,
     environment: analyticsEnvironment,
     eventName,
-    pathname: window.location.pathname,
+    pathname,
     properties,
   });
   if (!payload) return false;
@@ -133,8 +137,7 @@ export function trackAnalyticsEvent<T extends AnalyticsEventName>(
 
 export function trackAppOpened(): boolean {
   if (analyticsState.appOpenedTracked) return false;
-  if (!initAnalytics()) return false;
-
-  analyticsState.appOpenedTracked = true;
-  return trackAnalyticsEvent("app_opened", "unknown", {});
+  const tracked = trackAnalyticsEvent("app_opened", "unknown", {});
+  if (tracked) analyticsState.appOpenedTracked = true;
+  return tracked;
 }

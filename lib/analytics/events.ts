@@ -1,6 +1,7 @@
 "use client";
 
 import { getAuthState } from "@/lib/auth/client";
+import { dateKeyDayDifference, getKstDateKey } from "@/lib/kst-date";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
   addDeduplicationKey,
@@ -23,6 +24,7 @@ import { trackAnalyticsEvent } from "./mixpanel";
 import type {
   AnalyticsEventName,
   AnalyticsEventProperties,
+  DateDirection,
   MedicationAddSource,
   MoodSource,
   MoodStep,
@@ -294,4 +296,43 @@ export function completeVisitAddAttempt() {
 
 export function trackVisitAdded() {
   queueResolvedEvent("visit_added", {});
+}
+
+function getDateDirection(daysFromToday: number): DateDirection {
+  if (daysFromToday < 0) return "past";
+  if (daysFromToday > 0) return "future";
+  return "today";
+}
+
+function getHomeDateSelectionProperties(selectedDate: string) {
+  const daysFromToday = dateKeyDayDifference(selectedDate, getKstDateKey());
+  return {
+    source: "home" as const,
+    selected_date: selectedDate,
+    date_direction: getDateDirection(daysFromToday),
+    days_from_today: daysFromToday,
+  };
+}
+
+export function trackHomeDatePickerOpened(currentDate: string) {
+  queueResolvedEvent("home_date_picker_opened", {
+    source: "home",
+    current_date: currentDate,
+  });
+}
+
+export function trackHomeDateSelected(selectedDate: string) {
+  queueResolvedEvent("home_date_selected", getHomeDateSelectionProperties(selectedDate));
+}
+
+export function trackHomeDateTodayClicked() {
+  queueResolvedEvent("home_date_today_clicked", { source: "home" });
+}
+
+export function trackHomeDateChangeConfirmed(previousDate: string, selectedDate: string) {
+  if (previousDate === selectedDate) return;
+  queueResolvedEvent("home_date_change_confirmed", {
+    ...getHomeDateSelectionProperties(selectedDate),
+    previous_date: previousDate,
+  });
 }
