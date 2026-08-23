@@ -2061,6 +2061,7 @@ html[data-addi-splash="skip"] .splash-screen {
 .week-strip span {
   position: relative;
   z-index: 1;
+  color: var(--color-font-base-05);
   font-size: 16px;
   line-height: 24px;
   font-weight: 500;
@@ -2082,12 +2083,12 @@ html[data-addi-splash="skip"] .splash-screen {
   font-weight: 500;
 }
 
-.week-strip .today {
-  color: var(--color-font-base-01);
-}
-
 .week-strip .selected {
   background: var(--color-gray-800);
+}
+
+.week-strip .selected > span {
+  color: var(--color-font-base-01);
 }
 
 .week-strip .selected strong {
@@ -2133,11 +2134,13 @@ html[data-addi-splash="skip"] .splash-screen {
   height: min(598px, calc(100dvh - env(safe-area-inset-top)));
   max-height: 598px;
   padding: 0;
-  overflow-y: auto;
+  overflow: hidden;
   flex-direction: column;
+  gap: 24px;
   border-radius: 16px 16px 0 0;
   background: var(--color-bg-base-01);
   overscroll-behavior: contain;
+  will-change: transform;
 }
 
 .home-date-picker-header {
@@ -2150,6 +2153,8 @@ html[data-addi-splash="skip"] .splash-screen {
   align-items: center;
   justify-content: center;
   gap: 24px;
+  touch-action: none;
+  user-select: none;
 }
 
 .home-date-picker-handle {
@@ -2172,11 +2177,21 @@ html[data-addi-splash="skip"] .splash-screen {
 
 .home-calendar {
   display: flex;
-  width: min(100%, 360px);
-  margin: 24px auto 0;
+  width: 100%;
+  height: 370px;
+  min-height: 0;
+  margin: 0;
+  overflow-y: auto;
+  flex: 0 1 370px;
   flex-direction: column;
   gap: 8px;
   background: var(--color-bg-base-01);
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.home-calendar::-webkit-scrollbar {
+  display: none;
 }
 
 .home-calendar-picker-header {
@@ -2238,7 +2253,7 @@ html[data-addi-splash="skip"] .splash-screen {
 .home-calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 44px);
-  column-gap: 2px;
+  justify-content: space-between;
 }
 
 .home-calendar-weekdays {
@@ -2392,7 +2407,6 @@ html[data-addi-splash="skip"] .splash-screen {
 
 .home-date-picker-actions {
   width: 100%;
-  margin-top: auto;
   padding: 10px 20px;
 }
 
@@ -2414,6 +2428,22 @@ html[data-addi-splash="skip"] .splash-screen {
   height: 34px;
   flex: 0 0 34px;
   background: var(--color-bg-base-01);
+}
+
+.home-date-picker-footer {
+  display: flex;
+  width: 100%;
+  height: 110px;
+  flex: 0 0 110px;
+  flex-direction: column;
+  background: var(--color-bg-base-01);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-date-picker-dimmed,
+  .home-date-picker-sheet {
+    transition: none !important;
+  }
 }
 
 .appointment-row {

@@ -47,7 +47,7 @@ export function HomeCalendar({
         <div className="home-calendar-month">
           <div className="home-calendar-month-navigation">
             <button type="button" onClick={() => onMoveMonth(-1)} aria-label="이전 달">
-              <Image src="/icons/visit-chevron-left.svg" alt="" width={10} height={5} />
+              <Image src="/icons/visit-chevron-right.svg" alt="" width={10} height={5} />
             </button>
             <strong>{visibleMonth.year}년 {String(visibleMonth.month).padStart(2, "0")}월</strong>
             <button type="button" onClick={() => onMoveMonth(1)} aria-label="다음 달">
