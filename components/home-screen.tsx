@@ -19,6 +19,7 @@ import {
 } from "@/lib/analytics/events";
 import { getDataRepositories, retryGuestDatasetSync } from "@/lib/repositories";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
+import { resolveMedicationImage } from "@/lib/medication-images";
 import { reconcileMedicationIntakeRecord } from "@/lib/medication-intake-state";
 import { getHomeMedicationProjection } from "@/lib/home-medication-projection";
 import { getWeekProgress } from "@/lib/home-week-progress";
@@ -35,7 +36,6 @@ import {
   startOfMonthDateKey,
 } from "@/lib/kst-date";
 import {
-  MEDICATION_FALLBACK_IMAGE,
   medicationLabel,
   medicationScheduleLabel,
 } from "@/lib/medication-utils";
@@ -597,14 +597,15 @@ export function HomeScreen({
                   const intake = selectedIntakeByMedication.get(medication.id);
                   const isTaken = Boolean(intake);
                   const isHistoricalInactive = medication.active === false;
-                  const productImage = medication.productImage?.trim();
-                  const hasProductImage = Boolean(productImage && medication.imageType !== "fallback");
-                  const imageKey = `${medication.id}:${productImage ?? medication.imagePath}`;
-                  const imageFailed = failedMedicationImages.has(imageKey);
-                  const isFallbackImage = imageFailed || !hasProductImage;
-                  const displayedImage = imageFailed || !hasProductImage
-                    ? medication.fallbackImage ?? medication.imagePath ?? MEDICATION_FALLBACK_IMAGE
-                    : productImage!;
+                  const image = resolveMedicationImage({
+                    medicationId: medication.catalogId,
+                    medicationName: medicationLabel(medication),
+                    existingImage: medication.productImage ?? medication.imagePath,
+                    fallbackImage: medication.fallbackImage,
+                    failedSources: failedMedicationImages,
+                  });
+                  const isFallbackImage = image.type === "fallback";
+                  const displayedImage = image.src;
                   return (
                     <article className="home-medication-item" key={medication.id}>
                       {isHistoricalInactive ? (
@@ -639,9 +640,9 @@ export function HomeScreen({
                           sizes="64px"
                           unoptimized={isFallbackImage}
                           onError={() => setFailedMedicationImages((current) => {
-                            if (current.has(imageKey)) return current;
+                            if (current.has(displayedImage)) return current;
                             const next = new Set(current);
-                            next.add(imageKey);
+                            next.add(displayedImage);
                             return next;
                           })}
                         />
