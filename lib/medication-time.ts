@@ -6,6 +6,25 @@ export type MedicationTimeFields = {
   minute: string;
 };
 
+export type MedicationEditorTimeMedication = {
+  id: string;
+  scheduledTime?: string | null;
+};
+
+export type MedicationEditorTimeIntake = {
+  id: string;
+  medicationId: string;
+  date: string;
+  taken: boolean;
+  recordedAt: string;
+};
+
+export type MedicationEditorTimeContext = {
+  todayDateKey: string;
+  timeZone: string;
+  isValidDateKey: (dateKey: string) => boolean;
+};
+
 const CANONICAL_TIME_PATTERN = /^(\d{2}):(\d{2})$/;
 
 export function digitsOnly(value: string, maxLength = 2) {
@@ -26,6 +45,42 @@ export function parseScheduledTime(value?: string | null): MedicationTimeFields 
     hour: String(hour24 % 12 || 12),
     minute: match[2],
   };
+}
+
+export function resolveMedicationEditorInitialTime(
+  medication: MedicationEditorTimeMedication,
+  intakeRecords: MedicationEditorTimeIntake[],
+  context: MedicationEditorTimeContext,
+): MedicationTimeFields | null {
+  if (medication.scheduledTime != null) {
+    return parseScheduledTime(medication.scheduledTime);
+  }
+
+  const latestIntake = intakeRecords
+    .filter((record) => (
+      record.medicationId === medication.id
+      && record.taken === true
+      && context.isValidDateKey(record.date)
+      && record.date <= context.todayDateKey
+      && !Number.isNaN(new Date(record.recordedAt).getTime())
+    ))
+    .sort((left, right) => (
+      right.date.localeCompare(left.date)
+      || new Date(right.recordedAt).getTime() - new Date(left.recordedAt).getTime()
+    ))[0];
+  if (!latestIntake) return null;
+
+  const recordedDate = new Date(latestIntake.recordedAt);
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: context.timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(recordedDate);
+  const value = (type: Intl.DateTimeFormatPartTypes) => (
+    parts.find((part) => part.type === type)?.value ?? ""
+  );
+  return parseScheduledTime(`${value("hour")}:${value("minute")}`);
 }
 
 export function formatScheduledTimeLabel(value?: string | null) {

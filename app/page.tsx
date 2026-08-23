@@ -23,14 +23,17 @@ export default async function Page({
 }: {
   searchParams: Promise<{
     medicationToast?: string;
+    toastId?: string;
     moodToast?: string;
     visitToast?: string;
     date?: string;
   }>;
 }) {
-  const { medicationToast, moodToast, visitToast, date } = await searchParams;
+  const { medicationToast, toastId, moodToast, visitToast, date } = await searchParams;
   const initialToast = medicationToast
-    ? MEDICATION_TOAST_MESSAGES[medicationToast]
+    ? medicationToast === "added" && !toastId
+      ? undefined
+      : MEDICATION_TOAST_MESSAGES[medicationToast]
     : moodToast
       ? MOOD_TOAST_MESSAGES[moodToast]
       : visitToast
@@ -50,6 +53,7 @@ export default async function Page({
         enableLaunchSplash={!medicationToast && !moodToast}
         initialDateKey={isValidDateKey(date) ? date : undefined}
         initialToast={initialToast}
+        initialToastId={medicationToast === "added" ? toastId : undefined}
         initialToastQueryKey={initialToastQueryKey}
       />
     </>
