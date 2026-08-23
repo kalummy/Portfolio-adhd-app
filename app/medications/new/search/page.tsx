@@ -10,6 +10,7 @@ import { enrichOfficialMedication } from "@/lib/medication-enrichment";
 import { medicationLabel } from "@/lib/medication-utils";
 import {
   confirmPendingCandidates,
+  dateContextHref,
   getDraft,
   registrationHref,
   rollbackProvisionalMedications,
@@ -79,7 +80,7 @@ export default function MedicationSearchPage() {
     if (searchParameters.get("return") === "review") {
       setReturnHref(registrationHref("/medications/new/review"));
     } else if (searchParameters.get("origin") === "medications") {
-      setReturnHref("/medications");
+      setReturnHref(dateContextHref("/medications"));
     }
     const draft = getDraft();
     setQuery(draft.searchQuery);

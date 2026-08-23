@@ -6,15 +6,27 @@ import type {
   RegistrationMethod,
 } from "./types";
 import { createClientId } from "./client-id";
+import { isValidDateKey } from "./kst-date";
 
 const DRAFT_KEY = "addi-medication-registration-draft";
 const LAST_SAVED_KEY = "addi-last-saved-medication-ids";
 const MANUAL_RETURN_HREF_KEY = "addi-manual-medication-return-href";
 
+export function dateContextHref(path: string) {
+  if (typeof window === "undefined") return path;
+  const url = new URL(path, window.location.origin);
+  const date = new URLSearchParams(window.location.search).get("date") ?? undefined;
+  if (isValidDateKey(date)) url.searchParams.set("date", date);
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 export function registrationHref(path: string) {
   if (typeof window === "undefined") return path;
-  if (new URLSearchParams(window.location.search).get("origin") !== "medications") return path;
-  const url = new URL(path, window.location.origin);
+  const contextualHref = dateContextHref(path);
+  if (new URLSearchParams(window.location.search).get("origin") !== "medications") {
+    return contextualHref;
+  }
+  const url = new URL(contextualHref, window.location.origin);
   url.searchParams.set("origin", "medications");
   return `${url.pathname}${url.search}${url.hash}`;
 }

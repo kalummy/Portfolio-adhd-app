@@ -37,7 +37,15 @@ function keepInputVisible(input: HTMLInputElement) {
   }, 250);
 }
 
-export function MedicationScheduleEditor({ medicationId }: { medicationId: string }) {
+export function MedicationScheduleEditor({
+  medicationId,
+  returnHref = "/medications",
+  homeHref = "/",
+}: {
+  medicationId: string;
+  returnHref?: string;
+  homeHref?: string;
+}) {
   const router = useRouter();
   const [medication, setMedication] = useState<SavedMedication | null>(null);
   const [schedule, setSchedule] = useState<MedicationSchedule | null>(null);
@@ -59,7 +67,7 @@ export function MedicationScheduleEditor({ medicationId }: { medicationId: strin
           repositories.medicationIntakes.listAll(),
         ]);
         if (!savedMedication) {
-          router.replace("/medications");
+          router.replace(returnHref);
           return;
         }
         const [enrichedMedication] = await enrichOfficialMedications([savedMedication]);
@@ -83,7 +91,7 @@ export function MedicationScheduleEditor({ medicationId }: { medicationId: strin
     return () => {
       cancelled = true;
     };
-  }, [medicationId, router]);
+  }, [medicationId, returnHref, router]);
 
   const scheduledTime = useMemo(
     () => toScheduledTime({ period, hour, minute }),
@@ -133,7 +141,7 @@ export function MedicationScheduleEditor({ medicationId }: { medicationId: strin
     const scheduleChanged = schedule !== originalSchedule.current;
     const timeChanged = scheduledTime !== originalTime.current;
     if (!scheduleChanged && !timeChanged) {
-      router.replace("/");
+      router.replace(homeHref);
       return;
     }
 
@@ -162,11 +170,13 @@ export function MedicationScheduleEditor({ medicationId }: { medicationId: strin
         hadScheduledTimeBefore: originalTime.current !== null,
         hasScheduledTimeAfter: scheduledTime !== null,
       });
-      router.replace(
-        scheduleChanged && !timeChanged
-          ? "/?medicationToast=schedule-updated"
-          : "/",
-      );
+      if (scheduleChanged && !timeChanged) {
+        const destination = new URL(homeHref, window.location.origin);
+        destination.searchParams.set("medicationToast", "schedule-updated");
+        router.replace(`${destination.pathname}${destination.search}`);
+      } else {
+        router.replace(homeHref);
+      }
     } catch {
       // Figma does not define a save failure state for this screen.
     } finally {
@@ -184,7 +194,7 @@ export function MedicationScheduleEditor({ medicationId }: { medicationId: strin
 
   return (
     <MobileShell className="flow-screen medication-schedule-edit-screen">
-      <FlowHeader title="복용 시간 수정" fallbackHref="/medications" />
+      <FlowHeader title="복용 시간 수정" fallbackHref={returnHref} />
       <section className="medication-schedule-edit-content">
         <MedicationSummaryCard medication={medication} />
 

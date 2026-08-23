@@ -542,7 +542,7 @@ export function HomeScreen({
                 <p>약을 등록하면<br />오늘의 복용 여부를 간단히 기록할 수 있어요.</p>
               </div>
               <Link
-                href="/medications/new/search"
+                href={`/medications/new/search?date=${encodeURIComponent(selectedDateKey)}`}
                 className="inline-add-button"
                 onClick={() => {
                   resetDraft();
@@ -557,7 +557,7 @@ export function HomeScreen({
               <div className={`home-card-heading ${showDateEyebrow ? "with-date" : ""}`}>
                 {showDateEyebrow && <span className="card-date-eyebrow">{formatDateKey(selectedDateKey)}</span>}
                 <Link
-                  href="/medications"
+                  href={`/medications?date=${encodeURIComponent(selectedDateKey)}`}
                   className="home-card-title"
                   aria-label="복용약 목록 열기"
                   onNavigate={() => trackMedicationManagementOpened(medications.length)}

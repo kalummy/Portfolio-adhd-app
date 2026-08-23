@@ -14,6 +14,7 @@ import {
 } from "@/lib/repositories/medications";
 import {
   clearDraft,
+  dateContextHref,
   getDraft,
   registrationHref,
   setLastSavedMedicationIds,
@@ -106,7 +107,9 @@ export default function MedicationSchedulePage() {
       trackMedicationAdded();
       clearDraft();
       const toastId = createClientId();
-      router.replace(`/?medicationToast=added&toastId=${encodeURIComponent(toastId)}`);
+      router.replace(dateContextHref(
+        `/?medicationToast=added&toastId=${encodeURIComponent(toastId)}`,
+      ));
     } catch {
       savingRef.current = false;
       setSaving(false);
