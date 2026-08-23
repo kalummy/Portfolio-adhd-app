@@ -106,6 +106,21 @@ export function createSupabaseMedicationIntakeRepository(
       }
       return findByMedicationAndDate(medicationId, date);
     },
+    async updateRecordedAt(medicationId, date, recordedAt) {
+      const { data, error } = await supabase
+        .from("medication_intake_records")
+        .update({ recorded_at: recordedAt })
+        .eq("user_id", userId)
+        .eq("medication_id", medicationId)
+        .eq("intake_date", date)
+        .select(INTAKE_COLUMNS)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("수정할 복용 완료 기록을 찾지 못했어요.");
+      return fromSupabaseMedicationIntake(
+        data as unknown as SupabaseMedicationIntakeRow,
+      );
+    },
     async migrateInitial(records) {
       const { data, error } = await supabase.rpc(
         "migrate_initial_medication_intake_records",

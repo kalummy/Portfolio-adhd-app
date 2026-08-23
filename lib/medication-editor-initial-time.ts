@@ -1,19 +1,19 @@
-import { getKstDateKey, isValidDateKey, KST_TIME_ZONE } from "@/lib/kst-date";
+import { isValidDateKey, KST_TIME_ZONE } from "@/lib/kst-date";
 import {
   resolveMedicationEditorInitialTime as resolveMedicationEditorInitialTimeWithContext,
 } from "@/lib/medication-time";
-import type { MedicationIntakeRecord, SavedMedication } from "@/lib/types";
+import type { MedicationIntakeRecord } from "@/lib/types";
 
 export function resolveMedicationEditorInitialTime(
-  medication: Pick<SavedMedication, "id" | "scheduledTime">,
+  medicationId: string,
   records: MedicationIntakeRecord[],
-  todayDateKey = getKstDateKey(),
+  targetDateKey: string,
 ) {
   return resolveMedicationEditorInitialTimeWithContext(
-    medication,
+    medicationId,
     records,
     {
-      todayDateKey,
+      targetDateKey,
       timeZone: KST_TIME_ZONE,
       isValidDateKey,
     },

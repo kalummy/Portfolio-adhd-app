@@ -186,18 +186,20 @@ function MedicationListContent() {
                   <Image src="/icons/trash-outline.svg" alt="" width={18} height={18} />
                 </button>
               </div>
-              <div className="medication-list-edit-container">
-                <Link
-                  className="medication-list-edit-link"
-                  href={`/medications/${encodeURIComponent(medication.id)}/schedule?date=${encodeURIComponent(targetDate)}`}
-                  onNavigate={() => trackMedicationScheduleEditOpened(
-                    medication.schedule,
-                    Boolean(medication.scheduledTime),
-                  )}
-                >
-                  복용 시간 수정
-                </Link>
-              </div>
+              {intake ? (
+                <div className="medication-list-edit-container">
+                  <Link
+                    className="medication-list-edit-link"
+                    href={`/medications/${encodeURIComponent(medication.id)}/schedule?date=${encodeURIComponent(targetDate)}`}
+                    onNavigate={() => trackMedicationScheduleEditOpened(
+                      medication.schedule,
+                      Boolean(medication.scheduledTime),
+                    )}
+                  >
+                    복용 시간 수정
+                  </Link>
+                </div>
+              ) : null}
             </article>
           );
         }) : null}

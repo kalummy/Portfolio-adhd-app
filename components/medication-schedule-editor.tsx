@@ -6,18 +6,17 @@ import { useRouter } from "next/navigation";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MedicationSummaryCard } from "@/components/medication-card";
 import { MobileShell } from "@/components/mobile-shell";
-import { trackMedicationScheduleUpdated } from "@/lib/analytics/events";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
 import { resolveMedicationEditorInitialTime } from "@/lib/medication-editor-initial-time";
 import {
   digitsOnly,
   normalizeHourInput,
-  toScheduledTime,
+  toRecordedAtIso,
+  type MedicationTimeFields,
   type MedicationTimePeriod,
 } from "@/lib/medication-time";
 import { getDataRepositories } from "@/lib/repositories";
-import type { MedicationSchedulePatch } from "@/lib/repositories/medications/types";
-import type { MedicationSchedule, SavedMedication } from "@/lib/types";
+import type { MedicationIntakeRecord, MedicationSchedule, SavedMedication } from "@/lib/types";
 
 const schedules: Array<{ value: MedicationSchedule; label: string }> = [
   { value: "daily", label: "매일" },
@@ -50,43 +49,56 @@ export function MedicationScheduleEditor({
 }) {
   const router = useRouter();
   const [medication, setMedication] = useState<SavedMedication | null>(null);
-  const [schedule, setSchedule] = useState<MedicationSchedule | null>(null);
+  const [intake, setIntake] = useState<MedicationIntakeRecord | null>(null);
   const [period, setPeriod] = useState<MedicationTimePeriod>("am");
   const [hour, setHour] = useState("");
   const [minute, setMinute] = useState("");
   const [saving, setSaving] = useState(false);
-  const originalSchedule = useRef<MedicationSchedule | null>(null);
-  const originalTime = useRef<string | null>(null);
+  const originalTime = useRef<MedicationTimeFields | null>(null);
   const replaceHourOnNextInput = useRef(false);
   const replaceMinuteOnNextInput = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
+    if (!targetDateKey) {
+      router.replace(returnHref);
+      return () => {
+        cancelled = true;
+      };
+    }
     void getDataRepositories()
       .then(async (repositories) => {
         const [[savedMedication], intakeRecords] = await Promise.all([
           repositories.medications.getByIds([medicationId]),
-          repositories.medicationIntakes.listAll(),
+          repositories.medicationIntakes.listByDate(targetDateKey),
         ]);
         if (!savedMedication) {
+          router.replace(returnHref);
+          return;
+        }
+        const initialTime = resolveMedicationEditorInitialTime(
+          medicationId,
+          intakeRecords,
+          targetDateKey,
+        );
+        const matchingIntakes = intakeRecords.filter((record) => (
+          record.medicationId === medicationId
+          && record.date === targetDateKey
+          && record.taken === true
+        ));
+        if (!initialTime || matchingIntakes.length !== 1) {
           router.replace(returnHref);
           return;
         }
         const [enrichedMedication] = await enrichOfficialMedications([savedMedication]);
         if (cancelled) return;
 
-        const initialTime = resolveMedicationEditorInitialTime(
-          savedMedication,
-          intakeRecords,
-          targetDateKey,
-        );
-        setPeriod(initialTime?.period ?? "am");
-        setHour(initialTime?.hour ?? "");
-        setMinute(initialTime?.minute ?? "");
-        setSchedule(savedMedication.schedule);
+        setPeriod(initialTime.period);
+        setHour(initialTime.hour);
+        setMinute(initialTime.minute);
         setMedication(enrichedMedication ?? savedMedication);
-        originalSchedule.current = savedMedication.schedule;
-        originalTime.current = savedMedication.scheduledTime ?? null;
+        setIntake(matchingIntakes[0]);
+        originalTime.current = initialTime;
       })
       .catch(() => {
         // Figma does not define a loading failure state for this screen.
@@ -96,11 +108,13 @@ export function MedicationScheduleEditor({
     };
   }, [medicationId, returnHref, router, targetDateKey]);
 
-  const scheduledTime = useMemo(
-    () => toScheduledTime({ period, hour, minute }),
-    [hour, minute, period],
+  const recordedAt = useMemo(
+    () => targetDateKey
+      ? toRecordedAtIso(targetDateKey, { period, hour, minute })
+      : undefined,
+    [hour, minute, period, targetDateKey],
   );
-  const canComplete = Boolean(schedule) && scheduledTime !== undefined && !saving;
+  const canComplete = Boolean(intake) && recordedAt !== undefined && !saving;
 
   function valueAfterFirstFocusedInput(
     value: string,
@@ -139,47 +153,38 @@ export function MedicationScheduleEditor({
   }
 
   async function complete() {
-    if (!medication || !schedule || scheduledTime === undefined || saving) return;
+    if (!medication || !intake || !targetDateKey || recordedAt === undefined || saving) return;
 
-    const scheduleChanged = schedule !== originalSchedule.current;
-    const timeChanged = scheduledTime !== originalTime.current;
-    if (!scheduleChanged && !timeChanged) {
+    const timeChanged = originalTime.current?.period !== period
+      || originalTime.current?.hour !== hour
+      || originalTime.current?.minute !== minute;
+    if (!timeChanged) {
       router.replace(homeHref);
       return;
     }
 
-    const patch: MedicationSchedulePatch = {};
-    if (scheduleChanged) patch.schedule = schedule;
-    if (timeChanged) patch.scheduledTime = scheduledTime;
-
     setSaving(true);
     try {
-      const { medications: repository } = await getDataRepositories();
-      await repository.updateSchedule(medication.id, patch);
-      const [persistedMedication] = await repository.getByIds([medication.id]);
-      const schedulePersisted = !Object.hasOwn(patch, "schedule")
-        || persistedMedication?.schedule === patch.schedule;
-      const timePersisted = !Object.hasOwn(patch, "scheduledTime")
-        || (persistedMedication?.scheduledTime ?? null) === (patch.scheduledTime ?? null);
-      if (!persistedMedication || !schedulePersisted || !timePersisted) {
-        throw new Error("복용 일정 저장 결과를 확인하지 못했어요.");
-      }
-      trackMedicationScheduleUpdated({
-        changedFields: scheduleChanged
-          ? (timeChanged ? "schedule_and_time" : "schedule")
-          : "time",
-        previousSchedule: originalSchedule.current ?? medication.schedule,
-        newSchedule: schedule,
-        hadScheduledTimeBefore: originalTime.current !== null,
-        hasScheduledTimeAfter: scheduledTime !== null,
-      });
-      if (scheduleChanged && !timeChanged) {
-        const destination = new URL(homeHref, window.location.origin);
-        destination.searchParams.set("medicationToast", "schedule-updated");
-        router.replace(`${destination.pathname}${destination.search}`);
-      } else {
-        router.replace(homeHref);
-      }
+      const { medicationIntakes: repository } = await getDataRepositories();
+      const savedRecord = await repository.updateRecordedAt(
+        medication.id,
+        targetDateKey,
+        recordedAt,
+      );
+      const persistedMatches = (await repository.listByDate(targetDateKey)).filter((record) => (
+        record.medicationId === medication.id
+        && record.date === targetDateKey
+        && record.taken === true
+      ));
+      const persistedRecord = persistedMatches[0];
+      if (
+        persistedMatches.length !== 1
+        || savedRecord.id !== intake.id
+        || savedRecord.recordedAt !== recordedAt
+        || persistedRecord?.id !== intake.id
+        || persistedRecord.recordedAt !== recordedAt
+      ) throw new Error("복용 완료 시간 저장 결과를 확인하지 못했어요.");
+      router.replace(homeHref);
     } catch {
       // Figma does not define a save failure state for this screen.
     } finally {
@@ -187,7 +192,7 @@ export function MedicationScheduleEditor({
     }
   }
 
-  if (!medication || !schedule) {
+  if (!medication || !intake) {
     return (
       <MobileShell className="flow-screen medication-schedule-edit-screen">
         {null}
@@ -208,13 +213,13 @@ export function MedicationScheduleEditor({
               <button
                 type="button"
                 role="radio"
-                aria-checked={schedule === option.value}
-                className={`schedule-option ${schedule === option.value ? "selected" : ""}`}
+                aria-checked={medication.schedule === option.value}
+                className={`schedule-option ${medication.schedule === option.value ? "selected" : ""}`}
+                disabled
                 key={option.value}
-                onClick={() => setSchedule(option.value)}
               >
                 <span className="radio-mark" aria-hidden="true">
-                  {schedule === option.value ? (
+                  {medication.schedule === option.value ? (
                     <Image src="/icons/radio-selected.svg" alt="" width={20} height={20} />
                   ) : (
                     <>

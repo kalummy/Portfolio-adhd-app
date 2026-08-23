@@ -514,6 +514,80 @@ export async function setMedicationTaken(
   return taken ? record : null;
 }
 
+export async function updateMedicationIntakeRecordedAt(
+  medicationId: string,
+  date: string,
+  recordedAt: string,
+): Promise<MedicationIntakeRecord> {
+  const database = await openDatabase();
+  const dataset = await new Promise<LegacyMedicationIntakeDatasetState | GuestMedicationDatasetState>(
+    (resolve, reject) => {
+      const request = database
+        .transaction(INTAKE_DATASET_STORE, "readonly")
+        .objectStore(INTAKE_DATASET_STORE)
+        .get(INTAKE_DATASET_STATE_ID);
+      request.onsuccess = () => {
+        const state = request.result as
+          | LegacyMedicationIntakeDatasetState
+          | GuestMedicationDatasetState
+          | undefined;
+        if (state) resolve(state);
+        else reject(new Error("활성 복용 기록 데이터셋을 찾지 못했어요."));
+      };
+      request.onerror = () => reject(
+        request.error ?? new Error("활성 복용 기록 데이터셋을 확인하지 못했어요."),
+      );
+    },
+  );
+  const activeRecordIds = new Set(
+    "intakeRecordIds" in dataset && Array.isArray(dataset.intakeRecordIds)
+      ? dataset.intakeRecordIds
+      : "activeRecordIds" in dataset && Array.isArray(dataset.activeRecordIds)
+        ? dataset.activeRecordIds
+        : [],
+  );
+  let updatedRecord: MedicationIntakeRecord | null = null;
+  let validationError: Error | null = null;
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const transaction = database.transaction(INTAKE_STORE, "readwrite");
+      const store = transaction.objectStore(INTAKE_STORE);
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const matches = (request.result as MedicationIntakeRecord[]).filter((record) => (
+          activeRecordIds.has(record.id)
+          && record.medicationId === medicationId
+          && record.date === date
+          && record.taken === true
+        ));
+        if (matches.length !== 1) {
+          validationError = new Error("수정할 복용 완료 기록을 찾지 못했어요.");
+          transaction.abort();
+          return;
+        }
+
+        updatedRecord = { ...matches[0], recordedAt };
+        store.put(updatedRecord);
+      };
+      request.onerror = () => reject(request.error ?? new Error("복용 기록을 불러오지 못했어요."));
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(
+        transaction.error ?? new Error("복용 완료 시간을 수정하지 못했어요."),
+      );
+      transaction.onabort = () => reject(
+        validationError ?? transaction.error ?? new Error("복용 완료 시간 수정이 중단됐어요."),
+      );
+    });
+  } finally {
+    database.close();
+  }
+
+  if (!updatedRecord) throw new Error("수정할 복용 완료 기록을 찾지 못했어요.");
+  return updatedRecord;
+}
+
 export async function reserveGuestMedicationDatasetForUser(
   userId: string,
 ): Promise<ReservedGuestMedicationDataset | null> {
