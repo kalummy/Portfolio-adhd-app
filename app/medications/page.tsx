@@ -12,9 +12,9 @@ import {
   trackMedicationScheduleEditOpened,
 } from "@/lib/analytics/events";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
+import { resolveMedicationImage } from "@/lib/medication-images";
 import { KST_TIME_ZONE, getKstDateKey, isValidDateKey } from "@/lib/kst-date";
 import {
-  MEDICATION_FALLBACK_IMAGE,
   medicationLabel,
   medicationScheduleLabel,
 } from "@/lib/medication-utils";
@@ -47,36 +47,34 @@ function formatMedicationRecordTime(iso: string) {
 }
 
 function MedicationListImage({ medication }: { medication: SavedMedication }) {
-  const productImage = medication.productImage?.trim();
   const [failedSources, setFailedSources] = useState<Set<string>>(() => new Set());
-  const hasProductImage = Boolean(productImage && medication.imageType !== "fallback");
-  const candidates = [
-    ...(hasProductImage ? [productImage!] : []),
-    medication.fallbackImage,
-    medication.imagePath,
-    MEDICATION_FALLBACK_IMAGE,
-  ].filter((source, index, values): source is string => (
-    Boolean(source) && values.indexOf(source) === index
-  ));
-  const source = candidates.find((candidate) => !failedSources.has(candidate))
-    ?? MEDICATION_FALLBACK_IMAGE;
-  const isFallback = source !== productImage;
+  const label = medicationLabel(medication);
+  const existingImage = medication.productImage ?? medication.imagePath;
+  const image = resolveMedicationImage({
+    medicationId: medication.catalogId,
+    medicationName: label,
+    existingImage,
+    fallbackImage: medication.fallbackImage ?? medication.imagePath,
+    failedSources,
+  });
 
   useEffect(() => setFailedSources(new Set()), [
     medication.fallbackImage,
     medication.imagePath,
-    productImage,
+    medication.catalogId,
+    medication.productImage,
+    label,
   ]);
 
   return (
-    <div className={`medication-list-image ${isFallback ? "fallback" : ""}`}>
+    <div className={`medication-list-image ${image.type === "fallback" ? "fallback" : ""}`}>
       <Image
-        src={source}
+        src={image.src}
         alt=""
         fill
         sizes="64px"
-        unoptimized={isFallback}
-        onError={() => setFailedSources((current) => new Set(current).add(source))}
+        unoptimized={image.type === "fallback"}
+        onError={() => setFailedSources((current) => new Set(current).add(image.src))}
       />
     </div>
   );

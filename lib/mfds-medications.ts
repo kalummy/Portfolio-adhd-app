@@ -1,5 +1,6 @@
 import { MEDICATION_FALLBACK_IMAGE } from "./medication-utils";
 import { selectOfficialManualMedicationCandidate } from "./medication-candidates";
+import { getLocalMedicationProductImage } from "./medication-images";
 import type { MedicationCandidate } from "./types";
 
 const PRODUCT_ENDPOINT =
@@ -17,22 +18,6 @@ const OFFICIAL_IMAGE_KEYS = [
   "product_image",
   "productImage",
 ] as const;
-
-const VERIFIED_LOCAL_PRODUCT_IMAGES: Record<
-  string,
-  { imagePath: string; sourceName: string; sourceUrl: string }
-> = {
-  "201501271": {
-    imagePath: "/medications/concerta-36.png",
-    sourceName: "약학정보원 의약품식별정보",
-    sourceUrl: "https://www.health.kr/searchDrug/result_take.asp?drug_cd=2015031200004",
-  },
-  "646902060": {
-    imagePath: "/medications/concerta-36.png",
-    sourceName: "약학정보원 의약품식별정보",
-    sourceUrl: "https://www.health.kr/searchDrug/result_take.asp?drug_cd=2015031200004",
-  },
-};
 
 type ApiItem = Record<string, unknown>;
 
@@ -239,10 +224,9 @@ function toMedicationCandidate(
 
   const displayLabel = cleanProductLabel(rawProductName);
   const officialImage = normalizeOfficialImage(image?.originalUrl ?? "");
-  const verifiedLocalImage = VERIFIED_LOCAL_PRODUCT_IMAGES[catalogId];
-  const productImage = officialImage
-    ? `/api/medications/image/${catalogId}`
-    : verifiedLocalImage?.imagePath;
+  const verifiedLocalImage = getLocalMedicationProductImage({ medicationId: catalogId });
+  const productImage = verifiedLocalImage?.src
+    ?? (officialImage ? `/api/medications/image/${catalogId}` : undefined);
 
   return {
     catalogId,
@@ -263,14 +247,14 @@ function toMedicationCandidate(
     englishName: getString(item, "ITEM_ENG_NAME", "item_eng_name", "itemEngName"),
     imagePath: productImage ?? MEDICATION_FALLBACK_IMAGE,
     productImage,
-    fallbackImage: verifiedLocalImage?.imagePath ?? MEDICATION_FALLBACK_IMAGE,
+    fallbackImage: MEDICATION_FALLBACK_IMAGE,
     imageType: productImage ? "product" : "fallback",
-    imageSourceName: officialImage
+    imageSourceName: verifiedLocalImage?.sourceName ?? (officialImage
       ? image?.source === "product"
         ? "식품의약품안전처 의약품 제품 허가정보"
         : "식품의약품안전처 의약품 낱알식별정보"
-      : verifiedLocalImage?.sourceName,
-    imageSourceUrl: officialImage ?? verifiedLocalImage?.sourceUrl,
+      : undefined),
+    imageSourceUrl: verifiedLocalImage?.sourceUrl ?? officialImage,
     officialMatchStatus: "matched",
   };
 }

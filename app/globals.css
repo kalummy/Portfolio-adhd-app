@@ -982,7 +982,7 @@ html[data-addi-splash="skip"] .splash-screen {
 }
 
 .medication-image {
-  object-fit: contain;
+  object-fit: cover;
 }
 
 .medication-image.fallback {
