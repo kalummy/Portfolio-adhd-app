@@ -13,7 +13,7 @@ const MEDICATION_COLUMNS = [
   "strength_value", "strength_unit", "manufacturer", "english_name", "image_path",
   "product_image", "fallback_image", "image_type", "image_source_name",
   "image_source_url", "search_keywords", "official_match_status",
-  "registration_method", "schedule", "active", "deactivated_at", "created_at", "updated_at",
+  "registration_method", "schedule", "scheduled_time", "active", "deactivated_at", "created_at", "updated_at",
 ].join(",");
 
 function sortByCreatedAt(medications: SavedMedication[]) {
@@ -78,6 +78,28 @@ export function createSupabaseMedicationRepository(userId: string): ServerMedica
       const { data, error } = await supabase
         .from("user_medications")
         .update({ active: false, deactivated_at: now, updated_at: now })
+        .eq("user_id", userId)
+        .eq("id", id)
+        .select(MEDICATION_COLUMNS)
+        .single();
+      if (error) throw error;
+      return fromSupabaseMedication(data as unknown as SupabaseMedicationRow);
+    },
+    async updateSchedule(id, patch) {
+      const now = new Date().toISOString();
+      const updates: {
+        schedule?: SavedMedication["schedule"];
+        scheduled_time?: string | null;
+        updated_at: string;
+      } = { updated_at: now };
+      if (Object.hasOwn(patch, "schedule")) updates.schedule = patch.schedule;
+      if (Object.hasOwn(patch, "scheduledTime")) {
+        updates.scheduled_time = patch.scheduledTime ?? null;
+      }
+
+      const { data, error } = await supabase
+        .from("user_medications")
+        .update(updates)
         .eq("user_id", userId)
         .eq("id", id)
         .select(MEDICATION_COLUMNS)

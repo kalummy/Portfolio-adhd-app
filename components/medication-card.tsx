@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import type { MedicationCandidate } from "@/lib/types";
-import { medicationLabel } from "@/lib/medication-utils";
+import { MEDICATION_FALLBACK_IMAGE, medicationLabel } from "@/lib/medication-utils";
 
 export function MedicationSummaryCard({
   medication,
@@ -13,22 +13,40 @@ export function MedicationSummaryCard({
   compact?: boolean;
 }) {
   const productImage = medication.productImage?.trim();
-  const [imageFailed, setImageFailed] = useState(false);
+  const [failedSources, setFailedSources] = useState<Set<string>>(() => new Set());
+  const hasProductImage = Boolean(productImage && medication.imageType === "product");
+  const candidates = [
+    ...(hasProductImage ? [productImage!] : []),
+    medication.fallbackImage,
+    medication.imagePath,
+    MEDICATION_FALLBACK_IMAGE,
+  ].filter((source, index, values): source is string => (
+    Boolean(source) && values.indexOf(source) === index
+  ));
+  const displayedImage = candidates.find((source) => !failedSources.has(source))
+    ?? MEDICATION_FALLBACK_IMAGE;
 
-  useEffect(() => setImageFailed(false), [productImage]);
+  useEffect(() => setFailedSources(new Set()), [
+    medication.fallbackImage,
+    medication.imagePath,
+    productImage,
+  ]);
 
-  const isFallbackImage = !productImage || medication.imageType !== "product" || imageFailed;
+  const isFallbackImage = displayedImage !== productImage;
 
   return (
     <article className={`medication-summary-card ${compact ? "compact" : ""}`}>
       <div className={`medication-image-wrap ${isFallbackImage ? "fallback" : ""}`}>
         {isFallbackImage ? (
           <Image
-            src={medication.fallbackImage ?? medication.imagePath}
+            src={displayedImage}
             alt=""
             width={64}
             height={64}
             className="medication-image fallback"
+            onError={() => setFailedSources((current) => (
+              new Set(current).add(displayedImage)
+            ))}
           />
         ) : (
           <Image
@@ -37,7 +55,9 @@ export function MedicationSummaryCard({
             fill
             sizes="64px"
             className="medication-image"
-            onError={() => setImageFailed(true)}
+            onError={() => setFailedSources((current) => (
+              new Set(current).add(displayedImage)
+            ))}
           />
         )}
       </div>

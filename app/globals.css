@@ -207,66 +207,91 @@ html[data-addi-splash="skip"] .splash-screen {
 
 .medication-list-screen {
   min-height: 100dvh;
-  padding-bottom: calc(130px + env(safe-area-inset-bottom));
+  padding-bottom: calc(117px + env(safe-area-inset-bottom));
 }
 
 .medication-list-content {
-  padding: 32px 20px 24px;
+  display: flex;
+  padding: 64px 0 24px;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.medication-list-title h1 {
-  margin: 0;
-  color: var(--color-font-base-03);
-  font-size: 24px;
-  line-height: 34px;
-  font-weight: 600;
-  letter-spacing: -0.6px;
+.medication-list-item {
+  position: relative;
+  display: flex;
+  height: 172px;
+  min-width: 0;
+  padding: 20px;
+  flex-direction: column;
+  gap: 32px;
 }
 
-.medication-list-title p {
-  margin: 2px 0 0;
-  color: var(--color-font-base-03);
+.medication-list-item::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: var(--color-border-base-03);
+  content: "";
+}
+
+.medication-list-main {
+  display: flex;
+  width: 100%;
+  height: 64px;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.medication-list-image {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.medication-list-image:not(.fallback) img {
+  object-fit: cover;
+}
+
+.medication-list-image.fallback img {
+  object-fit: contain;
+}
+
+.medication-list-item-copy {
+  display: flex;
+  height: 64px;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.medication-list-item-copy > strong {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-font-base-04);
   font-size: 16px;
   line-height: 24px;
-  font-weight: 400;
+  font-weight: 600;
   letter-spacing: -0.4px;
-}
-
-.registered-medications {
-  margin-top: 36px;
-}
-
-.registered-medications h2 {
-  margin: 0 0 8px;
-  color: var(--color-font-primary);
-  font-size: 12px;
-  line-height: 18px;
-  font-weight: 500;
-  letter-spacing: -0.3px;
-}
-
-.registered-medication-list {
-  display: grid;
-  gap: 16px;
-}
-
-.registered-medication-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 24px;
-  align-items: center;
-  gap: 16px;
-}
-
-.registered-medication-row .medication-summary-card {
-  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .medication-list-delete {
   display: grid;
+  align-self: center;
   place-items: center;
   width: 24px;
-  height: 44px;
+  height: 24px;
   padding: 0;
+  flex: 0 0 24px;
   border: 0;
   background: transparent;
   cursor: pointer;
@@ -278,23 +303,60 @@ html[data-addi-splash="skip"] .splash-screen {
   height: 18px;
 }
 
-.medication-empty-methods {
-  margin-top: 92px;
-}
-
-.medication-list-loading {
-  height: 234px;
-  border-radius: 8px;
-  background: linear-gradient(90deg, var(--color-gray-75), var(--color-gray-100), var(--color-gray-75));
-  background-size: 200% 100%;
-  animation: shimmer 1.2s infinite;
-}
-
-.medication-list-error {
-  margin: 20px 0 0;
-  color: var(--color-font-semantic-danger);
+.medication-list-schedule {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--color-font-base-04);
   font-size: 13px;
   line-height: 18px;
+  font-weight: 400;
+  letter-spacing: -0.325px;
+}
+
+.medication-list-schedule i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-bg-base-05);
+}
+
+.medication-list-status {
+  color: var(--color-font-base-06);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 400;
+  letter-spacing: -0.3px;
+}
+
+.medication-list-status.complete {
+  color: var(--color-mint-900);
+}
+
+.medication-list-edit-container {
+  display: flex;
+  width: 100%;
+  height: 36px;
+  justify-content: flex-end;
+}
+
+.medication-list-edit-link {
+  display: grid;
+  width: 104px;
+  height: 36px;
+  padding: 9px 16px;
+  place-items: center;
+  border: 1px solid var(--color-border-base-04);
+  border-radius: 8px;
+  background: var(--color-bg-interactive-neutral-default);
+  color: var(--color-font-base-03);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  letter-spacing: -0.325px;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .primary-button.medication-add-link {
@@ -384,6 +446,147 @@ html[data-addi-splash="skip"] .splash-screen {
   opacity: 0.7;
 }
 
+.medication-schedule-edit-screen {
+  padding-bottom: calc(117px + env(safe-area-inset-bottom));
+}
+
+.medication-schedule-edit-content {
+  padding: 24px 0;
+}
+
+.medication-schedule-edit-content > .medication-summary-card {
+  width: calc(100% - 40px);
+  height: 96px;
+  min-height: 96px;
+  margin: 0 20px;
+}
+
+.medication-schedule-edit-content .medication-image:not(.fallback) {
+  object-fit: cover;
+}
+
+.medication-edit-section h1 {
+  margin: 0;
+  color: var(--color-font-base-04);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+
+.medication-edit-schedule-section {
+  margin-top: 32px;
+}
+
+.medication-edit-schedule-section > h1,
+.medication-edit-time-section > h1 {
+  padding: 0 20px;
+}
+
+.medication-edit-schedule-options {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 8px 20px;
+}
+
+.medication-edit-time-section {
+  margin-top: 20px;
+}
+
+.medication-time-fields {
+  display: flex;
+  width: 100%;
+  height: 88px;
+  align-items: flex-start;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.medication-period-options {
+  display: grid;
+  width: 92px;
+  height: 88px;
+  padding-left: 20px;
+  flex: 0 0 92px;
+  gap: 8px;
+}
+
+.medication-period-options button {
+  width: 72px;
+  height: 40px;
+  padding: 10px 16px;
+  border: 1px solid var(--color-border-base-04);
+  border-radius: 10px;
+  background: var(--color-bg-interactive-neutral-default);
+  color: var(--color-font-base-04);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: -0.35px;
+}
+
+.medication-period-options button.selected {
+  border-color: var(--color-bg-interactive-brand-default);
+  background: var(--color-bg-interactive-mint-pressed);
+  color: var(--color-font-base-03);
+}
+
+.medication-time-picker {
+  display: grid;
+  min-width: 0;
+  height: 56px;
+  margin-top: 16px;
+  padding-right: 20px;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 12px;
+}
+
+.medication-time-input {
+  display: grid;
+  width: 100%;
+  height: 56px;
+  padding: 16px;
+  place-items: center;
+  border: 1px solid var(--color-border-base-04);
+  border-radius: 12px;
+  background: var(--color-bg-base-01);
+  scroll-margin-bottom: 48px;
+}
+
+.medication-time-input:focus-within {
+  border-color: var(--color-border-focus-default);
+}
+
+.medication-time-input:focus-within input {
+  color: var(--color-font-base-06);
+  caret-color: var(--color-border-focus-default);
+}
+
+.medication-time-input input {
+  width: 100%;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-font-base-03);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.medication-time-unit {
+  color: var(--color-font-base-04);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  letter-spacing: -0.45px;
+}
+
 .bottom-actions {
   position: fixed;
   z-index: 20;
@@ -458,6 +661,40 @@ html[data-addi-splash="skip"] .splash-screen {
   .primary-button:active:not(:disabled) {
     transform: none;
   }
+}
+
+.medication-list-screen .primary-button,
+.medication-schedule-edit-screen .primary-button {
+  transition: none;
+}
+
+.medication-list-screen .primary-button:active:not(:disabled),
+.medication-schedule-edit-screen .primary-button:active:not(:disabled) {
+  transform: none;
+}
+
+.medication-list-screen .primary-button.soft:active:not(:disabled) {
+  background: var(--color-bg-interactive-mint-pressed);
+}
+
+.medication-schedule-edit-screen .primary-button.primary:active:not(:disabled),
+.medication-delete-actions .delete:active:not(:disabled) {
+  background: var(--color-bg-interactive-brand-pressed);
+}
+
+.medication-list-edit-link:active,
+.medication-period-options button:active:not(.selected) {
+  background: var(--color-bg-interactive-neutral-pressed);
+}
+
+.medication-delete-actions .cancel:active:not(:disabled),
+.medication-schedule-edit-screen .schedule-option:active {
+  background: var(--color-bg-interactive-gray-pressed);
+}
+
+.medication-period-options button.selected:active {
+  border-color: var(--color-bg-interactive-brand-default);
+  background: var(--color-bg-interactive-mint-pressed);
 }
 
 .split-actions {

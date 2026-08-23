@@ -4,6 +4,7 @@ import {
   getSavedMedications,
   getSavedMedicationsByIds,
   saveSavedMedications,
+  updateSavedMedicationSchedule,
 } from "@/lib/indexed-db";
 import type { MedicationRepository } from "./types";
 
@@ -15,5 +16,6 @@ export const indexedDbMedicationRepository: MedicationRepository = {
     return medications;
   },
   deactivate: deactivateSavedMedication,
+  updateSchedule: updateSavedMedicationSchedule,
   getByIds: getSavedMedicationsByIds,
 };

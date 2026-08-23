@@ -12,6 +12,7 @@ function med(overrides = {}) {
     image_path: "/medications/concerta-36.png",
     registration_method: overrides.registration_method ?? "search",
     schedule: overrides.schedule ?? "daily",
+    scheduled_time: overrides.scheduled_time ?? null,
     active: overrides.active ?? true,
     created_at: overrides.created_at ?? "2026-08-18T00:00:00.000Z",
     ...overrides,
@@ -38,7 +39,8 @@ function coreMatches(left, right) {
     && left.strength_value === right.strength_value
     && left.strength_unit === right.strength_unit
     && left.manufacturer === right.manufacturer
-    && left.schedule === right.schedule;
+    && left.schedule === right.schedule
+    && left.scheduled_time === right.scheduled_time;
 }
 
 function validIntake(record) {
@@ -275,6 +277,24 @@ cases.push(["L simulated constraint error rolls back", () => {
   assert.equal(result.success, false);
   assert.equal(result.failureReason, "simulated_constraint_error");
   assertRollback(db, before);
+}]);
+
+cases.push(["M scheduled time is preserved for a new guest medication", () => {
+  const db = freshDb();
+  const guest = med({ id: "guest-time", catalog_id: "cat-time", scheduled_time: "13:05" });
+  const result = mergeGuestDataset(db, "user-a", "dataset-m", [guest], []);
+  assert.equal(result.success, true);
+  assert.equal(db.users["user-a"].medications[0].scheduled_time, "13:05");
+}]);
+
+cases.push(["N different scheduled time is not reused as the same medication", () => {
+  const db = freshDb();
+  const server = med({ id: "server-time", catalog_id: "cat-time", scheduled_time: "09:00" });
+  db.users["user-a"] = { medications: [server], intakes: [], claims: new Map() };
+  const guest = med({ id: "guest-time", catalog_id: "cat-time", scheduled_time: "13:00" });
+  const result = mergeGuestDataset(db, "user-a", "dataset-n", [guest], []);
+  assert.equal(result.reusedMedicationCount, 0);
+  assert.equal(result.insertedMedicationCount, 1);
 }]);
 
 for (const [name, run] of cases) {

@@ -103,10 +103,8 @@ export default function MedicationSchedulePage() {
       const saved = await repository.createMany(medications);
       setLastSavedMedicationIds(saved.map((medication) => medication.id));
       trackMedicationAdded();
-      const startedFromMedications = new URLSearchParams(window.location.search).get("origin")
-        === "medications";
       clearDraft();
-      router.replace(startedFromMedications ? "/medications" : "/?medicationToast=added");
+      router.replace("/?medicationToast=added");
     } catch {
       savingRef.current = false;
       setSaving(false);
