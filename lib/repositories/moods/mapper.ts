@@ -8,6 +8,8 @@ export type SupabaseMoodRow = {
   mood: MoodType;
   recorded_at: string;
   summary: string;
+  details?: MoodRecord["details"] | null;
+  clinic_phrase?: string | null;
 };
 
 export type SupabaseMoodMigrationInput = Omit<SupabaseMoodRow, "user_id">;
@@ -22,6 +24,8 @@ export function fromSupabaseMood(row: SupabaseMoodRow): MoodRecord {
     recordedAt: row.recorded_at,
     diaryEntries: [row.summary],
     memberSummary: row.summary,
+    clinicPhrase: row.clinic_phrase ?? row.summary,
+    details: row.details ?? undefined,
   };
 }
 
@@ -36,7 +40,7 @@ export function toSupabaseMood(
 }
 
 export function toSupabaseMoodMigrationInput(
-  record: Pick<MoodRecord, "date" | "mood" | "recordedAt" | "memberSummary">,
+  record: Pick<MoodRecord, "date" | "mood" | "recordedAt" | "memberSummary" | "details" | "clinicPhrase">,
 ): SupabaseMoodMigrationInput {
   if (!record.memberSummary) {
     throw new Error("회원용 감정 요약이 없는 기록은 이전할 수 없어요.");
@@ -46,5 +50,7 @@ export function toSupabaseMoodMigrationInput(
     mood: record.mood as MoodType,
     recorded_at: record.recordedAt,
     summary: record.memberSummary,
+    details: record.details ?? null,
+    clinic_phrase: record.clinicPhrase ?? record.memberSummary,
   };
 }

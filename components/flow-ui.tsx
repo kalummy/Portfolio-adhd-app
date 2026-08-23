@@ -8,13 +8,19 @@ type FlowHeaderProps = {
   title?: string;
   fallbackHref?: string;
   beforeBack?: () => void;
+  onBack?: () => void;
+  onClose?: () => void;
   onBackOnly?: boolean;
 };
 
-export function FlowHeader({ title, fallbackHref, beforeBack, onBackOnly = false }: FlowHeaderProps) {
+export function FlowHeader({ title, fallbackHref, beforeBack, onBack, onClose, onBackOnly = false }: FlowHeaderProps) {
   const router = useRouter();
 
   function goBack() {
+    if (onBack) {
+      onBack();
+      return;
+    }
     beforeBack?.();
 
     if (onBackOnly) return;
@@ -33,6 +39,11 @@ export function FlowHeader({ title, fallbackHref, beforeBack, onBackOnly = false
         <Image src="/icons/back.svg" alt="" width={18} height={14} />
       </button>
       {title ? <strong>{title}</strong> : null}
+      {onClose ? (
+        <button className="icon-button flow-header-close" type="button" onClick={onClose} aria-label="감정 기록 닫기">
+          <Image src="/icons/close.svg" alt="" width={16} height={16} />
+        </button>
+      ) : null}
     </header>
   );
 }

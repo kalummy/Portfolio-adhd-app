@@ -693,11 +693,11 @@ export function HomeScreen({
               <div className="mood-diary-card">
                 <div className="mood-diary-title">
                   <Image src="/icons/mood-diary.svg" alt="" width={20} height={20} />
-                  <strong>{selectedRelation === 0 ? "오늘의 일기" : "감정 일기"}</strong>
+                  <strong>병원에서 이렇게 이야기 해보세요</strong>
                 </div>
-                <p>{moodRecord.diaryEntries?.length
+                <p>“{moodRecord.clinicPhrase || (moodRecord.diaryEntries?.length
                   ? getMoodDiarySummary(moodRecord.diaryEntries)
-                  : DEFAULT_DIARY_SUMMARY}</p>
+                  : DEFAULT_DIARY_SUMMARY)}”</p>
               </div>
             </div>
           ) : (

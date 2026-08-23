@@ -68,6 +68,18 @@ export type MoodRecord = {
   recordedAt: string;
   diaryEntries?: string[];
   memberSummary?: string;
+  clinicPhrase?: string;
+  details?: {
+    medicationEffects: string[];
+    medicationEffectTimings: Record<string, string[]>;
+    moods: string[];
+    relationships: string[];
+    customText: {
+      medicationEffect: string;
+      mood: string;
+      relationship: string;
+    };
+  };
 };
 
 export type VisitSchedule = {
