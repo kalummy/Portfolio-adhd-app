@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { AnalyticsAuthCompletion } from "@/components/analytics-auth-completion";
+import { AnalyticsScreenTracker } from "@/components/analytics-screen-tracker";
 import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "./globals.css";
 
@@ -20,6 +22,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="ko" suppressHydrationWarning>
       <body>
         <AnalyticsAuthCompletion />
+        <Suspense fallback={null}>
+          <AnalyticsScreenTracker />
+        </Suspense>
         {children}
       </body>
     </html>

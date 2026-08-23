@@ -22,6 +22,10 @@ import {
 } from "./attempts";
 import { trackAnalyticsEvent } from "./mixpanel";
 import { isAnalyticsPathBlocked } from "./path-policy";
+import {
+  createScreenViewTransition,
+  type AnalyticsScreenName,
+} from "./screens";
 import type {
   AnalyticsEventName,
   AnalyticsEventProperties,
@@ -44,6 +48,14 @@ let analyticsQueue: Promise<unknown> = Promise.resolve();
 let lastMedicationStartAt = 0;
 let lastMedicationManagementOpenAt = 0;
 let lastMoodStartAt = 0;
+
+const screenTrackingGlobal = globalThis as typeof globalThis & {
+  __addiScreenTrackingState?: { previousScreen: AnalyticsScreenName | null };
+};
+
+const screenTrackingState = screenTrackingGlobal.__addiScreenTrackingState ??= {
+  previousScreen: null,
+};
 
 function readSessionValue(key: string) {
   try {
@@ -143,6 +155,7 @@ async function resolveAnalyticsAuthState(): Promise<"guest" | "member"> {
 function queueResolvedEvent<T extends AnalyticsEventName>(
   eventName: T,
   properties: AnalyticsEventProperties<T>,
+  pathnameOverride?: string,
 ) {
   if (typeof window === "undefined" || isAnalyticsPathBlocked(window.location.pathname)) {
     return Promise.resolve();
@@ -150,10 +163,18 @@ function queueResolvedEvent<T extends AnalyticsEventName>(
   analyticsQueue = analyticsQueue
     .then(async () => {
       const authState = await resolveAnalyticsAuthState();
-      trackAnalyticsEvent(eventName, authState, properties);
+      trackAnalyticsEvent(eventName, authState, properties, pathnameOverride);
     })
     .catch(() => undefined);
   return analyticsQueue;
+}
+
+export function trackScreenViewed(pathname: string) {
+  if (typeof window === "undefined" || isAnalyticsPathBlocked(pathname)) return;
+  const transition = createScreenViewTransition(screenTrackingState.previousScreen, pathname);
+  screenTrackingState.previousScreen = transition.currentScreen;
+  if (!transition.properties) return;
+  queueResolvedEvent("screen_viewed", transition.properties, pathname);
 }
 
 export function trackLoginStarted() {
