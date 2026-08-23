@@ -15,6 +15,11 @@ export interface MedicationIntakeRepository {
     date: string,
     taken: boolean,
   ): Promise<MedicationIntakeRecord | null>;
+  updateRecordedAt(
+    medicationId: string,
+    date: string,
+    recordedAt: string,
+  ): Promise<MedicationIntakeRecord>;
   migrateInitial(
     records: MedicationIntakeRecord[],
   ): Promise<InitialMedicationIntakeMigrationResult>;

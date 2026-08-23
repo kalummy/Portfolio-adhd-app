@@ -602,18 +602,16 @@ try {
   );
   assert.equal((medicationListSource.match(/trackMedicationDeleteConfirmed\(/g) ?? []).length, 1);
 
-  const noChangeReturnIndex = medicationEditorSource.indexOf("if (!scheduleChanged && !timeChanged)");
-  const updateIndex = medicationEditorSource.indexOf("await repository.updateSchedule");
-  const rereadIndex = medicationEditorSource.indexOf("await repository.getByIds");
-  const verificationIndex = medicationEditorSource.indexOf("if (!persistedMedication || !schedulePersisted || !timePersisted)");
-  const updatedTrackIndex = medicationEditorSource.indexOf("trackMedicationScheduleUpdated({");
+  const noChangeReturnIndex = medicationEditorSource.indexOf("if (!timeChanged)");
+  const updateIndex = medicationEditorSource.indexOf("await repository.updateRecordedAt");
+  const rereadIndex = medicationEditorSource.indexOf("await repository.listByDate(targetDateKey)");
+  const verificationIndex = medicationEditorSource.indexOf("persistedMatches.length !== 1");
   assert.ok(noChangeReturnIndex < updateIndex);
   assert.ok(updateIndex < rereadIndex);
   assert.ok(rereadIndex < verificationIndex);
-  assert.ok(verificationIndex < updatedTrackIndex);
-  assert.match(medicationEditorSource, /changedFields: scheduleChanged\s*\? \(timeChanged \? "schedule_and_time" : "schedule"\)\s*: "time"/);
-  assert.equal((medicationEditorSource.match(/trackMedicationScheduleUpdated\(/g) ?? []).length, 1);
-  console.log("PASS medication management action-only, success-only, classification, and duplicate prevention wiring");
+  assert.equal((medicationEditorSource.match(/trackMedicationScheduleUpdated\(/g) ?? []).length, 0);
+  assert.doesNotMatch(medicationEditorSource, /scheduledTime/);
+  console.log("PASS medication recordedAt persistence and schedule-update analytics separation wiring");
 
   console.log("analytics fixture cases: 11/11 groups passed");
 } finally {

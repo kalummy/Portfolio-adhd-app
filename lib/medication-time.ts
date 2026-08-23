@@ -6,11 +6,6 @@ export type MedicationTimeFields = {
   minute: string;
 };
 
-export type MedicationEditorTimeMedication = {
-  id: string;
-  scheduledTime?: string | null;
-};
-
 export type MedicationEditorTimeIntake = {
   id: string;
   medicationId: string;
@@ -20,7 +15,7 @@ export type MedicationEditorTimeIntake = {
 };
 
 export type MedicationEditorTimeContext = {
-  todayDateKey: string;
+  targetDateKey: string;
   timeZone: string;
   isValidDateKey: (dateKey: string) => boolean;
 };
@@ -48,29 +43,22 @@ export function parseScheduledTime(value?: string | null): MedicationTimeFields 
 }
 
 export function resolveMedicationEditorInitialTime(
-  medication: MedicationEditorTimeMedication,
+  medicationId: string,
   intakeRecords: MedicationEditorTimeIntake[],
   context: MedicationEditorTimeContext,
 ): MedicationTimeFields | null {
-  if (medication.scheduledTime != null) {
-    return parseScheduledTime(medication.scheduledTime);
-  }
-
-  const latestIntake = intakeRecords
+  if (!context.isValidDateKey(context.targetDateKey)) return null;
+  const matchingIntakes = intakeRecords
     .filter((record) => (
-      record.medicationId === medication.id
+      record.medicationId === medicationId
       && record.taken === true
       && context.isValidDateKey(record.date)
-      && record.date === context.todayDateKey
+      && record.date === context.targetDateKey
       && !Number.isNaN(new Date(record.recordedAt).getTime())
-    ))
-    .sort((left, right) => (
-      right.date.localeCompare(left.date)
-      || new Date(right.recordedAt).getTime() - new Date(left.recordedAt).getTime()
-    ))[0];
-  if (!latestIntake) return null;
+    ));
+  if (matchingIntakes.length !== 1) return null;
 
-  const recordedDate = new Date(latestIntake.recordedAt);
+  const recordedDate = new Date(matchingIntakes[0].recordedAt);
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: context.timeZone,
     hour: "2-digit",
@@ -81,6 +69,41 @@ export function resolveMedicationEditorInitialTime(
     parts.find((part) => part.type === type)?.value ?? ""
   );
   return parseScheduledTime(`${value("hour")}:${value("minute")}`);
+}
+
+export function toRecordedAtIso(
+  dateKey: string,
+  fields: MedicationTimeFields,
+): string | undefined {
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  const time = toScheduledTime(fields);
+  if (!dateMatch || time == null) return undefined;
+
+  const year = Number(dateMatch[1]);
+  const month = Number(dateMatch[2]);
+  const day = Number(dateMatch[3]);
+  const [hour, minute] = time.split(":").map(Number);
+  const utcDate = new Date(Date.UTC(year, month - 1, day, hour - 9, minute, 0, 0));
+  const kstParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(utcDate);
+  const value = (type: Intl.DateTimeFormatPartTypes) => (
+    kstParts.find((part) => part.type === type)?.value ?? ""
+  );
+  const roundTripDateKey = `${value("year")}-${value("month")}-${value("day")}`;
+  if (
+    roundTripDateKey !== dateKey
+    || value("hour") !== String(hour).padStart(2, "0")
+    || value("minute") !== String(minute).padStart(2, "0")
+  ) return undefined;
+
+  return utcDate.toISOString();
 }
 
 export function formatScheduledTimeLabel(value?: string | null) {
