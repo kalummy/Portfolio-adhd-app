@@ -8,14 +8,14 @@ import { MedicationSummaryCard } from "@/components/medication-card";
 import { MobileShell } from "@/components/mobile-shell";
 import { trackMedicationScheduleUpdated } from "@/lib/analytics/events";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
+import { resolveMedicationEditorInitialTime } from "@/lib/medication-editor-initial-time";
 import {
   digitsOnly,
   normalizeHourInput,
-  parseScheduledTime,
   toScheduledTime,
   type MedicationTimePeriod,
 } from "@/lib/medication-time";
-import { getMedicationRepository } from "@/lib/repositories/medications";
+import { getDataRepositories } from "@/lib/repositories";
 import type { MedicationSchedulePatch } from "@/lib/repositories/medications/types";
 import type { MedicationSchedule, SavedMedication } from "@/lib/types";
 
@@ -52,9 +52,12 @@ export function MedicationScheduleEditor({ medicationId }: { medicationId: strin
 
   useEffect(() => {
     let cancelled = false;
-    void getMedicationRepository()
-      .then((repository) => repository.getByIds([medicationId]))
-      .then(async ([savedMedication]) => {
+    void getDataRepositories()
+      .then(async (repositories) => {
+        const [[savedMedication], intakeRecords] = await Promise.all([
+          repositories.medications.getByIds([medicationId]),
+          repositories.medicationIntakes.listAll(),
+        ]);
         if (!savedMedication) {
           router.replace("/medications");
           return;
@@ -62,12 +65,15 @@ export function MedicationScheduleEditor({ medicationId }: { medicationId: strin
         const [enrichedMedication] = await enrichOfficialMedications([savedMedication]);
         if (cancelled) return;
 
-        const parsedTime = parseScheduledTime(savedMedication.scheduledTime);
-        setMedication(enrichedMedication ?? savedMedication);
+        const initialTime = resolveMedicationEditorInitialTime(
+          savedMedication,
+          intakeRecords,
+        );
+        setPeriod(initialTime?.period ?? "am");
+        setHour(initialTime?.hour ?? "");
+        setMinute(initialTime?.minute ?? "");
         setSchedule(savedMedication.schedule);
-        setPeriod(parsedTime?.period ?? "am");
-        setHour(parsedTime?.hour ?? "");
-        setMinute(parsedTime?.minute ?? "");
+        setMedication(enrichedMedication ?? savedMedication);
         originalSchedule.current = savedMedication.schedule;
         originalTime.current = savedMedication.scheduledTime ?? null;
       })
@@ -137,7 +143,7 @@ export function MedicationScheduleEditor({ medicationId }: { medicationId: strin
 
     setSaving(true);
     try {
-      const repository = await getMedicationRepository();
+      const { medications: repository } = await getDataRepositories();
       await repository.updateSchedule(medication.id, patch);
       const [persistedMedication] = await repository.getByIds([medication.id]);
       const schedulePersisted = !Object.hasOwn(patch, "schedule")

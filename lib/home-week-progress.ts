@@ -8,7 +8,7 @@ export function getWeekProgress(
   moodRecords: MoodRecord[],
 ): WeekProgress {
   const hasMedicationIntake = intakeRecords.some(
-    (record) => record.date === dateKey && record.taken,
+    (record) => record.date === dateKey && record.taken === true,
   );
   const hasMoodRecord = moodRecords.some((record) => record.date === dateKey);
 

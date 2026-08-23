@@ -7,6 +7,7 @@ import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MedicationSummaryCard } from "@/components/medication-card";
 import { MobileShell } from "@/components/mobile-shell";
 import { trackMedicationAdded } from "@/lib/analytics/events";
+import { createClientId } from "@/lib/client-id";
 import {
   createSavedMedicationsFromDraft,
   getMedicationRepository,
@@ -104,7 +105,8 @@ export default function MedicationSchedulePage() {
       setLastSavedMedicationIds(saved.map((medication) => medication.id));
       trackMedicationAdded();
       clearDraft();
-      router.replace("/?medicationToast=added");
+      const toastId = createClientId();
+      router.replace(`/?medicationToast=added&toastId=${encodeURIComponent(toastId)}`);
     } catch {
       savingRef.current = false;
       setSaving(false);

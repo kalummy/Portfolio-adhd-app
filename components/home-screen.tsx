@@ -38,7 +38,6 @@ import {
   medicationScheduleLabel,
 } from "@/lib/medication-utils";
 import { getMoodDiarySummary, getMoodPresentation } from "@/lib/mood-summary";
-import { formatScheduledTimeLabel } from "@/lib/medication-time";
 import { formatVisitDday, fromDateKey as fromVisitDateKey } from "@/lib/visit-date";
 import type {
   HomeDataSet,
@@ -53,6 +52,7 @@ import { SplashScreen } from "./splash-screen";
 import { Toast } from "./toast";
 
 const SPLASH_SESSION_KEY = "addi:splash:shown:v1";
+const CONSUMED_TOAST_SESSION_PREFIX = "addi:toast:consumed:";
 const SPLASH_MINIMUM_MS = 800;
 
 const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -102,6 +102,7 @@ type HomeScreenProps = {
   minimumDateKey?: string;
   maximumDateKey?: string;
   initialToast?: string;
+  initialToastId?: string;
   initialToastQueryKey?: "medicationToast" | "moodToast" | "visitToast";
   enableLaunchSplash?: boolean;
 };
@@ -113,10 +114,12 @@ export function HomeScreen({
   minimumDateKey,
   maximumDateKey,
   initialToast,
+  initialToastId,
   initialToastQueryKey,
   enableLaunchSplash = false,
 }: HomeScreenProps = {}) {
-  const { bfcacheId } = useRouter();
+  const router = useRouter();
+  const { bfcacheId } = router;
   const [todayDateKey, setTodayDateKey] = useState(() => getKstDateKey());
   const resolvedReferenceDateKey = useMemo(
     () => referenceDateKey ?? todayDateKey,
@@ -145,7 +148,9 @@ export function HomeScreen({
     previewData?.visitSchedule ?? null,
   );
   const [loading, setLoading] = useState(!previewData);
-  const [toast, setToast] = useState(initialToast ?? "");
+  const [toast, setToast] = useState(initialToastId ? "" : initialToast ?? "");
+  const activeToastIdRef = useRef<string | null>(null);
+  const toastActivityGenerationRef = useRef(0);
   const [syncError, setSyncError] = useState("");
   const [syncRetrying, setSyncRetrying] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -174,6 +179,17 @@ export function HomeScreen({
 
     document.documentElement.removeAttribute("data-addi-splash");
   }, [enableLaunchSplash]);
+
+  useLayoutEffect(() => {
+    const generation = ++toastActivityGenerationRef.current;
+    return () => {
+      queueMicrotask(() => {
+        if (toastActivityGenerationRef.current !== generation) return;
+        activeToastIdRef.current = null;
+        setToast("");
+      });
+    };
+  }, []);
 
   useEffect(() => {
     if (!enableLaunchSplash || !launchSplashRequired) return;
@@ -271,13 +287,36 @@ export function HomeScreen({
   }, [enableLaunchSplash, launchSplashRequired, loading, splashMinimumElapsed]);
 
   useEffect(() => {
-    if (!initialToast || !initialToastQueryKey) return;
+    if (!initialToastQueryKey) return;
     const url = new URL(window.location.href);
     if (!url.searchParams.has(initialToastQueryKey)) return;
+    const currentToastId = initialToastId && url.searchParams.get("toastId") === initialToastId
+      ? initialToastId
+      : null;
+
+    if (currentToastId && initialToast) {
+      const consumptionKey = `${CONSUMED_TOAST_SESSION_PREFIX}${currentToastId}`;
+      let consumed = false;
+      try {
+        consumed = window.sessionStorage.getItem(consumptionKey) === "1";
+        if (!consumed) window.sessionStorage.setItem(consumptionKey, "1");
+      } catch {
+        consumed = activeToastIdRef.current === currentToastId;
+      }
+
+      if (!consumed) {
+        activeToastIdRef.current = currentToastId;
+        setToast(initialToast);
+      } else if (activeToastIdRef.current !== currentToastId) {
+        setToast("");
+      }
+      url.searchParams.delete("toastId");
+    }
+
     url.searchParams.delete(initialToastQueryKey);
     const nextUrl = `${url.pathname}${url.search}${url.hash}`;
     window.history.replaceState(window.history.state, "", nextUrl);
-  }, [initialToast, initialToastQueryKey]);
+  }, [initialToast, initialToastId, initialToastQueryKey]);
 
   const selectedIntakeByMedication = useMemo(() => {
     return new Map(
@@ -531,7 +570,6 @@ export function HomeScreen({
                 {medications.map((medication) => {
                   const intake = selectedIntakeByMedication.get(medication.id);
                   const isTaken = Boolean(intake);
-                  const scheduledTimeLabel = formatScheduledTimeLabel(medication.scheduledTime);
                   const productImage = medication.productImage?.trim();
                   const hasProductImage = Boolean(productImage && medication.imageType !== "fallback");
                   const imageKey = `${medication.id}:${productImage ?? medication.imagePath}`;
@@ -581,7 +619,7 @@ export function HomeScreen({
                           </div>
                           <span className={`home-medication-status ${isTaken ? "complete" : ""}`}>
                             {intake
-                              ? `복용 완료 (${scheduledTimeLabel ?? formatMedicationRecordTime(intake.recordedAt)})`
+                              ? `복용 완료 (${formatMedicationRecordTime(intake.recordedAt)})`
                               : "아직 복용하지 않았어요"}
                           </span>
                         </div>
