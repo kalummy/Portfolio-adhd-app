@@ -7,6 +7,7 @@ import { MobileShell } from "@/components/mobile-shell";
 import { trackLoginStarted } from "@/lib/analytics/events";
 import { getAuthState, signInWithGoogle, signOut, type AuthState } from "@/lib/auth/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { restoreClaimedGuestDatasetVisibilityForUser } from "@/lib/indexed-db";
 
 const EMPTY_AUTH_STATE: AuthState = { isAuthenticated: false, user: null };
 
@@ -66,6 +67,9 @@ export function AuthLoginScreen() {
     setBusy(true);
     setError("");
     try {
+      if (authState.user) {
+        await restoreClaimedGuestDatasetVisibilityForUser(authState.user.id);
+      }
       await signOut();
       setAuthState(EMPTY_AUTH_STATE);
       router.replace("/");

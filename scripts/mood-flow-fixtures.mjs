@@ -12,14 +12,16 @@ const fixtureDirectory = await mkdtemp(join(tmpdir(), "addi-mood-fixtures-"));
 try {
   execFileSync(join(rootPath, "node_modules/.bin/tsc"), [
     "--ignoreConfig", "--target", "es2022", "--module", "es2022", "--moduleResolution", "bundler",
-    "--skipLibCheck", "--outDir", fixtureDirectory, "lib/types.ts", "lib/visit-date.ts", "lib/mood-history.ts", "lib/mood-summary.ts",
+    "--skipLibCheck", "--outDir", fixtureDirectory, "lib/types.ts", "lib/visit-date.ts", "lib/mood-history.ts", "lib/mood-summary.ts", "lib/mood-draft.ts",
   ], { cwd: rootPath, stdio: "pipe" });
   await copyFile(join(fixtureDirectory, "visit-date.js"), join(fixtureDirectory, "visit-date"));
   await copyFile(join(fixtureDirectory, "types.js"), join(fixtureDirectory, "types"));
+  await copyFile(join(fixtureDirectory, "mood-summary.js"), join(fixtureDirectory, "mood-summary"));
   await writeFile(join(fixtureDirectory, "package.json"), '{"type":"module"}');
 
   const history = await import(pathToFileURL(join(fixtureDirectory, "mood-history.js")));
   const summary = await import(pathToFileURL(join(fixtureDirectory, "mood-summary.js")));
+  const draft = await import(pathToFileURL(join(fixtureDirectory, "mood-draft.js")));
   const answer = (selected = [], customText = "", timingsByOption = {}) => ({ selected, customText, timingsByOption });
   const recordedAt = "2026-08-24T02:00:00.000Z";
 
@@ -85,25 +87,58 @@ try {
   assert.match(flowSource, /window\.history\.back\(\)/);
   assert.match(flowSource, /title="감정 기록을 중단할까요\?"/);
   assert.match(flowSource, /가장 가까운 항목을 선택해주세요\./);
+  assert.match(flowSource, /window\.sessionStorage/);
+  assert.match(flowSource, /clearMoodDraft/);
   assert.match(flowSource, /destination\.searchParams\.set\("moodToast", "saved"\)/);
   assert.match(flowSource, /destination\.searchParams\.set\("toastId", createClientId\(\)\)/);
   assert.match(flowSource, /new URL\(homeHref, window\.location\.origin\)/);
   assert.ok(flowSource.indexOf("await repository.save") < flowSource.lastIndexOf("window.location.assign"));
   console.log("PASS three-step navigation, close confirmation, and navigation-after-save structure");
 
+  const storageMap = new Map();
+  const storage = {
+    getItem: (key) => storageMap.get(key) ?? null,
+    setItem: (key, value) => storageMap.set(key, value),
+    removeItem: (key) => storageMap.delete(key),
+  };
+  const draftAnswers = [answer(["similar"]), answer(["anxious"]), answer(["none"])];
+  draft.writeMoodDraft(storage, "2026-08-23", { phase: "questions", step: 1, answers: draftAnswers });
+  draft.writeMoodDraft(storage, "2026-08-24", { phase: "result", step: 2, answers: draftAnswers });
+  assert.equal(draft.getMoodDraftKey("2026-08-24"), "addi:mood-draft:2026-08-24");
+  assert.deepEqual(draft.readMoodDraft(storage, "2026-08-24"), {
+    version: 1, phase: "result", step: 2, answers: draftAnswers,
+  });
+  assert.equal(draft.readMoodDraft(storage, "2026-08-23")?.step, 1);
+  draft.clearMoodDraft(storage, "2026-08-24");
+  assert.equal(draft.readMoodDraft(storage, "2026-08-24"), null);
+  assert.equal(draft.readMoodDraft(storage, "2026-08-23")?.answers[0].selected[0], "similar");
+  const pageSource = await readFile(new URL("app/moods/new/page.tsx", projectRoot), "utf8");
+  assert.match(pageSource, /key=\{targetDateKey\}/);
+  assert.match(flowSource, /buildMoodSummary\(draft\.answers/);
+  console.log("PASS sessionStorage mood drafts are versioned, restorable, clearable, and date-scoped");
+
   const loadingSource = await readFile(new URL("components/mood-summary-loading.tsx", projectRoot), "utf8");
   const loadingPrototypeSource = await readFile(new URL("components/mood-loading-prototype.tsx", projectRoot), "utf8");
+  const lottieSource = await readFile(new URL("components/mood-lottie.tsx", projectRoot), "utf8");
   const resultSource = await readFile(new URL("components/mood-result.tsx", projectRoot), "utf8");
   assert.match(loadingSource, /MoodLoadingPrototype/);
+  assert.match(loadingSource, /MoodLottiePreloader/);
   assert.match(loadingPrototypeSource, /mood-loading-start\.svg/);
   assert.match(loadingPrototypeSource, /mood-loading-end\.svg/);
   assert.match(loadingPrototypeSource, /onAnimationEnd/);
+  assert.match(lottieSource, /lottieCache/);
+  assert.match(lottieSource, /lottie\.loadAnimation/);
+  assert.match(lottieSource, /renderer: "svg"/);
+  assert.match(lottieSource, /autoplay: true/);
+  assert.match(lottieSource, /animation\?\.destroy\(\)/);
+  assert.match(lottieSource, /preserveAspectRatio: "xMidYMid meet"/);
+  assert.doesNotMatch(lottieSource, /from "lottie-react"|prefers-reduced-motion/u);
   assert.match(resultSource, /\/lottie\/mood-complete\.json/);
   assert.match(resultSource, /navigator\.share/);
-  assert.doesNotMatch(`${flowSource}\n${loadingSource}\n${resultSource}`, /Check\.json|SUMMARY_DURATION_MS|6000/);
+  assert.doesNotMatch(`${flowSource}\n${loadingSource}\n${lottieSource}\n${resultSource}`, /Check\.json|SUMMARY_DURATION_MS|6000/);
   console.log("PASS Loading uses the Figma prototype and Result uses the dedicated completion JSON plus native sharing");
 
-  console.log("mood flow fixture cases: 7/7 passed");
+  console.log("mood flow fixture cases: 8/8 passed");
 } finally {
   await rm(fixtureDirectory, { recursive: true, force: true });
 }
