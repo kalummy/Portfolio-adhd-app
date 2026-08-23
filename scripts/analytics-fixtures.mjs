@@ -66,7 +66,7 @@ try {
   }
   console.log(`PASS route sanitizer ${routeCases.length}/${routeCases.length}`);
 
-  assert.equal(schema.ANALYTICS_EVENT_NAMES.length, 16);
+  assert.equal(schema.ANALYTICS_EVENT_NAMES.length, 20);
   assert.deepEqual(schema.ANALYTICS_EVENT_NAMES, [
     "app_opened",
     "login_started",
@@ -74,6 +74,10 @@ try {
     "medication_add_started",
     "medication_added",
     "medication_taken",
+    "medication_management_opened",
+    "medication_schedule_edit_opened",
+    "medication_schedule_updated",
+    "medication_delete_confirmed",
     "mood_started",
     "mood_step_completed",
     "mood_result_viewed",
@@ -227,6 +231,129 @@ try {
       days_from_today: 0,
     },
   }), null);
+
+  assert.deepEqual(schema.buildAnalyticsPayload({
+    environment: "production",
+    pathname: "/",
+    authState: "member",
+    eventName: "medication_management_opened",
+    properties: {
+      source: "home",
+      medication_count: 2,
+      medication_id: "blocked",
+      medication_name: "blocked",
+      user_id: "blocked",
+    },
+  }), {
+    environment: "production",
+    route: "home",
+    auth_state: "member",
+    source: "home",
+    medication_count: 2,
+  });
+  assert.equal(schema.buildAnalyticsPayload({
+    environment: "production",
+    pathname: "/",
+    authState: "guest",
+    eventName: "medication_management_opened",
+    properties: { source: "home", medication_count: -1 },
+  }), null);
+
+  assert.deepEqual(schema.buildAnalyticsPayload({
+    environment: "development",
+    pathname: "/medications",
+    authState: "guest",
+    eventName: "medication_schedule_edit_opened",
+    properties: {
+      source: "medication_management",
+      schedule_type: "as_needed",
+      has_scheduled_time: true,
+      scheduledTime: "09:30",
+      dosage: "blocked",
+    },
+  }), {
+    environment: "development",
+    route: "medication_list",
+    auth_state: "guest",
+    source: "medication_management",
+    schedule_type: "as_needed",
+    has_scheduled_time: true,
+  });
+
+  for (const changedFields of ["schedule", "time", "schedule_and_time"]) {
+    assert.deepEqual(schema.buildAnalyticsPayload({
+      environment: "development",
+      pathname: "/medications/private-id/schedule",
+      authState: "guest",
+      eventName: "medication_schedule_updated",
+      properties: {
+        source: "medication_management",
+        changed_fields: changedFields,
+        previous_schedule_type: "daily",
+        new_schedule_type: "bedtime",
+        had_scheduled_time_before: true,
+        has_scheduled_time_after: false,
+        previous_time: "09:30",
+        new_time: "10:30",
+        email: "blocked@example.com",
+      },
+    }), {
+      environment: "development",
+      route: "other_safe",
+      auth_state: "guest",
+      source: "medication_management",
+      changed_fields: changedFields,
+      previous_schedule_type: "daily",
+      new_schedule_type: "bedtime",
+      had_scheduled_time_before: true,
+      has_scheduled_time_after: false,
+    });
+  }
+  assert.equal(schema.buildAnalyticsPayload({
+    environment: "development",
+    pathname: "/medications/private-id/schedule",
+    authState: "guest",
+    eventName: "medication_schedule_updated",
+    properties: {
+      source: "medication_management",
+      changed_fields: "none",
+      previous_schedule_type: "daily",
+      new_schedule_type: "daily",
+      had_scheduled_time_before: true,
+      has_scheduled_time_after: true,
+    },
+  }), null);
+
+  assert.deepEqual(schema.buildAnalyticsPayload({
+    environment: "development",
+    pathname: "/medications",
+    authState: "member",
+    eventName: "medication_delete_confirmed",
+    properties: {
+      source: "medication_management",
+      has_intake_history: true,
+      medicationId: "blocked",
+      intake_recorded_at: "blocked",
+    },
+  }), {
+    environment: "development",
+    route: "medication_list",
+    auth_state: "member",
+    source: "medication_management",
+    has_intake_history: true,
+  });
+  assert.deepEqual(schema.buildAnalyticsPayload({
+    environment: "development",
+    pathname: "/medications",
+    authState: "guest",
+    eventName: "medication_add_started",
+    properties: { source: "medication_management", medication_name: "blocked" },
+  }), {
+    environment: "development",
+    route: "medication_list",
+    auth_state: "guest",
+    source: "medication_management",
+  });
   console.log("PASS event schema and runtime property allowlist");
 
   let mood = attempts.createMoodAttempt("home");
@@ -324,7 +451,39 @@ try {
   assert.match(homeSource, /onSelect=\{handleCalendarSelect\}/);
   console.log("PASS home date picker action-only wiring and unchanged-date confirmation suppression");
 
-  console.log("analytics fixture cases: 8/8 groups passed");
+  const medicationListSource = await readFile(new URL("../app/medications/page.tsx", import.meta.url), "utf8");
+  const medicationEditorSource = await readFile(new URL("../components/medication-schedule-editor.tsx", import.meta.url), "utf8");
+  const analyticsEventsSource = await readFile(new URL("../lib/analytics/events.ts", import.meta.url), "utf8");
+
+  assert.match(analyticsEventsSource, /if \(typeof window === "undefined" \|\| isAnalyticsPathBlocked\(window\.location\.pathname\)\) \{\s*return Promise\.resolve\(\);/);
+  assert.ok(
+    analyticsEventsSource.indexOf("isAnalyticsPathBlocked(window.location.pathname)")
+      < analyticsEventsSource.indexOf("analyticsQueue = analyticsQueue"),
+  );
+  assert.match(homeSource, /onNavigate=\{\(\) => trackMedicationManagementOpened\(medications\.length\)\}/);
+  assert.match(analyticsEventsSource, /now - lastMedicationManagementOpenAt < START_THROTTLE_MS/);
+  assert.match(medicationListSource, /onNavigate=\{\(\) => trackMedicationScheduleEditOpened\([\s\S]*?medication\.schedule,[\s\S]*?Boolean\(medication\.scheduledTime\)/);
+  assert.match(medicationListSource, /startMedicationAddAttempt\("medication_management"\)/);
+  assert.ok(
+    medicationListSource.indexOf("await repositories.medications.deactivate")
+      < medicationListSource.indexOf("trackMedicationDeleteConfirmed(deleteTarget.hasIntakeHistory)"),
+  );
+  assert.equal((medicationListSource.match(/trackMedicationDeleteConfirmed\(/g) ?? []).length, 1);
+
+  const noChangeReturnIndex = medicationEditorSource.indexOf("if (!scheduleChanged && !timeChanged)");
+  const updateIndex = medicationEditorSource.indexOf("await repository.updateSchedule");
+  const rereadIndex = medicationEditorSource.indexOf("await repository.getByIds");
+  const verificationIndex = medicationEditorSource.indexOf("if (!persistedMedication || !schedulePersisted || !timePersisted)");
+  const updatedTrackIndex = medicationEditorSource.indexOf("trackMedicationScheduleUpdated({");
+  assert.ok(noChangeReturnIndex < updateIndex);
+  assert.ok(updateIndex < rereadIndex);
+  assert.ok(rereadIndex < verificationIndex);
+  assert.ok(verificationIndex < updatedTrackIndex);
+  assert.match(medicationEditorSource, /changedFields: scheduleChanged\s*\? \(timeChanged \? "schedule_and_time" : "schedule"\)\s*: "time"/);
+  assert.equal((medicationEditorSource.match(/trackMedicationScheduleUpdated\(/g) ?? []).length, 1);
+  console.log("PASS medication management action-only, success-only, classification, and duplicate prevention wiring");
+
+  console.log("analytics fixture cases: 9/9 groups passed");
 } finally {
   await rm(fixtureDirectory, { recursive: true, force: true });
 }

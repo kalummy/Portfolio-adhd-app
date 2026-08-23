@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { HomeDatePickerSheet } from "@/components/home-date-picker-sheet";
 import { getAuthState } from "@/lib/auth/client";
@@ -13,6 +14,7 @@ import {
   trackHomeDatePickerOpened,
   trackHomeDateSelected,
   trackHomeDateTodayClicked,
+  trackMedicationManagementOpened,
   trackMedicationTakenOnce,
 } from "@/lib/analytics/events";
 import { getDataRepositories, retryGuestDatasetSync } from "@/lib/repositories";
@@ -36,6 +38,7 @@ import {
   medicationScheduleLabel,
 } from "@/lib/medication-utils";
 import { getMoodDiarySummary, getMoodPresentation } from "@/lib/mood-summary";
+import { formatScheduledTimeLabel } from "@/lib/medication-time";
 import { formatVisitDday, fromDateKey as fromVisitDateKey } from "@/lib/visit-date";
 import type {
   HomeDataSet,
@@ -113,6 +116,7 @@ export function HomeScreen({
   initialToastQueryKey,
   enableLaunchSplash = false,
 }: HomeScreenProps = {}) {
+  const { bfcacheId } = useRouter();
   const [todayDateKey, setTodayDateKey] = useState(() => getKstDateKey());
   const resolvedReferenceDateKey = useMemo(
     () => referenceDateKey ?? todayDateKey,
@@ -248,7 +252,7 @@ export function HomeScreen({
       window.removeEventListener("pageshow", load);
       window.removeEventListener("focus", load);
     };
-  }, [load, previewData]);
+  }, [bfcacheId, load, previewData]);
 
   useEffect(() => {
     if (
@@ -513,7 +517,12 @@ export function HomeScreen({
             <div className="home-card populated-medication-card">
               <div className={`home-card-heading ${showDateEyebrow ? "with-date" : ""}`}>
                 {showDateEyebrow && <span className="card-date-eyebrow">{formatDateKey(selectedDateKey)}</span>}
-                <Link href="/medications" className="home-card-title" aria-label="복용약 목록 열기">
+                <Link
+                  href="/medications"
+                  className="home-card-title"
+                  aria-label="복용약 목록 열기"
+                  onNavigate={() => trackMedicationManagementOpened(medications.length)}
+                >
                   <strong>{medicationTitle}</strong>
                   <ChevronRight />
                 </Link>
@@ -522,6 +531,7 @@ export function HomeScreen({
                 {medications.map((medication) => {
                   const intake = selectedIntakeByMedication.get(medication.id);
                   const isTaken = Boolean(intake);
+                  const scheduledTimeLabel = formatScheduledTimeLabel(medication.scheduledTime);
                   const productImage = medication.productImage?.trim();
                   const hasProductImage = Boolean(productImage && medication.imageType !== "fallback");
                   const imageKey = `${medication.id}:${productImage ?? medication.imagePath}`;
@@ -571,7 +581,7 @@ export function HomeScreen({
                           </div>
                           <span className={`home-medication-status ${isTaken ? "complete" : ""}`}>
                             {intake
-                              ? `복용 완료 (${formatMedicationRecordTime(intake.recordedAt)})`
+                              ? `복용 완료 (${scheduledTimeLabel ?? formatMedicationRecordTime(intake.recordedAt)})`
                               : "아직 복용하지 않았어요"}
                           </span>
                         </div>

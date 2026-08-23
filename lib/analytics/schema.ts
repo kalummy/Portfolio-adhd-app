@@ -5,6 +5,10 @@ export const ANALYTICS_EVENT_NAMES = [
   "medication_add_started",
   "medication_added",
   "medication_taken",
+  "medication_management_opened",
+  "medication_schedule_edit_opened",
+  "medication_schedule_updated",
+  "medication_delete_confirmed",
   "mood_started",
   "mood_step_completed",
   "mood_result_viewed",
@@ -33,7 +37,10 @@ export type AnalyticsRoute =
   | "visit_management"
   | "legal"
   | "other_safe";
-export type MedicationAddSource = "home" | "medication_list";
+export type MedicationAddSource = "home" | "medication_list" | "medication_management";
+export type MedicationManagementSource = "medication_management";
+export type AnalyticsMedicationScheduleType = "daily" | "as_needed" | "bedtime";
+export type MedicationScheduleChangedFields = "schedule" | "time" | "schedule_and_time";
 export type MoodSource = "home" | "mood_history";
 export type MoodStep = 1 | 2 | 3 | 4;
 export type DateDirection = "past" | "today" | "future";
@@ -52,6 +59,24 @@ type EventSpecificProperties = {
   medication_add_started: { source: MedicationAddSource };
   medication_added: Record<never, never>;
   medication_taken: Record<never, never>;
+  medication_management_opened: { source: "home"; medication_count: number };
+  medication_schedule_edit_opened: {
+    source: MedicationManagementSource;
+    schedule_type: AnalyticsMedicationScheduleType;
+    has_scheduled_time: boolean;
+  };
+  medication_schedule_updated: {
+    source: MedicationManagementSource;
+    changed_fields: MedicationScheduleChangedFields;
+    previous_schedule_type: AnalyticsMedicationScheduleType;
+    new_schedule_type: AnalyticsMedicationScheduleType;
+    had_scheduled_time_before: boolean;
+    has_scheduled_time_after: boolean;
+  };
+  medication_delete_confirmed: {
+    source: MedicationManagementSource;
+    has_intake_history: boolean;
+  };
   mood_started: { source: MoodSource };
   mood_step_completed: { step: MoodStep };
   mood_result_viewed: Record<never, never>;
@@ -72,6 +97,15 @@ export type AnalyticsPayload = {
   route: AnalyticsRoute;
   auth_state: AnalyticsAuthState;
   source?: MedicationAddSource | MoodSource;
+  medication_count?: number;
+  schedule_type?: AnalyticsMedicationScheduleType;
+  has_scheduled_time?: boolean;
+  changed_fields?: MedicationScheduleChangedFields;
+  previous_schedule_type?: AnalyticsMedicationScheduleType;
+  new_schedule_type?: AnalyticsMedicationScheduleType;
+  had_scheduled_time_before?: boolean;
+  has_scheduled_time_after?: boolean;
+  has_intake_history?: boolean;
   step?: MoodStep;
   current_date?: string;
   previous_date?: string;
@@ -98,7 +132,15 @@ export function sanitizeAnalyticsRoute(input: string): AnalyticsRoute {
 }
 
 function isMedicationAddSource(value: unknown): value is MedicationAddSource {
-  return value === "home" || value === "medication_list";
+  return value === "home" || value === "medication_list" || value === "medication_management";
+}
+
+function isMedicationScheduleType(value: unknown): value is AnalyticsMedicationScheduleType {
+  return value === "daily" || value === "as_needed" || value === "bedtime";
+}
+
+function isMedicationScheduleChangedFields(value: unknown): value is MedicationScheduleChangedFields {
+  return value === "schedule" || value === "time" || value === "schedule_and_time";
 }
 
 function isMoodSource(value: unknown): value is MoodSource {
@@ -160,6 +202,82 @@ export function buildAnalyticsPayload<T extends AnalyticsEventName>({
   if (eventName === "medication_add_started") {
     const source = (properties as { source?: unknown }).source;
     return isMedicationAddSource(source) ? { ...base, source } : null;
+  }
+
+  if (eventName === "medication_management_opened") {
+    const { source, medication_count: medicationCount } = properties as {
+      source?: unknown;
+      medication_count?: unknown;
+    };
+    return source === "home" && Number.isInteger(medicationCount) && (medicationCount as number) >= 0
+      ? { ...base, source, medication_count: medicationCount as number }
+      : null;
+  }
+
+  if (eventName === "medication_schedule_edit_opened") {
+    const {
+      source,
+      schedule_type: scheduleType,
+      has_scheduled_time: hasScheduledTime,
+    } = properties as {
+      source?: unknown;
+      schedule_type?: unknown;
+      has_scheduled_time?: unknown;
+    };
+    return source === "medication_management"
+      && isMedicationScheduleType(scheduleType)
+      && typeof hasScheduledTime === "boolean"
+      ? {
+          ...base,
+          source,
+          schedule_type: scheduleType,
+          has_scheduled_time: hasScheduledTime,
+        }
+      : null;
+  }
+
+  if (eventName === "medication_schedule_updated") {
+    const {
+      source,
+      changed_fields: changedFields,
+      previous_schedule_type: previousScheduleType,
+      new_schedule_type: newScheduleType,
+      had_scheduled_time_before: hadScheduledTimeBefore,
+      has_scheduled_time_after: hasScheduledTimeAfter,
+    } = properties as {
+      source?: unknown;
+      changed_fields?: unknown;
+      previous_schedule_type?: unknown;
+      new_schedule_type?: unknown;
+      had_scheduled_time_before?: unknown;
+      has_scheduled_time_after?: unknown;
+    };
+    return source === "medication_management"
+      && isMedicationScheduleChangedFields(changedFields)
+      && isMedicationScheduleType(previousScheduleType)
+      && isMedicationScheduleType(newScheduleType)
+      && typeof hadScheduledTimeBefore === "boolean"
+      && typeof hasScheduledTimeAfter === "boolean"
+      ? {
+          ...base,
+          source,
+          changed_fields: changedFields,
+          previous_schedule_type: previousScheduleType,
+          new_schedule_type: newScheduleType,
+          had_scheduled_time_before: hadScheduledTimeBefore,
+          has_scheduled_time_after: hasScheduledTimeAfter,
+        }
+      : null;
+  }
+
+  if (eventName === "medication_delete_confirmed") {
+    const { source, has_intake_history: hasIntakeHistory } = properties as {
+      source?: unknown;
+      has_intake_history?: unknown;
+    };
+    return source === "medication_management" && typeof hasIntakeHistory === "boolean"
+      ? { ...base, source, has_intake_history: hasIntakeHistory }
+      : null;
   }
 
   if (eventName === "mood_started") {

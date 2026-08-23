@@ -21,11 +21,14 @@ import {
   type VisitAttemptState,
 } from "./attempts";
 import { trackAnalyticsEvent } from "./mixpanel";
+import { isAnalyticsPathBlocked } from "./path-policy";
 import type {
   AnalyticsEventName,
   AnalyticsEventProperties,
+  AnalyticsMedicationScheduleType,
   DateDirection,
   MedicationAddSource,
+  MedicationScheduleChangedFields,
   MoodSource,
   MoodStep,
 } from "./schema";
@@ -39,6 +42,7 @@ const START_THROTTLE_MS = 1_000;
 
 let analyticsQueue: Promise<unknown> = Promise.resolve();
 let lastMedicationStartAt = 0;
+let lastMedicationManagementOpenAt = 0;
 let lastMoodStartAt = 0;
 
 function readSessionValue(key: string) {
@@ -140,6 +144,9 @@ function queueResolvedEvent<T extends AnalyticsEventName>(
   eventName: T,
   properties: AnalyticsEventProperties<T>,
 ) {
+  if (typeof window === "undefined" || isAnalyticsPathBlocked(window.location.pathname)) {
+    return Promise.resolve();
+  }
   analyticsQueue = analyticsQueue
     .then(async () => {
       const authState = await resolveAnalyticsAuthState();
@@ -187,6 +194,63 @@ export function trackMedicationAdded() {
   const result = markMedicationAdded(current);
   writeMedicationAttempt(result.state);
   if (result.shouldTrack) queueResolvedEvent("medication_added", {});
+}
+
+function toAnalyticsMedicationScheduleType(
+  schedule: "daily" | "as-needed" | "bedtime",
+): AnalyticsMedicationScheduleType {
+  return schedule === "as-needed" ? "as_needed" : schedule;
+}
+
+export function trackMedicationManagementOpened(medicationCount: number) {
+  const now = Date.now();
+  if (now - lastMedicationManagementOpenAt < START_THROTTLE_MS) return;
+  lastMedicationManagementOpenAt = now;
+  queueResolvedEvent("medication_management_opened", {
+    source: "home",
+    medication_count: medicationCount,
+  });
+}
+
+export function trackMedicationScheduleEditOpened(
+  schedule: "daily" | "as-needed" | "bedtime",
+  hasScheduledTime: boolean,
+) {
+  queueResolvedEvent("medication_schedule_edit_opened", {
+    source: "medication_management",
+    schedule_type: toAnalyticsMedicationScheduleType(schedule),
+    has_scheduled_time: hasScheduledTime,
+  });
+}
+
+export function trackMedicationScheduleUpdated({
+  changedFields,
+  previousSchedule,
+  newSchedule,
+  hadScheduledTimeBefore,
+  hasScheduledTimeAfter,
+}: {
+  changedFields: MedicationScheduleChangedFields;
+  previousSchedule: "daily" | "as-needed" | "bedtime";
+  newSchedule: "daily" | "as-needed" | "bedtime";
+  hadScheduledTimeBefore: boolean;
+  hasScheduledTimeAfter: boolean;
+}) {
+  queueResolvedEvent("medication_schedule_updated", {
+    source: "medication_management",
+    changed_fields: changedFields,
+    previous_schedule_type: toAnalyticsMedicationScheduleType(previousSchedule),
+    new_schedule_type: toAnalyticsMedicationScheduleType(newSchedule),
+    had_scheduled_time_before: hadScheduledTimeBefore,
+    has_scheduled_time_after: hasScheduledTimeAfter,
+  });
+}
+
+export function trackMedicationDeleteConfirmed(hasIntakeHistory: boolean) {
+  queueResolvedEvent("medication_delete_confirmed", {
+    source: "medication_management",
+    has_intake_history: hasIntakeHistory,
+  });
 }
 
 async function createIntakeDeduplicationKey(medicationId: string, date: string) {

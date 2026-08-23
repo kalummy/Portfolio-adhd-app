@@ -373,6 +373,50 @@ export async function deactivateSavedMedication(medicationId: string): Promise<S
   return result;
 }
 
+export async function updateSavedMedicationSchedule(
+  medicationId: string,
+  patch: {
+    schedule?: SavedMedication["schedule"];
+    scheduledTime?: SavedMedication["scheduledTime"];
+  },
+): Promise<SavedMedication> {
+  const database = await openDatabase();
+  const result = await new Promise<SavedMedication>((resolve, reject) => {
+    const transaction = database.transaction(MEDICATION_STORE, "readwrite");
+    const store = transaction.objectStore(MEDICATION_STORE);
+    const request = store.get(medicationId);
+    let updated: SavedMedication | null = null;
+
+    request.onsuccess = () => {
+      const medication = request.result as SavedMedication | undefined;
+      if (!medication) {
+        transaction.abort();
+        return;
+      }
+
+      updated = {
+        ...medication,
+        ...(Object.hasOwn(patch, "schedule") ? { schedule: patch.schedule } : {}),
+        ...(Object.hasOwn(patch, "scheduledTime")
+          ? { scheduledTime: patch.scheduledTime }
+          : {}),
+      };
+      store.put(updated);
+    };
+    request.onerror = () => reject(request.error ?? new Error("복용약을 찾지 못했어요."));
+    transaction.oncomplete = () => {
+      if (updated) resolve(updated);
+      else reject(new Error("복용약을 찾지 못했어요."));
+    };
+    transaction.onerror = () => reject(
+      transaction.error ?? new Error("복용 일정을 수정하지 못했어요."),
+    );
+    transaction.onabort = () => reject(new Error("복용약을 찾지 못했어요."));
+  });
+  database.close();
+  return result;
+}
+
 export async function getSavedMedicationsByIds(ids: string[]) {
   const all = await getSavedMedications();
   const idSet = new Set(ids);

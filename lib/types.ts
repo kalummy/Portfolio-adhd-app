@@ -46,6 +46,7 @@ export type SavedMedication = MedicationCandidate & {
   id: string;
   registrationMethod: RegistrationMethod;
   schedule: MedicationSchedule;
+  scheduledTime?: string | null;
   createdAt: string;
   active?: boolean;
   deactivatedAt?: string;

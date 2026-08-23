@@ -26,6 +26,7 @@ export type SupabaseMedicationRow = {
   official_match_status: OfficialMedicationMatchStatus | null;
   registration_method: RegistrationMethod;
   schedule: MedicationSchedule;
+  scheduled_time: string | null;
   active: boolean;
   deactivated_at: string | null;
   created_at: string;
@@ -33,6 +34,12 @@ export type SupabaseMedicationRow = {
 };
 
 export type SupabaseMedicationMigrationInput = Omit<SupabaseMedicationRow, "user_id">;
+
+function fromSupabaseScheduledTime(value: string | null) {
+  if (!value) return null;
+  const match = /^(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec(value);
+  return match ? `${match[1]}:${match[2]}` : null;
+}
 
 export function fromSupabaseMedication(row: SupabaseMedicationRow): SavedMedication {
   return {
@@ -55,6 +62,7 @@ export function fromSupabaseMedication(row: SupabaseMedicationRow): SavedMedicat
     officialMatchStatus: row.official_match_status ?? undefined,
     registrationMethod: row.registration_method,
     schedule: row.schedule,
+    scheduledTime: fromSupabaseScheduledTime(row.scheduled_time),
     active: row.active,
     deactivatedAt: row.deactivated_at ?? undefined,
     createdAt: row.created_at,
@@ -94,6 +102,7 @@ export function toSupabaseMedicationMigrationInput(
     official_match_status: medication.officialMatchStatus ?? null,
     registration_method: medication.registrationMethod,
     schedule: medication.schedule,
+    scheduled_time: medication.scheduledTime ?? null,
     active: medication.active !== false,
     deactivated_at: medication.deactivatedAt ?? null,
     created_at: medication.createdAt,
