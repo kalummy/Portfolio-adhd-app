@@ -1,6 +1,7 @@
 import { MobileShell } from "@/components/mobile-shell";
 import { FlowHeader } from "@/components/flow-ui";
 import { MoodLoadingPrototype } from "@/components/mood-loading-prototype";
+import { MoodLottiePreloader } from "@/components/mood-lottie";
 import { VisitDialog } from "@/components/visit-dialog";
 
 type MoodSummaryLoadingProps = {
@@ -10,6 +11,7 @@ type MoodSummaryLoadingProps = {
   onClose: () => void;
   onCancelExit: () => void;
   onConfirmExit: () => void;
+  preloadCompleteAnimation: boolean;
 };
 
 export function MoodSummaryLoading({
@@ -19,9 +21,11 @@ export function MoodSummaryLoading({
   onClose,
   onCancelExit,
   onConfirmExit,
+  preloadCompleteAnimation,
 }: MoodSummaryLoadingProps) {
   return (
     <MobileShell className="mood-summary-screen" aria-live="polite" aria-busy="true">
+      {preloadCompleteAnimation ? <MoodLottiePreloader src="/lottie/mood-complete.json" /> : null}
       <FlowHeader title="감정 기록하기" onBack={onBack} onClose={onClose} />
       <div className="mood-summary-copy">
         <h1>

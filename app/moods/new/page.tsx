@@ -17,6 +17,7 @@ export default async function NewMoodPage({
   const targetDateKey = isValidDateKey(requestedDate) ? requestedDate : getKstDateKey();
   return (
     <MoodQuestionFlow
+      key={targetDateKey}
       targetDateKey={targetDateKey}
       lottieAvailability={{
         complete: hasPublicAsset("lottie/mood-complete.json"),

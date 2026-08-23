@@ -9,6 +9,7 @@ import { createClientId } from "./client-id";
 import { createSavedMedicationsFromDraft } from "./repositories/medications/create";
 import { assertValidVisitDate } from "./repositories/visit-schedules/validation";
 import { getGuestDatasetReservationDecision } from "./guest-dataset-reservation";
+import { getVisibleGuestRecordIds } from "./guest-dataset-visibility";
 import type { NewMoodRecord } from "./repositories/moods/types";
 
 const DB_NAME = "addi-mvp";
@@ -63,6 +64,7 @@ type GuestMedicationDatasetState = {
   reservedByUserId?: string;
   reservedAt?: string;
   claims: GuestMedicationDatasetClaim[];
+  visibleClaimedUserId?: string;
   visitMutation: GuestVisitMutation | null;
 };
 
@@ -177,6 +179,9 @@ function normalizeGuestMedicationDatasetState(
         ? claim.visitSchedule as VisitSchedule | undefined
         : undefined,
     })),
+    visibleClaimedUserId: typeof maybeGuest.visibleClaimedUserId === "string"
+      ? maybeGuest.visibleClaimedUserId
+      : undefined,
     visitMutation: "visitMutation" in maybeGuest
       ? maybeGuest.visitMutation as GuestVisitMutation | null
       : legacyVisit
@@ -316,7 +321,12 @@ export async function getAllSavedMedications(): Promise<SavedMedication[]> {
       .objectStore(MEDICATION_STORE)
       .getAll();
     request.onsuccess = () => {
-      const medicationIds = new Set(dataset.medicationIds);
+      const medicationIds = new Set(getVisibleGuestRecordIds(
+        dataset.medicationIds,
+        dataset.claims,
+        dataset.visibleClaimedUserId,
+        "medicationIds",
+      ));
       resolve(
         (request.result as SavedMedication[]).filter(
           (medication) => medicationIds.has(medication.id),
@@ -432,7 +442,12 @@ export async function getMedicationIntakeRecords(): Promise<MedicationIntakeReco
       .objectStore(INTAKE_STORE)
       .getAll();
     request.onsuccess = () => {
-      const activeRecordIds = new Set(dataset.intakeRecordIds);
+      const activeRecordIds = new Set(getVisibleGuestRecordIds(
+        dataset.intakeRecordIds,
+        dataset.claims,
+        dataset.visibleClaimedUserId,
+        "intakeRecordIds",
+      ));
       resolve(
         (request.result as MedicationIntakeRecord[]).filter(
           (record) => activeRecordIds.has(record.id),
@@ -880,7 +895,12 @@ export async function getMoodRecords(): Promise<MoodRecord[]> {
       .objectStore(MOOD_STORE)
       .getAll();
     request.onsuccess = () => {
-      const activeIds = new Set(state.moodRecordIds);
+      const activeIds = new Set(getVisibleGuestRecordIds(
+        state.moodRecordIds,
+        state.claims,
+        state.visibleClaimedUserId,
+        "moodRecordIds",
+      ));
       resolve((request.result as MoodRecord[]).filter((record) => activeIds.has(record.id)));
     };
     request.onerror = () => reject(request.error ?? new Error("감정 기록을 불러오지 못했어요."));
@@ -931,6 +951,32 @@ export async function getUpcomingVisit(): Promise<VisitSchedule | null> {
     : null;
   database.close();
   return result;
+}
+
+export async function restoreClaimedGuestDatasetVisibilityForUser(userId: string): Promise<void> {
+  const database = await openDatabase();
+  await ensureGuestMedicationDatasetState(database);
+  await new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction(INTAKE_DATASET_STORE, "readwrite");
+    const store = transaction.objectStore(INTAKE_DATASET_STORE);
+    const request = store.get(INTAKE_DATASET_STATE_ID);
+    request.onsuccess = () => {
+      const state = request.result as GuestMedicationDatasetState | undefined;
+      if (!state) {
+        transaction.abort();
+        return;
+      }
+      const hasClaim = state.claims.some((claim) => claim.claimedUserId === userId);
+      store.put({
+        ...state,
+        visibleClaimedUserId: hasClaim ? userId : undefined,
+      } satisfies GuestMedicationDatasetState);
+    };
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error("로그아웃 후 로컬 기록을 준비하지 못했어요."));
+    transaction.onabort = () => reject(transaction.error ?? new Error("로그아웃 후 로컬 기록 준비가 중단됐어요."));
+  });
+  database.close();
 }
 
 export async function saveUpcomingVisit(visitDate: string): Promise<VisitSchedule> {

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
 import { MoodResult } from "@/components/mood-result";
@@ -11,6 +11,7 @@ import {
   ensureMoodAttempt, restartMoodAttempt, trackMoodResultViewed, trackMoodSaved, trackMoodStepCompleted,
 } from "@/lib/analytics/events";
 import { createClientId } from "@/lib/client-id";
+import { clearMoodDraft, readMoodDraft, writeMoodDraft, type MoodDraftPhase } from "@/lib/mood-draft";
 import { getMoodRepository } from "@/lib/repositories";
 import {
   buildMoodSummary, CUSTOM_MOOD_OPTION_ID, type MoodAnswerDraft, type MoodResultData,
@@ -64,7 +65,9 @@ type MoodQuestionFlowProps = {
 };
 
 export function MoodQuestionFlow({ targetDateKey, lottieAvailability }: MoodQuestionFlowProps) {
-  const [phase, setPhase] = useState<"questions" | "summarizing" | "result">("questions");
+  const skipNextDraftWrite = useRef(false);
+  const [draftReady, setDraftReady] = useState(false);
+  const [phase, setPhase] = useState<MoodDraftPhase>("questions");
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<MoodAnswerDraft[]>(emptyAnswers);
   const [showExitDialog, setShowExitDialog] = useState(false);
@@ -78,10 +81,34 @@ export function MoodQuestionFlow({ targetDateKey, lottieAvailability }: MoodQues
     || (customSelected && answer.customText.trim().length > 0);
   const homeHref = `/?date=${encodeURIComponent(targetDateKey)}`;
 
-  useEffect(() => { ensureMoodAttempt("home"); }, []);
+  useEffect(() => {
+    const draft = readMoodDraft(window.sessionStorage, targetDateKey);
+    if (draft) {
+      setAnswers(draft.answers);
+      setStep(draft.step);
+      setPhase(draft.phase);
+      setLoadingAnimationComplete(draft.phase === "result");
+      setResult(draft.phase === "result" ? buildMoodSummary(draft.answers, new Date().toISOString()) : null);
+    }
+    setDraftReady(true);
+  }, [targetDateKey]);
 
   useEffect(() => {
-    window.history.replaceState({ ...window.history.state, moodStep: 0, moodPhase: "questions" }, "");
+    if (draftReady) ensureMoodAttempt("home");
+  }, [draftReady]);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    if (skipNextDraftWrite.current) {
+      skipNextDraftWrite.current = false;
+      return;
+    }
+    writeMoodDraft(window.sessionStorage, targetDateKey, { phase, step, answers });
+  }, [answers, draftReady, phase, step, targetDateKey]);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    window.history.replaceState({ ...window.history.state, moodStep: step, moodPhase: phase }, "");
     const onPopState = (event: PopStateEvent) => {
       const historyStep = Number(event.state?.moodStep);
       if (Number.isInteger(historyStep) && historyStep >= 0 && historyStep < MOOD_QUESTIONS.length) {
@@ -95,7 +122,7 @@ export function MoodQuestionFlow({ targetDateKey, lottieAvailability }: MoodQues
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-  }, []);
+  }, [draftReady, phase, step]);
 
   useEffect(() => { window.scrollTo({ top: 0, left: 0 }); }, [phase, step]);
 
@@ -159,8 +186,15 @@ export function MoodQuestionFlow({ targetDateKey, lottieAvailability }: MoodQues
 
   function restartQuestions() {
     restartMoodAttempt();
+    clearMoodDraft(window.sessionStorage, targetDateKey);
+    skipNextDraftWrite.current = true;
     setAnswers(emptyAnswers()); setStep(0); setResult(null); setLoadingAnimationComplete(false); setPhase("questions");
     window.history.replaceState({ ...window.history.state, moodStep: 0, moodPhase: "questions" }, "");
+  }
+
+  function discardDraftAndGoHome() {
+    clearMoodDraft(window.sessionStorage, targetDateKey);
+    window.location.assign(homeHref);
   }
 
   async function saveResult() {
@@ -172,6 +206,7 @@ export function MoodQuestionFlow({ targetDateKey, lottieAvailability }: MoodQues
         date: targetDateKey, mood: result.moodType, moodLabel: result.label, recordedAt: result.recordedAt,
         diaryEntries: result.checkItems, memberSummary: result.memberSummary, clinicPhrase: result.clinicPhrase, details: result.details,
       });
+      clearMoodDraft(window.sessionStorage, targetDateKey);
       await trackMoodSaved();
       const destination = new URL(homeHref, window.location.origin);
       destination.searchParams.set("moodToast", "saved"); destination.searchParams.set("toastId", createClientId());
@@ -179,10 +214,15 @@ export function MoodQuestionFlow({ targetDateKey, lottieAvailability }: MoodQues
     } finally { setSaving(false); }
   }
 
+  if (!draftReady) return <MobileShell className="flow-screen mood-question-screen" aria-busy="true">
+    <span className="visually-hidden">감정 기록 복원 중</span>
+  </MobileShell>;
+
   if (phase === "summarizing") return <MoodSummaryLoading
     showExitDialog={showExitDialog} onAnimationComplete={() => setLoadingAnimationComplete(true)}
     onBack={() => window.history.back()} onClose={() => setShowExitDialog(true)}
-    onCancelExit={() => setShowExitDialog(false)} onConfirmExit={() => window.location.assign(homeHref)} />;
+    onCancelExit={() => setShowExitDialog(false)} onConfirmExit={discardDraftAndGoHome}
+    preloadCompleteAnimation={lottieAvailability.complete} />;
   if (phase === "result" && result) {
     return <MoodResult result={result} hasAnimation={lottieAvailability.complete} saving={saving}
       onRestart={restartQuestions} onSave={() => void saveResult()} />;
@@ -239,7 +279,7 @@ export function MoodQuestionFlow({ targetDateKey, lottieAvailability }: MoodQues
       </PrimaryButton></BottomActions>
 
       {showExitDialog ? <VisitDialog title="감정 기록을 중단할까요?" cancelLabel="취소" confirmLabel="중단하기"
-        onCancel={() => setShowExitDialog(false)} onConfirm={() => window.location.assign(homeHref)} /> : null}
+        onCancel={() => setShowExitDialog(false)} onConfirm={discardDraftAndGoHome} /> : null}
     </MobileShell>
   );
 }
