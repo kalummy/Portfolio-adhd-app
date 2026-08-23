@@ -19,6 +19,7 @@ import {
 } from "@/lib/analytics/events";
 import { getDataRepositories, retryGuestDatasetSync } from "@/lib/repositories";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
+import { reconcileMedicationIntakeRecord } from "@/lib/medication-intake-state";
 import { getWeekProgress } from "@/lib/home-week-progress";
 import {
   KST_TIME_ZONE,
@@ -139,6 +140,7 @@ export function HomeScreen({
   const [calendarOpen, setCalendarOpen] = useState(false);
   const monthSelectRef = useRef<HTMLButtonElement>(null);
   const calendarConfirmHandledRef = useRef(false);
+  const intakeMutationGenerationRef = useRef(0);
   const [medications, setMedications] = useState<SavedMedication[]>(previewData?.medications ?? []);
   const [intakeRecords, setIntakeRecords] = useState<MedicationIntakeRecord[]>(
     previewData?.intakeRecords ?? [],
@@ -202,6 +204,7 @@ export function HomeScreen({
   }, [enableLaunchSplash, launchSplashRequired]);
 
   const load = useCallback(async () => {
+    const intakeMutationGeneration = intakeMutationGenerationRef.current;
     if (previewData) {
       setMedications(previewData.medications);
       setIntakeRecords(previewData.intakeRecords);
@@ -236,7 +239,9 @@ export function HomeScreen({
           (medication) => enrichedById.get(medication.id) ?? medication,
         ));
       });
-      setIntakeRecords(savedIntakes);
+      if (intakeMutationGeneration === intakeMutationGenerationRef.current) {
+        setIntakeRecords(savedIntakes);
+      }
       setMoodRecords(savedMoods);
       setVisitSchedule(savedVisit);
     } catch {
@@ -371,12 +376,21 @@ export function HomeScreen({
       return;
     }
 
+    const mutationGeneration = ++intakeMutationGenerationRef.current;
     const repositories = await getDataRepositories();
-    await repositories.medicationIntakes.setTaken(
+    const savedRecord = await repositories.medicationIntakes.setTaken(
       medicationId,
       selectedDateKey,
       !isTaken,
     );
+    if (mutationGeneration === intakeMutationGenerationRef.current) {
+      setIntakeRecords((currentRecords) => reconcileMedicationIntakeRecord(
+        currentRecords,
+        medicationId,
+        selectedDateKey,
+        savedRecord,
+      ));
+    }
     if (!isTaken) {
       await trackMedicationTakenOnce(medicationId, selectedDateKey);
     }

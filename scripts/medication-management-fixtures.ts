@@ -6,6 +6,8 @@ import { formatScheduledTimeLabel, normalizeHourInput, parseScheduledTime, resol
 import { isValidDateKey, KST_TIME_ZONE } from "../lib/kst-date.ts";
 // @ts-expect-error Node's type-stripping fixture runner imports production TypeScript directly.
 import { fromSupabaseMedication, toSupabaseMedicationMigrationInput } from "../lib/repositories/medications/mapper.ts";
+// @ts-expect-error Node's type-stripping fixture runner imports production TypeScript directly.
+import { reconcileMedicationIntakeRecord } from "../lib/medication-intake-state.ts";
 
 const fixtureMedicationId = "fixture-medication";
 const todayDateKey = "2026-08-23";
@@ -31,12 +33,13 @@ const latestTakenIntake = {
 function resolveEditorFields(
   scheduledTime: string | null | undefined,
   intakeRecords: Parameters<typeof resolveMedicationEditorInitialTime>[1],
+  targetDateKey = todayDateKey,
 ) {
   return resolveMedicationEditorInitialTime(
     { ...fixtureMedication, scheduledTime },
     intakeRecords,
     {
-      todayDateKey,
+      todayDateKey: targetDateKey,
       timeZone: KST_TIME_ZONE,
       isValidDateKey,
     },
@@ -92,6 +95,34 @@ assert.equal(resolveEditorFields(null, [{
   date: "2026-08-24",
   recordedAt: "2026-08-24T01:30:00.000Z",
 }]), null);
+// CASE 8: A later-date intake must not leak into an earlier selected-date editor.
+assert.equal(resolveEditorFields(null, [latestTakenIntake], "2026-08-22"), null);
+assert.deepEqual(resolveEditorFields(null, [
+  {
+    ...latestTakenIntake,
+    id: "selected-date-intake",
+    date: "2026-08-22",
+    recordedAt: "2026-08-22T07:40:00.000Z",
+  },
+  latestTakenIntake,
+], "2026-08-22"), { period: "pm", hour: "4", minute: "40" });
+// A cancelled intake is not an editor fallback source.
+assert.equal(resolveEditorFields(null, [{
+  ...latestTakenIntake,
+  taken: false,
+}]), null);
+
+const cancelledRecords = reconcileMedicationIntakeRecord([
+  latestTakenIntake,
+  { ...latestTakenIntake, id: "legacy-duplicate" },
+  { ...latestTakenIntake, id: "other-date", date: "2026-08-22" },
+  { ...latestTakenIntake, id: "other-medication", medicationId: "other-medication" },
+], fixtureMedicationId, todayDateKey, null);
+assert.deepEqual(
+  cancelledRecords.map((record) => record.id),
+  ["other-date", "other-medication"],
+  "Cancellation removes every same-medication same-date record and preserves unrelated intake history",
+);
 
 assert.deepEqual(parseScheduledTime("00:30"), { period: "am", hour: "12", minute: "30" });
 assert.deepEqual(parseScheduledTime("09:05"), { period: "am", hour: "9", minute: "05" });
@@ -168,7 +199,14 @@ const scheduleEditor = await readFile(
 );
 assert.match(scheduleEditor, /medicationIntakes\.listAll\(\)/);
 assert.match(scheduleEditor, /resolveMedicationEditorInitialTime/);
+assert.match(scheduleEditor, /targetDateKey/);
 assert.match(scheduleEditor, /originalTime\.current = savedMedication\.scheduledTime \?\? null/);
+
+const schedulePage = await readFile(
+  new URL("../app/medications/[medicationId]/schedule/page.tsx", import.meta.url),
+  "utf8",
+);
+assert.match(schedulePage, /targetDateKey={targetDateKey}/);
 
 const initialTime = await readFile(
   new URL("../lib/medication-editor-initial-time.ts", import.meta.url),
@@ -186,7 +224,15 @@ assert.match(homeScreen, /window\.sessionStorage\.setItem\(consumptionKey, "1"\)
 assert.match(homeScreen, /url\.searchParams\.delete\("toastId"\)/);
 assert.match(homeScreen, /window\.history\.replaceState\(window\.history\.state, "", nextUrl\)/);
 assert.match(homeScreen, /formatMedicationRecordTime\(intake\.recordedAt\)/);
+assert.match(homeScreen, /reconcileMedicationIntakeRecord/);
 assert.doesNotMatch(homeScreen, /scheduledTimeLabel \?\?/);
+
+const supabaseIntakes = await readFile(
+  new URL("../lib/repositories/intake-records/supabase.ts", import.meta.url),
+  "utf8",
+);
+assert.match(supabaseIntakes, /\.delete\(\)[\s\S]*\.select\(INTAKE_COLUMNS\)/);
+assert.match(supabaseIntakes, /await findByMedicationAndDate\(medicationId, date\)/);
 
 const registrationSchedule = await readFile(
   new URL("../app/medications/new/schedule/page.tsx", import.meta.url),

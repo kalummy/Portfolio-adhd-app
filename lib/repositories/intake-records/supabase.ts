@@ -66,13 +66,21 @@ export function createSupabaseMedicationIntakeRepository(
     },
     async setTaken(medicationId, date, taken) {
       if (!taken) {
-        const { error } = await supabase
+        const existingRecord = await findByMedicationAndDate(medicationId, date);
+        if (!existingRecord) return null;
+
+        const { data, error } = await supabase
           .from("medication_intake_records")
           .delete()
           .eq("user_id", userId)
           .eq("medication_id", medicationId)
-          .eq("intake_date", date);
+          .eq("intake_date", date)
+          .select(INTAKE_COLUMNS)
+          .maybeSingle();
         if (error) throw error;
+        if (!data && await findByMedicationAndDate(medicationId, date)) {
+          throw new Error("복용 취소를 저장하지 못했어요.");
+        }
         return null;
       }
 

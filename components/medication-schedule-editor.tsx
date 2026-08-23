@@ -39,10 +39,12 @@ function keepInputVisible(input: HTMLInputElement) {
 
 export function MedicationScheduleEditor({
   medicationId,
+  targetDateKey,
   returnHref = "/medications",
   homeHref = "/",
 }: {
   medicationId: string;
+  targetDateKey?: string;
   returnHref?: string;
   homeHref?: string;
 }) {
@@ -76,6 +78,7 @@ export function MedicationScheduleEditor({
         const initialTime = resolveMedicationEditorInitialTime(
           savedMedication,
           intakeRecords,
+          targetDateKey,
         );
         setPeriod(initialTime?.period ?? "am");
         setHour(initialTime?.hour ?? "");
@@ -91,7 +94,7 @@ export function MedicationScheduleEditor({
     return () => {
       cancelled = true;
     };
-  }, [medicationId, returnHref, router]);
+  }, [medicationId, returnHref, router, targetDateKey]);
 
   const scheduledTime = useMemo(
     () => toScheduledTime({ period, hour, minute }),

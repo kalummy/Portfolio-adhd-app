@@ -11,15 +11,17 @@ export default async function MedicationScheduleEditPage({
   const { medicationId } = await params;
   const { date } = await searchParams;
   const requestedDate = Array.isArray(date) ? date[0] : date;
-  const returnHref = isValidDateKey(requestedDate)
-    ? `/medications?date=${encodeURIComponent(requestedDate)}`
+  const targetDateKey = isValidDateKey(requestedDate) ? requestedDate : undefined;
+  const returnHref = targetDateKey
+    ? `/medications?date=${encodeURIComponent(targetDateKey)}`
     : "/medications";
-  const homeHref = isValidDateKey(requestedDate)
-    ? `/?date=${encodeURIComponent(requestedDate)}`
+  const homeHref = targetDateKey
+    ? `/?date=${encodeURIComponent(targetDateKey)}`
     : "/";
   return (
     <MedicationScheduleEditor
       medicationId={medicationId}
+      targetDateKey={targetDateKey}
       returnHref={returnHref}
       homeHref={homeHref}
     />

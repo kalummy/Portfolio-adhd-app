@@ -336,7 +336,7 @@ export async function getSavedMedications(): Promise<SavedMedication[]> {
 
 export async function hasMedicationIntakeHistory(medicationId: string): Promise<boolean> {
   const records = await getMedicationIntakeRecords();
-  return records.some((record) => record.medicationId === medicationId && record.taken);
+  return records.some((record) => record.medicationId === medicationId && record.taken === true);
 }
 
 export async function deactivateSavedMedication(medicationId: string): Promise<SavedMedication> {
@@ -447,7 +447,7 @@ export async function getMedicationIntakeRecords(): Promise<MedicationIntakeReco
 
 export async function getMedicationIntakeRecordsByDate(date: string) {
   const records = await getMedicationIntakeRecords();
-  return records.filter((record) => record.date === date && record.taken);
+  return records.filter((record) => record.date === date && record.taken === true);
 }
 
 export async function setMedicationTaken(
@@ -485,11 +485,25 @@ export async function setMedicationTaken(
       if (taken) {
         store.put(record);
         activeRecordIds.add(id);
+        metadataStore.put({ ...state, intakeRecordIds: [...activeRecordIds] });
       } else {
-        store.delete(id);
-        activeRecordIds.delete(id);
+        const recordsRequest = store.getAll();
+        recordsRequest.onsuccess = () => {
+          (recordsRequest.result as MedicationIntakeRecord[])
+            .filter((existingRecord) => (
+              existingRecord.medicationId === medicationId
+              && existingRecord.date === date
+            ))
+            .forEach((existingRecord) => {
+              store.delete(existingRecord.id);
+              activeRecordIds.delete(existingRecord.id);
+            });
+          store.delete(id);
+          activeRecordIds.delete(id);
+          metadataStore.put({ ...state, intakeRecordIds: [...activeRecordIds] });
+        };
+        recordsRequest.onerror = () => transaction.abort();
       }
-      metadataStore.put({ ...state, intakeRecordIds: [...activeRecordIds] });
     };
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error ?? new Error("복용 기록을 저장하지 못했어요."));
