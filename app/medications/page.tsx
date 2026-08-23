@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { FlowHeader } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
 import {
@@ -11,7 +12,7 @@ import {
   trackMedicationScheduleEditOpened,
 } from "@/lib/analytics/events";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
-import { KST_TIME_ZONE, getKstDateKey } from "@/lib/kst-date";
+import { KST_TIME_ZONE, getKstDateKey, isValidDateKey } from "@/lib/kst-date";
 import {
   MEDICATION_FALLBACK_IMAGE,
   medicationLabel,
@@ -81,9 +82,12 @@ function MedicationListImage({ medication }: { medication: SavedMedication }) {
   );
 }
 
-export default function MedicationListPage() {
+function MedicationListContent() {
+  const searchParams = useSearchParams();
+  const requestedDate = searchParams.get("date") ?? undefined;
+  const targetDate = isValidDateKey(requestedDate) ? requestedDate : getKstDateKey();
   const [medications, setMedications] = useState<SavedMedication[]>([]);
-  const [todayIntakes, setTodayIntakes] = useState<MedicationIntakeRecord[]>([]);
+  const [targetDateIntakes, setTargetDateIntakes] = useState<MedicationIntakeRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -93,10 +97,10 @@ export default function MedicationListPage() {
       const repositories = await getDataRepositories();
       const [savedMedications, intakes] = await Promise.all([
         repositories.medications.listActive(),
-        repositories.medicationIntakes.listByDate(getKstDateKey()),
+        repositories.medicationIntakes.listByDate(targetDate),
       ]);
       setMedications(savedMedications);
-      setTodayIntakes(intakes);
+      setTargetDateIntakes(intakes);
       void enrichOfficialMedications(savedMedications).then((enrichedMedications) => {
         const enrichedById = new Map(
           enrichedMedications.map((medication) => [medication.id, medication]),
@@ -107,11 +111,11 @@ export default function MedicationListPage() {
       });
     } catch {
       setMedications([]);
-      setTodayIntakes([]);
+      setTargetDateIntakes([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [targetDate]);
 
   useEffect(() => {
     void load();
@@ -144,12 +148,15 @@ export default function MedicationListPage() {
   }
 
   const intakeByMedication = new Map(
-    todayIntakes.map((intake) => [intake.medicationId, intake]),
+    targetDateIntakes.map((intake) => [intake.medicationId, intake]),
   );
 
   return (
     <MobileShell className="flow-screen medication-list-screen">
-      <FlowHeader title="복용약 목록" fallbackHref="/" />
+      <FlowHeader
+        title="복용약 목록"
+        fallbackHref={`/?date=${encodeURIComponent(targetDate)}`}
+      />
       <section className="medication-list-content">
         {!loading ? medications.map((medication) => {
           const intake = intakeByMedication.get(medication.id);
@@ -182,7 +189,7 @@ export default function MedicationListPage() {
               <div className="medication-list-edit-container">
                 <Link
                   className="medication-list-edit-link"
-                  href={`/medications/${encodeURIComponent(medication.id)}/schedule`}
+                  href={`/medications/${encodeURIComponent(medication.id)}/schedule?date=${encodeURIComponent(targetDate)}`}
                   onNavigate={() => trackMedicationScheduleEditOpened(
                     medication.schedule,
                     Boolean(medication.scheduledTime),
@@ -200,7 +207,7 @@ export default function MedicationListPage() {
         <div className="bottom-actions medication-list-actions">
           <div className="bottom-actions-inner">
             <Link
-              href="/medications/new/search?origin=medications"
+              href={`/medications/new/search?origin=medications&date=${encodeURIComponent(targetDate)}`}
               className="primary-button soft medication-add-link"
               onClick={() => {
                 resetDraft();
@@ -254,5 +261,15 @@ export default function MedicationListPage() {
         </div>
       ) : null}
     </MobileShell>
+  );
+}
+
+export default function MedicationListPage() {
+  return (
+    <Suspense fallback={(
+      <MobileShell className="flow-screen medication-list-screen">{null}</MobileShell>
+    )}>
+      <MedicationListContent />
+    </Suspense>
   );
 }

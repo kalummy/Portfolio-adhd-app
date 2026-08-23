@@ -17,6 +17,7 @@ import {
 import { recognizePrescriptionPhoto } from "@/lib/photo-recognition";
 import {
   clearPendingCandidates,
+  dateContextHref,
   registrationHref,
   setManualReturnHref,
   setPendingCandidates,
@@ -52,7 +53,9 @@ export default function MedicationPhotoPage() {
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("origin") === "medications") {
-      setMethodHref("/medications/new?origin=medications");
+      setMethodHref(registrationHref("/medications/new"));
+    } else {
+      setMethodHref(dateContextHref("/medications/new"));
     }
   }, []);
 

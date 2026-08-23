@@ -6,19 +6,19 @@ import { useEffect } from "react";
 import { FlowHeader } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
 import { ensureMedicationAddAttempt } from "@/lib/analytics/events";
-import { resetDraft } from "@/lib/registration-session";
+import { registrationHref, resetDraft } from "@/lib/registration-session";
 
-export function MedicationMethodScreen({ returnHref }: { returnHref: "/" | "/medications" }) {
+export function MedicationMethodScreen({ returnHref }: { returnHref: string }) {
   const router = useRouter();
+  const startedFromMedicationList = returnHref.startsWith("/medications");
 
   useEffect(() => {
-    ensureMedicationAddAttempt(returnHref === "/medications" ? "medication_list" : "home");
-  }, [returnHref]);
+    ensureMedicationAddAttempt(startedFromMedicationList ? "medication_list" : "home");
+  }, [startedFromMedicationList]);
 
   function start(path: "/medications/new/photo" | "/medications/new/search") {
     resetDraft();
-    const origin = returnHref === "/medications" ? "?origin=medications" : "";
-    router.push(`${path}${origin}`);
+    router.push(registrationHref(path));
   }
 
   return (
