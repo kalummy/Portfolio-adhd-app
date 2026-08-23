@@ -2953,6 +2953,10 @@ html[data-addi-splash="skip"] .splash-screen {
   bottom: calc(80px + env(safe-area-inset-bottom));
 }
 
+.app-toast.multiline {
+  width: min(calc(100% - 40px), 390px);
+}
+
 .app-toast img {
   display: block;
   width: 20px;
@@ -3991,6 +3995,10 @@ html[data-addi-splash="skip"] .splash-screen {
   border: 0;
   background: transparent;
   cursor: pointer;
+}
+
+.medication-check.history {
+  cursor: default;
 }
 
 .medication-check img {

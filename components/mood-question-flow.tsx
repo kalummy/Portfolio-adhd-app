@@ -14,6 +14,7 @@ import {
   trackMoodSaved,
   trackMoodStepCompleted,
 } from "@/lib/analytics/events";
+import { createClientId } from "@/lib/client-id";
 import { getMoodRepository } from "@/lib/repositories";
 import { formatDateKey, getKstDateKey } from "@/lib/kst-date";
 import {
@@ -161,7 +162,10 @@ export function MoodQuestionFlow({ targetDateKey }: { targetDateKey: string }) {
         memberSummary: result.memberSummary,
       });
       await trackMoodSaved();
-      window.location.assign(`${homeHref}&moodToast=saved`);
+      const destination = new URL(homeHref, window.location.origin);
+      destination.searchParams.set("moodToast", "saved");
+      destination.searchParams.set("toastId", createClientId());
+      window.location.assign(`${destination.pathname}${destination.search}`);
     } finally {
       setSaving(false);
     }

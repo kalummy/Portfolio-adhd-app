@@ -132,6 +132,9 @@ try {
   assert.match(indexedDbSource, /moodRecordIds: uniqueIds/);
   assert.match(indexedDbSource, /Never infer ownership by scanning the raw mood store/);
   assert.ok(flowSource.indexOf("await repository.save") < flowSource.indexOf("window.location.assign"));
+  assert.match(flowSource, /destination\.searchParams\.set\("moodToast", "saved"\)/);
+  assert.match(flowSource, /destination\.searchParams\.set\("toastId", createClientId\(\)\)/);
+  assert.match(flowSource, /new URL\(homeHref, window\.location\.origin\)/);
   console.log("PASS same-date MoodRecord upsert, ownership registration, and navigation-after-commit structure");
 
   console.log("mood flow fixture cases: 11/11 passed");

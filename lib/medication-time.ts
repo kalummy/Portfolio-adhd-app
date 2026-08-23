@@ -61,7 +61,7 @@ export function resolveMedicationEditorInitialTime(
       record.medicationId === medication.id
       && record.taken === true
       && context.isValidDateKey(record.date)
-      && record.date <= context.todayDateKey
+      && record.date === context.todayDateKey
       && !Number.isNaN(new Date(record.recordedAt).getTime())
     ))
     .sort((left, right) => (

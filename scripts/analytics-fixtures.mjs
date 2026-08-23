@@ -460,7 +460,7 @@ try {
     analyticsEventsSource.indexOf("isAnalyticsPathBlocked(window.location.pathname)")
       < analyticsEventsSource.indexOf("analyticsQueue = analyticsQueue"),
   );
-  assert.match(homeSource, /onNavigate=\{\(\) => trackMedicationManagementOpened\(medications\.length\)\}/);
+  assert.match(homeSource, /onNavigate=\{\(\) => trackMedicationManagementOpened\(activeMedicationCount\)\}/);
   assert.match(analyticsEventsSource, /now - lastMedicationManagementOpenAt < START_THROTTLE_MS/);
   assert.match(medicationListSource, /onNavigate=\{\(\) => trackMedicationScheduleEditOpened\([\s\S]*?medication\.schedule,[\s\S]*?Boolean\(medication\.scheduledTime\)/);
   assert.match(medicationListSource, /startMedicationAddAttempt\("medication_management"\)/);
