@@ -1,5 +1,12 @@
+import {
+  ANALYTICS_SCREEN_NAMES,
+  type AnalyticsNavigationType,
+  type AnalyticsScreenName,
+} from "./screens";
+
 export const ANALYTICS_EVENT_NAMES = [
   "app_opened",
+  "screen_viewed",
   "login_started",
   "login_completed",
   "medication_add_started",
@@ -54,6 +61,11 @@ type HomeDateSelectionProperties = {
 
 type EventSpecificProperties = {
   app_opened: Record<never, never>;
+  screen_viewed: {
+    screen_name: AnalyticsScreenName;
+    previous_screen?: AnalyticsScreenName;
+    navigation_type: AnalyticsNavigationType;
+  };
   login_started: Record<never, never>;
   login_completed: Record<never, never>;
   medication_add_started: { source: MedicationAddSource };
@@ -112,7 +124,19 @@ export type AnalyticsPayload = {
   selected_date?: string;
   date_direction?: DateDirection;
   days_from_today?: number;
+  screen_name?: AnalyticsScreenName;
+  previous_screen?: AnalyticsScreenName;
+  navigation_type?: AnalyticsNavigationType;
 };
+
+function isScreenName(value: unknown): value is AnalyticsScreenName {
+  return typeof value === "string"
+    && ANALYTICS_SCREEN_NAMES.includes(value as AnalyticsScreenName);
+}
+
+function isNavigationType(value: unknown): value is AnalyticsNavigationType {
+  return value === "initial" || value === "route_change";
+}
 
 export function sanitizeAnalyticsRoute(input: string): AnalyticsRoute {
   const pathname = input.split(/[?#]/u, 1)[0];
@@ -198,6 +222,31 @@ export function buildAnalyticsPayload<T extends AnalyticsEventName>({
     route: sanitizeAnalyticsRoute(pathname),
     auth_state: authState,
   };
+
+  if (eventName === "screen_viewed") {
+    const {
+      screen_name: screenName,
+      previous_screen: previousScreen,
+      navigation_type: navigationType,
+    } = properties as {
+      screen_name?: unknown;
+      previous_screen?: unknown;
+      navigation_type?: unknown;
+    };
+    if (!isScreenName(screenName) || !isNavigationType(navigationType)) return null;
+    if (navigationType === "initial" && previousScreen !== undefined) return null;
+    if (navigationType === "route_change" && !isScreenName(previousScreen)) return null;
+    if (previousScreen === screenName) return null;
+    const normalizedPreviousScreen = navigationType === "route_change"
+      ? previousScreen as AnalyticsScreenName
+      : undefined;
+    return {
+      ...base,
+      screen_name: screenName,
+      ...(normalizedPreviousScreen ? { previous_screen: normalizedPreviousScreen } : {}),
+      navigation_type: navigationType,
+    };
+  }
 
   if (eventName === "medication_add_started") {
     const source = (properties as { source?: unknown }).source;

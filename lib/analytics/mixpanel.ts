@@ -113,10 +113,16 @@ export function trackAnalyticsEvent<T extends AnalyticsEventName>(
   eventName: T,
   authState: AnalyticsAuthState,
   properties: AnalyticsEventProperties<T>,
+  pathnameOverride?: string,
 ): boolean {
   if (!isBrowser()) return false;
-  const pathname = window.location.pathname;
-  if (isAnalyticsPathBlocked(pathname) || !initAnalytics()) return false;
+  const currentPathname = window.location.pathname;
+  const pathname = pathnameOverride ?? currentPathname;
+  if (
+    isAnalyticsPathBlocked(currentPathname)
+    || isAnalyticsPathBlocked(pathname)
+    || !initAnalytics()
+  ) return false;
 
   const payload = buildAnalyticsPayload({
     authState,

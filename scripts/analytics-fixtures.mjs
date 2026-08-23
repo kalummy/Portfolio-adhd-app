@@ -20,13 +20,16 @@ try {
     "lib/analytics/schema.ts",
     "lib/analytics/attempts.ts",
     "lib/analytics/path-policy.ts",
+    "lib/analytics/screens.ts",
   ], { cwd: projectRootPath, stdio: "pipe" });
   await copyFile(join(fixtureDirectory, "schema.js"), join(fixtureDirectory, "schema"));
+  await copyFile(join(fixtureDirectory, "screens.js"), join(fixtureDirectory, "screens"));
   await writeFile(join(fixtureDirectory, "package.json"), '{"type":"module"}');
 
   const schema = await import(pathToFileURL(join(fixtureDirectory, "schema.js")));
   const attempts = await import(pathToFileURL(join(fixtureDirectory, "attempts.js")));
   const pathPolicy = await import(pathToFileURL(join(fixtureDirectory, "path-policy.js")));
+  const screens = await import(pathToFileURL(join(fixtureDirectory, "screens.js")));
 
   for (const pathname of ["/preview", "/preview/", "/preview/home", "/preview/home/empty"]) {
     assert.equal(pathPolicy.isAnalyticsPathBlocked(pathname), true, `${pathname} must be blocked`);
@@ -66,9 +69,10 @@ try {
   }
   console.log(`PASS route sanitizer ${routeCases.length}/${routeCases.length}`);
 
-  assert.equal(schema.ANALYTICS_EVENT_NAMES.length, 20);
+  assert.equal(schema.ANALYTICS_EVENT_NAMES.length, 21);
   assert.deepEqual(schema.ANALYTICS_EVENT_NAMES, [
     "app_opened",
+    "screen_viewed",
     "login_started",
     "login_completed",
     "medication_add_started",
@@ -89,6 +93,74 @@ try {
     "home_date_today_clicked",
     "home_date_change_confirmed",
   ]);
+
+  const screenCases = [
+    ["/", "home"],
+    ["/?date=2026-08-23", "home"],
+    ["/auth/login", "account"],
+    ["/medications", "medication_management"],
+    ["/medications/private-medication-id/schedule?date=private", "medication_schedule_edit"],
+    ["/medications/new/search?date=private", "medication_registration"],
+    ["/medications/new/manual/strength", "medication_registration"],
+    ["/moods/new?date=private", "mood_create"],
+    ["/moods", "mood_history"],
+    ["/visits", "visit"],
+    ["/visits/new?date=private", "visit"],
+    ["/visits/edit", "visit"],
+    ["/terms", "legal"],
+    ["/privacy", "legal"],
+    ["/preview/home", null],
+    ["/unknown/private-id", null],
+  ];
+  for (const [input, expected] of screenCases) {
+    assert.equal(screens.screenNameForPath(input), expected);
+  }
+
+  let screenState = null;
+  const screenEvents = [];
+  for (const pathname of [
+    "/",
+    "/?date=2026-08-23",
+    "/medications",
+    "/medications",
+    "/medications/private-id/schedule?date=private",
+    "/medications",
+    "/",
+    "/moods/new?date=private",
+  ]) {
+    const transition = screens.createScreenViewTransition(screenState, pathname);
+    screenState = transition.currentScreen;
+    if (transition.properties) screenEvents.push(transition.properties);
+  }
+  assert.deepEqual(screenEvents, [
+    { screen_name: "home", navigation_type: "initial" },
+    {
+      screen_name: "medication_management",
+      previous_screen: "home",
+      navigation_type: "route_change",
+    },
+    {
+      screen_name: "medication_schedule_edit",
+      previous_screen: "medication_management",
+      navigation_type: "route_change",
+    },
+    {
+      screen_name: "medication_management",
+      previous_screen: "medication_schedule_edit",
+      navigation_type: "route_change",
+    },
+    {
+      screen_name: "home",
+      previous_screen: "medication_management",
+      navigation_type: "route_change",
+    },
+    {
+      screen_name: "mood_create",
+      previous_screen: "home",
+      navigation_type: "route_change",
+    },
+  ]);
+  console.log(`PASS screen allowlist ${screenCases.length}/${screenCases.length} and navigation deduplication`);
 
   const common = {
     environment: "development",
@@ -111,6 +183,53 @@ try {
     auth_state: "guest",
     step: 2,
   });
+  assert.deepEqual(schema.buildAnalyticsPayload({
+    environment: "production",
+    pathname: "/medications/private-medication-id/schedule?date=private",
+    authState: "member",
+    eventName: "screen_viewed",
+    properties: {
+      screen_name: "medication_schedule_edit",
+      previous_screen: "medication_management",
+      navigation_type: "route_change",
+      medicationId: "blocked",
+      medication_name: "blocked",
+      dosage: "blocked",
+      scheduledTime: "blocked",
+      selected_date: "blocked",
+      user_id: "blocked",
+      email: "blocked@example.com",
+      query: "blocked",
+    },
+  }), {
+    environment: "production",
+    route: "other_safe",
+    auth_state: "member",
+    screen_name: "medication_schedule_edit",
+    previous_screen: "medication_management",
+    navigation_type: "route_change",
+  });
+  assert.equal(schema.buildAnalyticsPayload({
+    environment: "production",
+    pathname: "/",
+    authState: "guest",
+    eventName: "screen_viewed",
+    properties: {
+      screen_name: "invented_screen",
+      navigation_type: "initial",
+    },
+  }), null);
+  assert.equal(schema.buildAnalyticsPayload({
+    environment: "production",
+    pathname: "/",
+    authState: "guest",
+    eventName: "screen_viewed",
+    properties: {
+      screen_name: "home",
+      previous_screen: "home",
+      navigation_type: "route_change",
+    },
+  }), null);
   assert.equal(schema.buildAnalyticsPayload({
     ...common,
     authState: "unknown",
@@ -419,7 +538,8 @@ try {
   assert.match(mixpanelSource, /track_pageview: false/);
   assert.match(mixpanelSource, /record_sessions_percent: 0/);
   assert.match(mixpanelSource, /if \(isAnalyticsPathBlocked\(window\.location\.pathname\)\) return false;/);
-  assert.match(mixpanelSource, /const pathname = window\.location\.pathname;\s*if \(isAnalyticsPathBlocked\(pathname\) \|\| !initAnalytics\(\)\) return false;/);
+  assert.match(mixpanelSource, /const currentPathname = window\.location\.pathname;\s*const pathname = pathnameOverride \?\? currentPathname;/);
+  assert.match(mixpanelSource, /isAnalyticsPathBlocked\(currentPathname\)[\s\S]*?isAnalyticsPathBlocked\(pathname\)[\s\S]*?!initAnalytics\(\)/);
   assert.ok(mixpanelSource.indexOf("isAnalyticsPathBlocked(pathname)") < mixpanelSource.indexOf("mixpanel.track(eventName, payload)"));
   assert.match(mixpanelSource, /const tracked = trackAnalyticsEvent\("app_opened", "unknown", \{\}\);\s*if \(tracked\) analyticsState\.appOpenedTracked = true;/);
   console.log("PASS URL privacy and automatic collection configuration");
@@ -454,6 +574,18 @@ try {
   const medicationListSource = await readFile(new URL("../app/medications/page.tsx", import.meta.url), "utf8");
   const medicationEditorSource = await readFile(new URL("../components/medication-schedule-editor.tsx", import.meta.url), "utf8");
   const analyticsEventsSource = await readFile(new URL("../lib/analytics/events.ts", import.meta.url), "utf8");
+  const screenTrackerSource = await readFile(new URL("../components/analytics-screen-tracker.tsx", import.meta.url), "utf8");
+  const layoutSource = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
+
+  assert.match(screenTrackerSource, /useEffect\(\(\) => \{\s*trackScreenViewed\(pathname\);\s*\}, \[pathname\]\)/);
+  assert.match(layoutSource, /<Suspense fallback=\{null\}>\s*<AnalyticsScreenTracker \/>\s*<\/Suspense>/);
+  assert.match(analyticsEventsSource, /if \(typeof window === "undefined" \|\| isAnalyticsPathBlocked\(pathname\)\) return;/);
+  assert.match(analyticsEventsSource, /createScreenViewTransition\(screenTrackingState\.previousScreen, pathname\)/);
+  assert.ok(
+    analyticsEventsSource.indexOf("isAnalyticsPathBlocked(pathname)")
+      < analyticsEventsSource.indexOf("createScreenViewTransition(screenTrackingState.previousScreen, pathname)"),
+  );
+  console.log("PASS screen tracker route-only wiring, preview blocking, and Strict Mode deduplication state");
 
   assert.match(analyticsEventsSource, /if \(typeof window === "undefined" \|\| isAnalyticsPathBlocked\(window\.location\.pathname\)\) \{\s*return Promise\.resolve\(\);/);
   assert.ok(
@@ -483,7 +615,7 @@ try {
   assert.equal((medicationEditorSource.match(/trackMedicationScheduleUpdated\(/g) ?? []).length, 1);
   console.log("PASS medication management action-only, success-only, classification, and duplicate prevention wiring");
 
-  console.log("analytics fixture cases: 9/9 groups passed");
+  console.log("analytics fixture cases: 11/11 groups passed");
 } finally {
   await rm(fixtureDirectory, { recursive: true, force: true });
 }
