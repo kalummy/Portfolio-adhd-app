@@ -1,34 +1,39 @@
-import Image from "next/image";
 import { MobileShell } from "@/components/mobile-shell";
+import { FlowHeader } from "@/components/flow-ui";
+import { MoodLoadingPrototype } from "@/components/mood-loading-prototype";
+import { VisitDialog } from "@/components/visit-dialog";
 
-const SUMMARY_POSES = [
-  "/moods/summary-pose-1.png",
-  "/moods/summary-pose-2.png",
-  "/moods/summary-pose-3.png",
-  "/moods/summary-pose-4.png",
-];
+type MoodSummaryLoadingProps = {
+  showExitDialog: boolean;
+  onAnimationComplete: () => void;
+  onBack: () => void;
+  onClose: () => void;
+  onCancelExit: () => void;
+  onConfirmExit: () => void;
+};
 
-export function MoodSummaryLoading({ targetDateLabel }: { targetDateLabel: string }) {
+export function MoodSummaryLoading({
+  showExitDialog,
+  onAnimationComplete,
+  onBack,
+  onClose,
+  onCancelExit,
+  onConfirmExit,
+}: MoodSummaryLoadingProps) {
   return (
     <MobileShell className="mood-summary-screen" aria-live="polite" aria-busy="true">
-      <span className="mood-target-date mood-summary-target-date">{targetDateLabel} 기록</span>
-      <h1>
-        <span>{targetDateLabel}의 감정기록을 정리하고 있어요</span>
-        <span>잠시만 기다려주세요</span>
-      </h1>
-      <div className="mood-summary-animation" aria-hidden="true">
-        {SUMMARY_POSES.map((src, index) => (
-          <Image
-            className={`mood-summary-pose pose-${index + 1}`}
-            src={src}
-            alt=""
-            width={200}
-            height={200}
-            priority
-            key={src}
-          />
-        ))}
+      <FlowHeader title="감정 기록하기" onBack={onBack} onClose={onClose} />
+      <div className="mood-summary-copy">
+        <h1>
+          <span>잠시만 기다려주세요</span>
+          <span>감정 기록을 작성중이에요</span>
+        </h1>
+        <div className="mood-summary-animation-frame">
+          <MoodLoadingPrototype onComplete={onAnimationComplete} />
+        </div>
       </div>
+      {showExitDialog ? <VisitDialog title="감정 기록을 중단할까요?" cancelLabel="취소" confirmLabel="중단하기"
+        onCancel={onCancelExit} onConfirm={onConfirmExit} /> : null}
     </MobileShell>
   );
 }

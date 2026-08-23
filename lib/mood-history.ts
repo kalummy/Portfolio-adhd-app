@@ -2,11 +2,9 @@ import type { MoodRecord } from "./types";
 import { toDateKey } from "./visit-date";
 
 export const MOOD_HISTORY_PERIODS = [
-  { value: "1w", optionLabel: "1주일", selectLabel: "최근 1주일 기록내역" },
-  { value: "1m", optionLabel: "1개월", selectLabel: "최근 1 개월 기록내역" },
-  { value: "3m", optionLabel: "3개월", selectLabel: "최근 3개월 기록내역" },
-  { value: "6m", optionLabel: "6개월", selectLabel: "최근 6개월 기록내역" },
-  { value: "1y", optionLabel: "1년", selectLabel: "최근 1년 기록내역" },
+  { value: "14d", optionLabel: "14일", summaryLabel: "2주" },
+  { value: "1m", optionLabel: "1개월", summaryLabel: "1개월" },
+  { value: "3m", optionLabel: "3개월", summaryLabel: "3개월" },
 ] as const;
 
 export type MoodHistoryPeriod = typeof MOOD_HISTORY_PERIODS[number]["value"];
@@ -22,33 +20,59 @@ function subtractCalendarMonths(date: Date, months: number) {
   return target;
 }
 
-function periodStart(period: MoodHistoryPeriod, today: Date) {
+export function periodStart(period: MoodHistoryPeriod, today: Date) {
   const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
-  if (period === "1w") {
-    localToday.setDate(localToday.getDate() - 6);
-    return localToday;
-  }
-
-  const months = period === "1m" ? 1 : period === "3m" ? 3 : period === "6m" ? 6 : 12;
-  return subtractCalendarMonths(localToday, months);
+  if (period === "14d") { localToday.setDate(localToday.getDate() - 13); return localToday; }
+  return subtractCalendarMonths(localToday, period === "1m" ? 1 : 3);
 }
 
-export function filterMoodRecordsByPeriod(
-  records: MoodRecord[],
-  period: MoodHistoryPeriod,
-  today = new Date(),
-) {
+export function filterMoodRecordsByPeriod(records: MoodRecord[], period: MoodHistoryPeriod, today = new Date()) {
   const startDateKey = toDateKey(periodStart(period, today));
   const todayKey = toDateKey(today);
-
   return records
     .filter((record) => record.date >= startDateKey && record.date <= todayKey)
-    .sort((left, right) => (
-      right.recordedAt.localeCompare(left.recordedAt) || right.date.localeCompare(left.date)
-    ));
+    .sort((left, right) => right.recordedAt.localeCompare(left.recordedAt) || right.date.localeCompare(left.date));
 }
 
 export function getMoodHistoryPeriod(period: MoodHistoryPeriod) {
   return MOOD_HISTORY_PERIODS.find((item) => item.value === period)!;
+}
+
+function formatDate(date: Date) {
+  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`;
+}
+
+export function getMoodHistoryRangeLabel(period: MoodHistoryPeriod, today = new Date()) {
+  const start = periodStart(period, today);
+  const label = getMoodHistoryPeriod(period).optionLabel;
+  return `${formatDate(start)}~${formatDate(today)} (${label})`;
+}
+
+export function buildMoodHistoryStats(records: MoodRecord[]) {
+  const uniqueDays = new Set(records.map((record) => record.date)).size;
+  const count = (predicate: (record: MoodRecord) => boolean) => new Set(records.filter(predicate).map((record) => record.date)).size;
+  const effectRecordedDays = count((record) => (record.details?.medicationEffects.length ?? 0) > 0);
+  const relationshipDifficultDays = count((record) => record.details?.relationships.some((id) => id !== "none") ?? false);
+  const allPatterns = [
+    { label: "오후 약효 저하 느낌", count: count((record) => record.details?.medicationEffects.includes("weak") && Object.values(record.details.medicationEffectTimings).flat().includes("저녁") || false) },
+    { label: "집중력 저하", count: count((record) => record.details?.relationships.includes("task") ?? false) },
+    { label: "예민함", count: count((record) => record.details?.moods.includes("irritable") ?? false) },
+    { label: "수면 문제", count: count((record) => record.details?.moods.includes("sleep") ?? false) },
+    { label: "업무 기한 맞추기 어려움", count: count((record) => record.details?.relationships.includes("unfinished") ?? false) },
+  ];
+  const patternCount = Object.fromEntries(allPatterns.map((pattern) => [pattern.label, pattern.count]));
+  const patterns = allPatterns.filter((pattern) => pattern.count >= 2);
+  const repeated = (label: string) => (patternCount[label] ?? 0) >= 3 ? "반복해서 " : "";
+  const clinicParts = [
+    patternCount["오후 약효 저하 느낌"] >= 2
+      ? `오후에 약 효과가 줄어든 느낌을 ${repeated("오후 약효 저하 느낌")}${patternCount["오후 약효 저하 느낌"]}일 기록했어요.` : "",
+    patternCount["예민함"] >= 2
+      ? `예민함을 ${repeated("예민함")}${patternCount["예민함"]}일 기록했어요.` : "",
+    patternCount["수면 문제"] >= 2
+      ? `수면 문제를 ${repeated("수면 문제")}${patternCount["수면 문제"]}일 기록했어요.` : "",
+    patternCount["집중력 저하"] >= 2
+      ? `업무 또는 과제 집중이 어려웠던 날을 ${repeated("집중력 저하")}${patternCount["집중력 저하"]}일 기록했어요.` : "",
+  ].filter(Boolean);
+  const clinicPhrase = clinicParts.join(" ") || "기록을 더 모으면 진료에서 말하기 쉬운 요약을 보여드려요.";
+  return { uniqueDays, effectRecordedDays, relationshipDifficultDays, patterns, clinicPhrase };
 }

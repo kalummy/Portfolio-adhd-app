@@ -1,102 +1,75 @@
 "use client";
 
 import Image from "next/image";
-import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
+import { BottomActions, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
-import { VisitDialog } from "@/components/visit-dialog";
-import { getMoodDiarySummary, type MoodResultData } from "@/lib/mood-summary";
+import { MoodLottie } from "@/components/mood-lottie";
+import type { MoodResultData } from "@/lib/mood-summary";
 
 type MoodResultProps = {
   result: MoodResultData;
-  targetDateLabel: string;
-  dialog: "restart" | "exit" | null;
+  hasAnimation: boolean;
   saving: boolean;
-  onBack: () => void;
-  onCancelDialog: () => void;
-  onConfirmExit: () => void;
-  onConfirmRestart: () => void;
   onRestart: () => void;
   onSave: () => void;
 };
 
-function formatRecordedAt(recordedAt: string) {
-  return new Intl.DateTimeFormat("ko-KR", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }).format(new Date(recordedAt));
+function getShareText(result: MoodResultData) {
+  return [
+    "오늘 체크해야할 점",
+    ...result.checkItems.map((item) => `• ${item}`),
+    "",
+    "병원에서 이렇게 이야기 해보세요",
+    `“${result.clinicPhrase}”`,
+  ].join("\n");
 }
 
-export function MoodResult({
-  result,
-  targetDateLabel,
-  dialog,
-  saving,
-  onBack,
-  onCancelDialog,
-  onConfirmExit,
-  onConfirmRestart,
-  onRestart,
-  onSave,
-}: MoodResultProps) {
+async function shareMoodResult(result: MoodResultData) {
+  if (typeof navigator.share !== "function") return;
+  try {
+    await navigator.share({ title: "감정 기록 완료", text: getShareText(result) });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") return;
+  }
+}
+
+export function MoodResult({ result, hasAnimation, saving, onRestart, onSave }: MoodResultProps) {
   return (
     <MobileShell className="flow-screen mood-result-screen">
-      <FlowHeader title="감정 기록하기" beforeBack={onBack} onBackOnly />
+      <header className="mood-result-header">
+        <strong>감정 기록 완료</strong>
+        <button className="icon-button mood-result-share" type="button" aria-label="감정 기록 공유하기"
+          onClick={() => void shareMoodResult(result)}>
+          <Image src="/icons/mood-share.svg" alt="" width={18} height={18} />
+        </button>
+      </header>
 
       <section className="mood-result-content">
-        <span className="mood-target-date mood-result-target-date">{targetDateLabel} 기록</span>
-        <div className="mood-result-item">
-          <Image src={result.imagePath} alt="" width={120} height={120} priority />
-          <div className="mood-result-info">
-            <h1>{result.label}</h1>
-            <p>{formatRecordedAt(result.recordedAt)} 기록</p>
-          </div>
+        <div className="mood-result-animation-frame">
+          {hasAnimation ? <MoodLottie className="mood-result-animation" src="/lottie/mood-complete.json" loop={false} /> : null}
+        </div>
+        <div className="mood-result-heading">
+          <h1>기록이 완료 되었어요!</h1>
+          <p>오늘 요약을 확인해보세요.</p>
         </div>
 
-        <section className="mood-result-summary">
-          <div className="mood-result-summary-title">
-            <Image src="/icons/mood-diary.svg" alt="" width={20} height={20} />
-            <h2>{targetDateLabel}의 일기</h2>
-          </div>
-          <p>{getMoodDiarySummary(result.summaryItems)}</p>
+        <section className="mood-check-card">
+          <h2><Image src="/icons/mood-summary-sparkle.svg" alt="" width={20} height={20} />오늘 체크해야할 점</h2>
+          <ul>{result.checkItems.map((item) => <li key={item}><span aria-hidden="true" /><p>{item}</p></li>)}</ul>
+        </section>
+
+        <section className="mood-clinic-card">
+          <h2><Image src="/icons/mood-summary-sparkle.svg" alt="" width={20} height={20} />병원에서 이렇게 이야기 해보세요</h2>
+          <p>“{result.clinicPhrase}”</p>
         </section>
       </section>
 
       <BottomActions>
         <div className="split-actions mood-result-actions">
-          <PrimaryButton type="button" variant="soft" onClick={onRestart} disabled={saving}>
-            다시 하기
-          </PrimaryButton>
-          <PrimaryButton type="button" onClick={onSave} disabled={saving}>
-            저장
-          </PrimaryButton>
+          <PrimaryButton type="button" variant="soft" onClick={onRestart} disabled={saving}>다시 하기</PrimaryButton>
+          <PrimaryButton type="button" onClick={onSave} disabled={saving}>저장</PrimaryButton>
         </div>
       </BottomActions>
-
-      {dialog === "restart" ? (
-        <VisitDialog
-          title={(
-            <>
-              <span>처음부터 다시 기록할까요?</span>
-              <span>방금 기록한 내용은 지워져요</span>
-            </>
-          )}
-          cancelLabel="취소"
-          confirmLabel="다시 하기"
-          onCancel={onCancelDialog}
-          onConfirm={onConfirmRestart}
-        />
-      ) : null}
-
-      {dialog === "exit" ? (
-        <VisitDialog
-          title="감정 기록을 중단할까요?"
-          cancelLabel="취소"
-          confirmLabel="중단하기"
-          onCancel={onCancelDialog}
-          onConfirm={onConfirmExit}
-        />
-      ) : null}
     </MobileShell>
   );
 }
