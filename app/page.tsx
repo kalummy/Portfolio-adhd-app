@@ -53,7 +53,9 @@ export default async function Page({
         enableLaunchSplash={!medicationToast && !moodToast}
         initialDateKey={isValidDateKey(date) ? date : undefined}
         initialToast={initialToast}
-        initialToastId={medicationToast === "added" ? toastId : undefined}
+        initialToastId={
+          medicationToast === "added" || moodToast === "saved" ? toastId : undefined
+        }
         initialToastQueryKey={initialToastQueryKey}
       />
     </>

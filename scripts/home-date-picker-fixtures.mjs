@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { getHomeMedicationProjection } from "../lib/home-medication-projection.ts";
 import { getWeekProgress } from "../lib/home-week-progress.ts";
 import {
   addDaysToDateKey,
@@ -23,6 +24,103 @@ const mood = {
   recordedAt: "2026-08-22T02:00:00.000Z",
 };
 const activeMedications = ["med-a", "med-b", "med-c"];
+
+const medication = (id, active) => ({
+  id,
+  name: `약 ${id}`,
+  strengthValue: 10,
+  strengthUnit: "mg",
+  imagePath: "/icons/medication-fallback-64.svg",
+  registrationMethod: "search",
+  schedule: "daily",
+  createdAt: "2026-08-20T00:00:00.000Z",
+  active,
+});
+const medicationAActive = medication("A", true);
+const medicationAInactive = medication("A", false);
+const medicationCActive = medication("C", true);
+const intakeFor = (medicationId, recordDate) => intake(medicationId, { date: recordDate });
+const projectMedications = ({
+  medications,
+  intakeRecords,
+  selectedDate,
+  todayDate = "2026-08-24",
+}) => getHomeMedicationProjection({ medications, intakeRecords, selectedDate, todayDate });
+
+assert.deepEqual(
+  projectMedications({
+    medications: [medicationAActive],
+    intakeRecords: [intakeFor("A", "2026-08-20")],
+    selectedDate: "2026-08-20",
+  }).map(({ id }) => id),
+  ["A"],
+  "PROJECTION CASE 1: active A with 8/20 intake is displayed",
+);
+assert.deepEqual(
+  projectMedications({
+    medications: [medicationAInactive],
+    intakeRecords: [intakeFor("A", "2026-08-20")],
+    selectedDate: "2026-08-20",
+  }).map(({ id }) => id),
+  ["A"],
+  "PROJECTION CASE 2: inactive A with 8/20 intake remains displayed",
+);
+assert.deepEqual(
+  projectMedications({
+    medications: [medicationAInactive],
+    intakeRecords: [],
+    selectedDate: "2026-08-22",
+  }),
+  [],
+  "PROJECTION CASE 3: inactive A without 8/22 intake is not displayed",
+);
+assert.deepEqual(
+  projectMedications({
+    medications: [medicationAInactive],
+    intakeRecords: [intakeFor("A", "2026-08-22")],
+    selectedDate: "2026-08-22",
+  }).map(({ id }) => id),
+  ["A"],
+  "PROJECTION CASE 4: inactive A with 8/22 intake is displayed",
+);
+const afterReplacementIntakes = [
+  intakeFor("A", "2026-08-20"),
+  intakeFor("A", "2026-08-23"),
+];
+assert.deepEqual(
+  projectMedications({
+    medications: [medicationAInactive, medicationCActive],
+    intakeRecords: afterReplacementIntakes,
+    selectedDate: "2026-08-20",
+  }).map(({ id }) => id),
+  ["A", "C"],
+  "PROJECTION CASE 5: A history and active C coexist without replacing IDs",
+);
+assert.deepEqual(
+  projectMedications({
+    medications: [medicationAInactive, medicationCActive],
+    intakeRecords: afterReplacementIntakes,
+    selectedDate: "2026-08-23",
+  }).map(({ id }) => id),
+  ["A", "C"],
+  "PROJECTION CASE 5: A 8/23 history remains visible after C registration",
+);
+assert.equal(
+  afterReplacementIntakes.some((record) => (
+    record.medicationId === "C" && record.date === "2026-08-20"
+  )),
+  false,
+  "PROJECTION CASE 5: A intake is not mixed into C",
+);
+assert.deepEqual(
+  projectMedications({
+    medications: [medicationAInactive, medicationCActive],
+    intakeRecords: [intakeFor("A", "2026-08-24")],
+    selectedDate: "2026-08-24",
+  }).map(({ id }) => id),
+  ["C"],
+  "PROJECTION CASE 6: current date does not expose inactive A",
+);
 
 assert.equal(
   getWeekProgress(date, [intake("med-a")], [mood]),

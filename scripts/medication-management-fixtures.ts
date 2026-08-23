@@ -95,17 +95,55 @@ assert.equal(resolveEditorFields(null, [{
   date: "2026-08-24",
   recordedAt: "2026-08-24T01:30:00.000Z",
 }]), null);
-// CASE 8: A later-date intake must not leak into an earlier selected-date editor.
-assert.equal(resolveEditorFields(null, [latestTakenIntake], "2026-08-22"), null);
-assert.deepEqual(resolveEditorFields(null, [
-  {
-    ...latestTakenIntake,
-    id: "selected-date-intake",
-    date: "2026-08-22",
-    recordedAt: "2026-08-22T07:40:00.000Z",
-  },
-  latestTakenIntake,
-], "2026-08-22"), { period: "pm", hour: "4", minute: "40" });
+const august20Intake = {
+  ...latestTakenIntake,
+  id: "august-20-intake",
+  date: "2026-08-20",
+  recordedAt: "2026-08-20T01:30:00.000Z",
+};
+const august21Intake = {
+  ...latestTakenIntake,
+  id: "august-21-intake",
+  date: "2026-08-21",
+  recordedAt: "2026-08-21T05:25:00.000Z",
+};
+
+// EXACT DATE CASE 1: An earlier taken intake must not leak into the selected date.
+assert.equal(resolveEditorFields(null, [august20Intake], "2026-08-21"), null);
+// EXACT DATE CASE 2: The selected date's taken intake provides the suggestion.
+assert.deepEqual(
+  resolveEditorFields(null, [august21Intake], "2026-08-21"),
+  { period: "pm", hour: "2", minute: "25" },
+);
+// EXACT DATE CASE 3: Only the selected date is used when multiple dates exist.
+assert.deepEqual(
+  resolveEditorFields(null, [august20Intake, august21Intake], "2026-08-21"),
+  { period: "pm", hour: "2", minute: "25" },
+);
+// EXACT DATE CASE 4: A saved scheduledTime always wins over the selected-date intake.
+assert.deepEqual(
+  resolveEditorFields("09:30", [august21Intake], "2026-08-21"),
+  { period: "am", hour: "9", minute: "30" },
+);
+// EXACT DATE CASE 5: Another medication's same-date intake is never used.
+assert.equal(resolveEditorFields(null, [{
+  ...august21Intake,
+  id: "other-medication-august-21",
+  medicationId: "other-medication",
+}], "2026-08-21"), null);
+// EXACT DATE CASE 6: A later-date intake must not leak into an earlier selected date.
+assert.equal(resolveEditorFields(null, [{
+  ...august21Intake,
+  id: "august-22-intake",
+  date: "2026-08-22",
+  recordedAt: "2026-08-22T05:25:00.000Z",
+}], "2026-08-21"), null);
+// EXACT DATE CASE 7: With no route date, the KST-today context accepts only today's intake.
+assert.deepEqual(
+  resolveEditorFields(null, [august20Intake, latestTakenIntake]),
+  { period: "am", hour: "10", minute: "30" },
+);
+assert.equal(resolveEditorFields(null, [august20Intake]), null);
 // A cancelled intake is not an editor fallback source.
 assert.equal(resolveEditorFields(null, [{
   ...latestTakenIntake,
@@ -226,6 +264,17 @@ assert.match(homeScreen, /window\.history\.replaceState\(window\.history\.state,
 assert.match(homeScreen, /formatMedicationRecordTime\(intake\.recordedAt\)/);
 assert.match(homeScreen, /reconcileMedicationIntakeRecord/);
 assert.doesNotMatch(homeScreen, /scheduledTimeLabel \?\?/);
+
+const homePage = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+assert.match(homePage, /medicationToast === "added" \|\| moodToast === "saved"/);
+
+const toastComponent = await readFile(
+  new URL("../components/toast.tsx", import.meta.url),
+  "utf8",
+);
+assert.match(toastComponent, /messageElement\.scrollHeight > lineHeight \+ 1/);
+assert.match(toastComponent, /new ResizeObserver\(measureLines\)/);
+assert.match(toastComponent, /isMultiline \? "multiline"/);
 
 const supabaseIntakes = await readFile(
   new URL("../lib/repositories/intake-records/supabase.ts", import.meta.url),

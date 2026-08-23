@@ -20,6 +20,7 @@ import {
 import { getDataRepositories, retryGuestDatasetSync } from "@/lib/repositories";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
 import { reconcileMedicationIntakeRecord } from "@/lib/medication-intake-state";
+import { getHomeMedicationProjection } from "@/lib/home-medication-projection";
 import { getWeekProgress } from "@/lib/home-week-progress";
 import {
   KST_TIME_ZONE,
@@ -224,7 +225,7 @@ export function HomeScreen({
         getAuthState()
           .then((state) => state.isAuthenticated)
           .catch(() => false),
-        repositories.medications.listActive(),
+        repositories.medications.listAll(),
         repositories.medicationIntakes.listAll(),
         repositories.moods.listAll(),
         repositories.visitSchedules.getUpcoming(),
@@ -330,6 +331,17 @@ export function HomeScreen({
         .map((record) => [record.medicationId, record]),
     );
   }, [intakeRecords, selectedDateKey]);
+
+  const activeMedicationCount = useMemo(
+    () => medications.filter((medication) => medication.active !== false).length,
+    [medications],
+  );
+  const displayedMedications = useMemo(() => getHomeMedicationProjection({
+    medications,
+    intakeRecords,
+    selectedDate: selectedDateKey,
+    todayDate: todayDateKey,
+  }), [intakeRecords, medications, selectedDateKey, todayDateKey]);
 
   const moodRecord = useMemo(
     () => moodRecords.find((record) => record.date === selectedDateKey) ?? null,
@@ -549,7 +561,7 @@ export function HomeScreen({
         <section className="home-section">
           {loading ? (
             <div className="home-card loading-card" aria-label="복용약 불러오는 중" />
-          ) : medications.length === 0 ? (
+          ) : displayedMedications.length === 0 ? (
             <div className="home-card empty-medication-card">
               <div className="home-card-copy">
                 <strong>복용중인 약을 등록해주세요</strong>
@@ -574,16 +586,17 @@ export function HomeScreen({
                   href={`/medications?date=${encodeURIComponent(selectedDateKey)}`}
                   className="home-card-title"
                   aria-label="복용약 목록 열기"
-                  onNavigate={() => trackMedicationManagementOpened(medications.length)}
+                  onNavigate={() => trackMedicationManagementOpened(activeMedicationCount)}
                 >
                   <strong>{medicationTitle}</strong>
                   <ChevronRight />
                 </Link>
               </div>
               <div className="saved-medication-list">
-                {medications.map((medication) => {
+                {displayedMedications.map((medication) => {
                   const intake = selectedIntakeByMedication.get(medication.id);
                   const isTaken = Boolean(intake);
+                  const isHistoricalInactive = medication.active === false;
                   const productImage = medication.productImage?.trim();
                   const hasProductImage = Boolean(productImage && medication.imageType !== "fallback");
                   const imageKey = `${medication.id}:${productImage ?? medication.imagePath}`;
@@ -594,20 +607,30 @@ export function HomeScreen({
                     : productImage!;
                   return (
                     <article className="home-medication-item" key={medication.id}>
-                      <button
-                        type="button"
-                        className="medication-check"
-                        aria-label={`${medicationLabel(medication)} ${isTaken ? "복용 완료 취소" : "복용 완료 기록"}`}
-                        aria-pressed={isTaken}
-                        onClick={() => void handleToggleMedication(medication.id)}
-                      >
-                        <Image
-                          src={isTaken ? "/icons/check-circle.svg" : "/icons/check-circle-unrecorded.svg"}
-                          alt=""
-                          width={20}
-                          height={20}
-                        />
-                      </button>
+                      {isHistoricalInactive ? (
+                        <span
+                          className="medication-check history"
+                          role="img"
+                          aria-label={`${medicationLabel(medication)} 복용 완료 기록`}
+                        >
+                          <Image src="/icons/check-circle.svg" alt="" width={20} height={20} />
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="medication-check"
+                          aria-label={`${medicationLabel(medication)} ${isTaken ? "복용 완료 취소" : "복용 완료 기록"}`}
+                          aria-pressed={isTaken}
+                          onClick={() => void handleToggleMedication(medication.id)}
+                        >
+                          <Image
+                            src={isTaken ? "/icons/check-circle.svg" : "/icons/check-circle-unrecorded.svg"}
+                            alt=""
+                            width={20}
+                            height={20}
+                          />
+                        </button>
+                      )}
                       <div className={`home-medication-image ${isFallbackImage ? "fallback" : ""}`}>
                         <Image
                           src={displayedImage}
