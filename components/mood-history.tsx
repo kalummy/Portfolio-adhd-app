@@ -12,7 +12,7 @@ import {
   trackCatCollectionViewed,
   trackMoodReportViewed,
 } from "@/lib/analytics/events";
-import { getCat, isCatId, UNKNOWN_CAT } from "@/lib/cats";
+import { UNKNOWN_CAT } from "@/lib/cats";
 import { getKstDateKey } from "@/lib/kst-date";
 import {
   formatMoodRecordDateTime,
@@ -21,6 +21,7 @@ import {
   MOOD_HISTORY_PERIODS,
   type MoodHistoryPeriod,
 } from "@/lib/mood-history";
+import { getMoodRecordDisplayCat } from "@/lib/mood-record-cat";
 import { getMoodRepository } from "@/lib/repositories";
 import type { MoodRecord } from "@/lib/types";
 
@@ -35,9 +36,7 @@ const TABS = [
 type MoodTab = (typeof TABS)[number]["id"];
 
 function getRecordCat(record: MoodRecord) {
-  return isCatId(record.catId)
-    ? getCat(record.catId)
-    : { ...UNKNOWN_CAT, displayName: "획득한 고양이 없음" };
+  return getMoodRecordDisplayCat(record.catId);
 }
 
 function getRecordSummary(record: MoodRecord) {
@@ -216,7 +215,7 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
                   aria-label={`${formatMoodRecordDateTime(record)} ${getRecordSummary(record)}`}
                   key={record.id}
                 >
-                  <span className={`mood-record-list-cat cat-${record.catId ?? "unknown"}`}>
+                  <span className={`mood-record-list-cat cat-${cat.id}`}>
                     <Image src={cat.imagePath} alt={cat.displayName} fill sizes="64px" />
                   </span>
                   <span className="mood-record-list-info">

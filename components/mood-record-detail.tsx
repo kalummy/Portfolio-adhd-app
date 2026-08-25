@@ -6,15 +6,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MobileShell } from "@/components/mobile-shell";
 import { MOOD_DELETED_TOAST_STORAGE_KEY } from "@/components/mood-history";
-import { getCat, isCatId, UNKNOWN_CAT } from "@/lib/cats";
 import { formatMoodRecordDate, formatMoodRecordDateTime } from "@/lib/mood-history";
+import { getMoodRecordDisplayCat } from "@/lib/mood-record-cat";
 import { getMoodRepository } from "@/lib/repositories";
 import type { MoodRecord } from "@/lib/types";
 
 function getDetailCat(record: MoodRecord) {
-  return isCatId(record.catId)
-    ? getCat(record.catId)
-    : { ...UNKNOWN_CAT, displayName: "획득한 고양이 없음" };
+  return getMoodRecordDisplayCat(record.catId);
 }
 
 function getStoredEmotionItems(record: MoodRecord) {
@@ -123,7 +121,7 @@ export function MoodRecordDetail({ dateKey }: { dateKey: string }) {
           <span>{formatMoodRecordDateTime(record)}</span>
           <strong>{record.moodLabel || record.memberSummary}</strong>
         </div>
-        <span className={`mood-record-detail-cat cat-${record.catId ?? "unknown"}`}>
+        <span className={`mood-record-detail-cat cat-${cat.id}`}>
           <Image src={cat.imagePath} alt={cat.displayName} fill sizes="160px" priority />
         </span>
       </section>

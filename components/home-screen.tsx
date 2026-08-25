@@ -722,7 +722,7 @@ export function HomeScreen({
                 <strong>{moodEmptyTitle}</strong>
                 <p>감정을 기록하고 귀여운 고양이를 모아보세요!</p>
               </div>
-              <Image className="home-mood-placeholder-cat" src={UNKNOWN_CAT.imagePath} alt="" width={120} height={120} />
+              <Image className="home-mood-placeholder-cat" src={UNKNOWN_CAT.imagePath} alt="" width={160} height={160} />
               <Link
                 href={`/moods/new?date=${selectedDateKey}`}
                 className="mood-record-link"
