@@ -1,7 +1,12 @@
 "use client";
 
 import mixpanelLoader from "mixpanel-browser/dist/mixpanel-with-async-modules.cjs.js";
-import type { BeforeSendHookPayload, Mixpanel } from "mixpanel-browser";
+import type {
+  BeforeSendHookPayload,
+  Mixpanel,
+  RequestOptions,
+  Response,
+} from "mixpanel-browser";
 import { isAnalyticsPathBlocked } from "./path-policy";
 import {
   ANALYTICS_REPLAY_ALLOW_INTERACTION_SELECTOR,
@@ -23,6 +28,14 @@ type ReplayCapableMixpanel = Mixpanel & {
 };
 
 const mixpanel = mixpanelLoader as unknown as ReplayCapableMixpanel;
+
+export type AnalyticsDeliveryStatus =
+  | "delivered"
+  | "failed"
+  | "timeout"
+  | "skipped";
+
+const IMMEDIATE_DELIVERY_TIMEOUT_MS = 1_200;
 
 type AnalyticsState = {
   appOpenedTracked: boolean;
@@ -290,6 +303,63 @@ export function trackAnalyticsEvent<T extends AnalyticsEventName>(
   } catch {
     return false;
   }
+}
+
+function isSuccessfulTrackResponse(response: Response) {
+  return response === 1
+    || (typeof response === "object" && response.status === 1);
+}
+
+export function trackAnalyticsEventWithDelivery<T extends AnalyticsEventName>(
+  eventName: T,
+  authState: AnalyticsAuthState,
+  properties: AnalyticsEventProperties<T>,
+  pathnameOverride?: string,
+): Promise<AnalyticsDeliveryStatus> {
+  if (!isBrowser()) return Promise.resolve("skipped");
+  const currentPathname = window.location.pathname;
+  const pathname = pathnameOverride ?? currentPathname;
+  if (
+    isAnalyticsPathBlocked(currentPathname)
+    || isAnalyticsPathBlocked(pathname)
+    || !initAnalytics()
+  ) return Promise.resolve("skipped");
+
+  const payload = buildAnalyticsPayload({
+    authState,
+    environment: analyticsEnvironment,
+    eventName,
+    pathname,
+    properties,
+  });
+  if (!payload) return Promise.resolve("skipped");
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (status: AnalyticsDeliveryStatus) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      resolve(status);
+    };
+    const timer = window.setTimeout(
+      () => finish("timeout"),
+      IMMEDIATE_DELIVERY_TIMEOUT_MS,
+    );
+    const requestOptions = {
+      send_immediately: true,
+      timeout_ms: IMMEDIATE_DELIVERY_TIMEOUT_MS,
+      transport: "xhr",
+    } as RequestOptions & { timeout_ms: number };
+
+    try {
+      mixpanel.track(eventName, payload, requestOptions, (response) => {
+        finish(isSuccessfulTrackResponse(response) ? "delivered" : "failed");
+      });
+    } catch {
+      finish("failed");
+    }
+  });
 }
 
 export function trackAppOpened(): boolean {

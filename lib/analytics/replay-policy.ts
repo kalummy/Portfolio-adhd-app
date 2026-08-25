@@ -63,11 +63,18 @@ export function getReplaySamplePercent({
   runtimeEnvironment: ReplayRuntimeEnvironment;
 }) {
   if (runtimeEnvironment === "production") return 1;
-  if (
-    qaMode
-    && (runtimeEnvironment === "preview" || runtimeEnvironment === "development")
-  ) return 100;
+  if (isPreviewReplayQaEnabled({ qaMode, runtimeEnvironment })) return 100;
   return 0;
+}
+
+export function isPreviewReplayQaEnabled({
+  qaMode,
+  runtimeEnvironment,
+}: {
+  qaMode: boolean;
+  runtimeEnvironment: ReplayRuntimeEnvironment;
+}) {
+  return qaMode && runtimeEnvironment === "preview";
 }
 
 export function isReplaySampleIncluded(

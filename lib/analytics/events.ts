@@ -20,7 +20,11 @@ import {
   type MoodAttemptState,
   type VisitAttemptState,
 } from "./attempts";
-import { trackAnalyticsEvent } from "./mixpanel";
+import {
+  trackAnalyticsEvent,
+  trackAnalyticsEventWithDelivery,
+  type AnalyticsDeliveryStatus,
+} from "./mixpanel";
 import { isAnalyticsPathBlocked } from "./path-policy";
 import {
   createScreenViewTransition,
@@ -43,6 +47,7 @@ const MOOD_ATTEMPT_STORAGE_KEY = "addi:analytics:mood-attempt:v1";
 const VISIT_ATTEMPT_STORAGE_KEY = "addi:analytics:visit-attempt:v1";
 const INTAKE_DEDUPLICATION_STORAGE_KEY = "addi:analytics:intake-dedupe:v1";
 const START_THROTTLE_MS = 1_000;
+const MOOD_SAVED_DELIVERY_BOUND_MS = 1_500;
 
 let analyticsQueue: Promise<unknown> = Promise.resolve();
 let lastMedicationStartAt = 0;
@@ -357,8 +362,15 @@ export function trackMoodSaved() {
   const current = readMoodAttempt() ?? createMoodAttempt("home");
   const result = markMoodSaved(current);
   writeMoodAttempt(result.state);
-  if (result.shouldTrack) return queueResolvedEvent("mood_saved", {});
-  return Promise.resolve();
+  if (!result.shouldTrack) return Promise.resolve<AnalyticsDeliveryStatus>("skipped");
+
+  const delivery = resolveAnalyticsAuthState()
+    .then((authState) => trackAnalyticsEventWithDelivery("mood_saved", authState, {}))
+    .catch(() => "failed" as const);
+  const timeout = new Promise<AnalyticsDeliveryStatus>((resolve) => {
+    window.setTimeout(() => resolve("timeout"), MOOD_SAVED_DELIVERY_BOUND_MS);
+  });
+  return Promise.race([delivery, timeout]);
 }
 
 function emitVisitAttemptStarted(state: VisitAttemptState) {
