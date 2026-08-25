@@ -14,6 +14,7 @@ import {
   isReplaySampleIncluded,
   isReplayUrlPrivacySafe,
   normalizeReplayRuntimeEnvironment,
+  shouldCanonicalizeMoodReplayUrl,
   shouldStartReplay,
 } from "../lib/analytics/replay-policy.ts";
 
@@ -57,6 +58,13 @@ for (const pathname of [
 assert.equal(isReplayUrlPrivacySafe({ pathname: "/", search: "?date=2026-08-25", hash: "" }), false);
 assert.equal(isReplayUrlPrivacySafe({ pathname: "/moods", search: "?deleted=1", hash: "" }), false);
 assert.equal(isReplayUrlPrivacySafe({ pathname: "/moods/new", search: "", hash: "#private" }), false);
+assert.equal(shouldCanonicalizeMoodReplayUrl({ pathname: "/moods/new", search: "?date=2026-08-25", hash: "" }), true);
+for (const location of [
+  { pathname: "/", search: "?date=2026-08-25", hash: "" },
+  { pathname: "/moods/new", search: "?date=2026-08-25&private=1", hash: "" },
+  { pathname: "/moods/new", search: "?date=not-a-date", hash: "" },
+  { pathname: "/moods/new", search: "?date=2026-08-25", hash: "#private" },
+]) assert.equal(shouldCanonicalizeMoodReplayUrl(location), false);
 console.log("PASS Replay exact-route allowlist and canonical URL-only policy");
 
 assert.equal(normalizeReplayRuntimeEnvironment("production"), "production");
@@ -144,6 +152,7 @@ assert.match(controllerSource, /previewReplayQaEnabled \|\| readAnalyticsConsent
 assert.match(controllerSource, /NEXT_PUBLIC_VERCEL_ENV/);
 assert.match(controllerSource, /NEXT_PUBLIC_MIXPANEL_REPLAY_QA/);
 assert.match(controllerSource, /window\.location\.search/);
+assert.match(controllerSource, /window\.history\.replaceState\(window\.history\.state, "", pathname\)/);
 assert.match(controllerSource, /stopAnalyticsReplay\(\)/);
 
 const homeSource = sources["../components/home-screen.tsx"];
