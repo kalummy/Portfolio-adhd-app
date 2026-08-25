@@ -20,6 +20,7 @@ import {
   isReplaySampleIncluded,
   isReplayUrlPrivacySafe,
   normalizeReplayRuntimeEnvironment,
+  shouldCanonicalizeMoodReplayUrl,
   shouldStartReplay,
 } from "@/lib/analytics/replay-policy";
 
@@ -107,6 +108,15 @@ export function AnalyticsReplayController() {
 
   useEffect(() => {
     setInteractionSuspended(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!shouldCanonicalizeMoodReplayUrl({
+      hash: window.location.hash,
+      pathname,
+      search: window.location.search,
+    })) return;
+    window.history.replaceState(window.history.state, "", pathname);
   }, [pathname]);
 
   useEffect(() => {

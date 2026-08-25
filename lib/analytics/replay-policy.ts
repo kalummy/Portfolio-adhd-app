@@ -55,6 +55,23 @@ export function isReplayUrlPrivacySafe({
   return isReplayRouteAllowed(pathname) && search === "" && hash === "";
 }
 
+export function shouldCanonicalizeMoodReplayUrl({
+  hash,
+  pathname,
+  search,
+}: {
+  hash: string;
+  pathname: string;
+  search: string;
+}) {
+  if (pathname !== "/moods/new" || hash !== "") return false;
+  const params = new URLSearchParams(search);
+  const keys = Array.from(params.keys());
+  return keys.length === 1
+    && keys[0] === "date"
+    && /^\d{4}-\d{2}-\d{2}$/.test(params.get("date") ?? "");
+}
+
 export function getReplaySamplePercent({
   qaMode,
   runtimeEnvironment,
