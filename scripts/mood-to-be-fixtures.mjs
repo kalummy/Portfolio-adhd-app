@@ -242,6 +242,8 @@ assert.match(homeSource, /record\.analysisResult\?\.clinicPhrase/);
 assert.match(homeSource, /getMoodPresentation\(record\.mood\)\.label/);
 assert.match(homeSource, /isCatId\(moodRecord\.catId\)/);
 assert.match(homeSource, /getCat\(moodRecord\.catId\)/);
+assert.match(homeSource, /home-mood-placeholder-cat[^>]*width=\{160\}[^>]*height=\{160\}/u);
+assert.match(cssSource, /\.home-mood-placeholder-cat \{[^}]*width: 160px;[^}]*height: 160px;/u);
 assert.match(revealSource, /MOOD_CAT_REVEAL_DURATION_MS = 2000/);
 assert.match(revealSource, /두근 두근/);
 assert.match(revealSource, /어떤 고양이가 나올까요\?/);
