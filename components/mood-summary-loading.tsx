@@ -1,43 +1,50 @@
+"use client";
+
+import Image from "next/image";
+import { useEffect, useRef } from "react";
 import { MobileShell } from "@/components/mobile-shell";
-import { FlowHeader } from "@/components/flow-ui";
-import { MoodLoadingPrototype } from "@/components/mood-loading-prototype";
-import { MoodLottiePreloader } from "@/components/mood-lottie";
-import { VisitDialog } from "@/components/visit-dialog";
+import { UNKNOWN_CAT } from "@/lib/cats";
 
 type MoodSummaryLoadingProps = {
-  showExitDialog: boolean;
   onAnimationComplete: () => void;
-  onBack: () => void;
-  onClose: () => void;
-  onCancelExit: () => void;
-  onConfirmExit: () => void;
-  preloadCompleteAnimation: boolean;
 };
 
+export const MOOD_CAT_REVEAL_DURATION_MS = 2000;
+
 export function MoodSummaryLoading({
-  showExitDialog,
   onAnimationComplete,
-  onBack,
-  onClose,
-  onCancelExit,
-  onConfirmExit,
-  preloadCompleteAnimation,
 }: MoodSummaryLoadingProps) {
+  const completedRef = useRef(false);
+  const onAnimationCompleteRef = useRef(onAnimationComplete);
+  onAnimationCompleteRef.current = onAnimationComplete;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (completedRef.current) return;
+      completedRef.current = true;
+      onAnimationCompleteRef.current();
+    }, MOOD_CAT_REVEAL_DURATION_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   return (
     <MobileShell className="mood-summary-screen" aria-live="polite" aria-busy="true">
-      {preloadCompleteAnimation ? <MoodLottiePreloader src="/lottie/mood-complete.json" /> : null}
-      <FlowHeader title="감정 기록하기" onBack={onBack} onClose={onClose} />
       <div className="mood-summary-copy">
         <h1>
-          <span>잠시만 기다려주세요</span>
-          <span>감정 기록을 작성중이에요</span>
+          <span>두근 두근</span>
+          <span>어떤 고양이가 나올까요?</span>
         </h1>
-        <div className="mood-summary-animation-frame">
-          <MoodLoadingPrototype onComplete={onAnimationComplete} />
+        <div className="mood-summary-animation-frame" aria-hidden="true">
+          <Image
+            className="mood-summary-reveal-cat"
+            src={UNKNOWN_CAT.imagePath}
+            alt=""
+            width={238}
+            height={238}
+            priority
+          />
         </div>
       </div>
-      {showExitDialog ? <VisitDialog title="감정 기록을 중단할까요?" cancelLabel="취소" confirmLabel="중단하기"
-        onCancel={onCancelExit} onConfirm={onConfirmExit} /> : null}
     </MobileShell>
   );
 }

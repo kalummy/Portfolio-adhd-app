@@ -7,6 +7,7 @@ import {
   reserveMedicationIntakeDatasetForUser,
 } from "@/lib/indexed-db";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { mergeGuestDataset } from "./guest-dataset";
 import {
   bootstrapGuestDataset,
@@ -105,6 +106,16 @@ async function migrateInitialLocalData(
 }
 
 export async function getDataRepositories(): Promise<DataRepositories> {
+  if (!isSupabaseConfigured()) {
+    return {
+      medications: indexedDbMedicationRepository,
+      medicationIntakes: indexedDbMedicationIntakeRepository,
+      moods: indexedDbMoodRepository,
+      visitSchedules: indexedDbVisitScheduleRepository,
+      guestDatasetSync: { status: "no-local-data" },
+    };
+  }
+
   const supabase = createBrowserSupabaseClient();
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   if (sessionError) throw sessionError;

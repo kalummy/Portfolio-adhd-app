@@ -40,6 +40,7 @@ import {
   medicationScheduleLabel,
 } from "@/lib/medication-utils";
 import { getMoodDiarySummary, getMoodPresentation } from "@/lib/mood-summary";
+import { getCat, isCatId, UNKNOWN_CAT } from "@/lib/cats";
 import { formatVisitDday, fromDateKey as fromVisitDateKey } from "@/lib/visit-date";
 import type {
   HomeDataSet,
@@ -59,6 +60,17 @@ const SPLASH_MINIMUM_MS = 800;
 
 const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 const DEFAULT_DIARY_SUMMARY = "오늘은 감정과 신체 컨디션이 평소와 비슷했어요.";
+
+function getHomeMoodSummary(record: MoodRecord) {
+  return getMoodPresentation(record.mood).label;
+}
+
+function getHomeClinicPhrase(record: MoodRecord) {
+  return record.analysisResult?.clinicPhrase.text.trim()
+    || record.clinicPhrase?.trim()
+    || record.memberSummary?.trim()
+    || (record.diaryEntries?.length ? getMoodDiarySummary(record.diaryEntries) : DEFAULT_DIARY_SUMMARY);
+}
 
 function formatRecordTime(iso: string) {
   const date = new Date(iso);
@@ -347,6 +359,10 @@ export function HomeScreen({
     () => moodRecords.find((record) => record.date === selectedDateKey) ?? null,
     [moodRecords, selectedDateKey],
   );
+  const moodCat = moodRecord && isCatId(moodRecord.catId)
+    ? getCat(moodRecord.catId)
+    : UNKNOWN_CAT;
+  const moodCatId = moodRecord && isCatId(moodRecord.catId) ? moodRecord.catId : "unknown";
 
   const week = useMemo(() => {
     return getWeekDateKeys(selectedDateKey).map((dateKey) => {
@@ -460,13 +476,12 @@ export function HomeScreen({
     setVisibleMonthKey(startOfMonthDateKey(nextTodayDateKey));
   };
 
-  const moodEmptyTitle =
-    selectedRelation === 0
-      ? "오늘의 감정은 어떤가요?"
-      : selectedRelation < 0
-        ? `${formatDateKey(selectedDateKey)} 감정은 어땠나요?`
-        : `${formatDateKey(selectedDateKey)} 감정을 기록해주세요`;
   const medicationTitle = selectedRelation === 0 ? "오늘 복용약" : "복용약";
+  const moodEmptyTitle = selectedRelation === 0
+    ? "오늘의 감정은 어떤가요?"
+    : selectedRelation < 0
+      ? `${formatDateKey(selectedDateKey)} 감정은 어땠나요?`
+      : `${formatDateKey(selectedDateKey)} 감정을 기록해주세요`;
   const showDateEyebrow = selectedRelation !== 0;
 
   if (enableLaunchSplash && launchSplashRequired) {
@@ -681,13 +696,15 @@ export function HomeScreen({
                 </Link>
               </div>
               <div className="recorded-mood-item">
-                <Image
-                  src={getMoodPresentation(moodRecord.mood).imagePath}
-                  alt=""
-                  width={64}
-                  height={64}
-                />
-                <strong>{moodRecord.moodLabel}</strong>
+                <span className={`recorded-mood-cat-frame mood-result-cat-${moodCatId}`}>
+                  <Image
+                    src={moodCat.imagePath}
+                    alt={moodCat.displayName}
+                    width={160}
+                    height={160}
+                  />
+                </span>
+                <strong>{getHomeMoodSummary(moodRecord)}</strong>
                 <span>{formatRecordTime(moodRecord.recordedAt)} 기록</span>
               </div>
               <div className="mood-diary-card">
@@ -695,9 +712,7 @@ export function HomeScreen({
                   <Image src="/icons/mood-diary.svg" alt="" width={20} height={20} />
                   <strong>병원에서 이렇게 이야기 해보세요</strong>
                 </div>
-                <p>“{moodRecord.clinicPhrase || (moodRecord.diaryEntries?.length
-                  ? getMoodDiarySummary(moodRecord.diaryEntries)
-                  : DEFAULT_DIARY_SUMMARY)}”</p>
+                <p>“{getHomeClinicPhrase(moodRecord)}”</p>
               </div>
             </div>
           ) : (
@@ -705,8 +720,9 @@ export function HomeScreen({
               <div className="home-card-copy">
                 {showDateEyebrow && <span className="card-date-eyebrow">{formatDateKey(selectedDateKey)}</span>}
                 <strong>{moodEmptyTitle}</strong>
-                <p>아직 기록하지 않았어요.</p>
+                <p>감정을 기록하고 귀여운 고양이를 모아보세요!</p>
               </div>
+              <Image className="home-mood-placeholder-cat" src={UNKNOWN_CAT.imagePath} alt="" width={120} height={120} />
               <Link
                 href={`/moods/new?date=${selectedDateKey}`}
                 className="mood-record-link"

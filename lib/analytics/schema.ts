@@ -19,6 +19,11 @@ export const ANALYTICS_EVENT_NAMES = [
   "mood_started",
   "mood_step_completed",
   "mood_result_viewed",
+  "mood_completed",
+  "cat_reward_revealed",
+  "cat_collection_viewed",
+  "mood_report_viewed",
+  "mood_analysis_retried",
   "mood_saved",
   "visit_add_started",
   "visit_added",
@@ -50,6 +55,7 @@ export type AnalyticsMedicationScheduleType = "daily" | "as_needed" | "bedtime";
 export type MedicationScheduleChangedFields = "schedule" | "time" | "schedule_and_time";
 export type MoodSource = "home" | "mood_history";
 export type MoodStep = 1 | 2 | 3 | 4;
+export type AnalyticsCatId = "white" | "calico" | "tuxedo" | "rainbow" | "sunglasses";
 export type DateDirection = "past" | "today" | "future";
 
 type HomeDateSelectionProperties = {
@@ -92,6 +98,11 @@ type EventSpecificProperties = {
   mood_started: { source: MoodSource };
   mood_step_completed: { step: MoodStep };
   mood_result_viewed: Record<never, never>;
+  mood_completed: Record<never, never>;
+  cat_reward_revealed: { cat_id: AnalyticsCatId };
+  cat_collection_viewed: Record<never, never>;
+  mood_report_viewed: Record<never, never>;
+  mood_analysis_retried: Record<never, never>;
   mood_saved: Record<never, never>;
   visit_add_started: Record<never, never>;
   visit_added: Record<never, never>;
@@ -109,6 +120,7 @@ export type AnalyticsPayload = {
   route: AnalyticsRoute;
   auth_state: AnalyticsAuthState;
   source?: MedicationAddSource | MoodSource;
+  cat_id?: AnalyticsCatId;
   medication_count?: number;
   schedule_type?: AnalyticsMedicationScheduleType;
   has_scheduled_time?: boolean;
@@ -337,6 +349,13 @@ export function buildAnalyticsPayload<T extends AnalyticsEventName>({
   if (eventName === "mood_step_completed") {
     const step = (properties as { step?: unknown }).step;
     return isMoodStep(step) ? { ...base, step } : null;
+  }
+
+  if (eventName === "cat_reward_revealed") {
+    const catId = (properties as { cat_id?: unknown }).cat_id;
+    return typeof catId === "string" && ["white", "calico", "tuxedo", "rainbow", "sunglasses"].includes(catId)
+      ? { ...base, cat_id: catId as AnalyticsCatId }
+      : null;
   }
 
   if (eventName === "home_date_picker_opened") {

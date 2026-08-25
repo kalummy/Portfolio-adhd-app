@@ -4,6 +4,10 @@
   "private": true,
   "scripts": {
     "analytics:fixtures": "node scripts/analytics-fixtures.mjs",
+    "ai:fixtures": "node --experimental-strip-types --experimental-loader=./scripts/ts-test-loader.mjs scripts/ai-provider-fixtures.mjs",
+    "mood:fixtures": "node --experimental-strip-types --experimental-loader=./scripts/ts-test-loader.mjs scripts/mood-to-be-fixtures.mjs",
+    "mood:report-fixtures": "node --experimental-strip-types --experimental-loader=./scripts/ts-test-loader.mjs scripts/mood-report-fixtures.mjs",
+    "mood:regression-fixtures": "node --experimental-strip-types --experimental-loader=./scripts/ts-test-loader.mjs scripts/mood-flow-fixtures.mjs && node scripts/mood-ownership-fixtures.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

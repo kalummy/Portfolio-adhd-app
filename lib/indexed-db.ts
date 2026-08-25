@@ -11,6 +11,7 @@ import { assertValidVisitDate } from "./repositories/visit-schedules/validation"
 import { getGuestDatasetReservationDecision } from "./guest-dataset-reservation";
 import { getVisibleGuestRecordIds } from "./guest-dataset-visibility";
 import type { NewMoodRecord } from "./repositories/moods/types";
+import { DuplicateMoodRecordError } from "./repositories/moods/types";
 
 const DB_NAME = "addi-mvp";
 const DB_VERSION = 7;
@@ -929,18 +930,57 @@ export async function saveMoodRecord(
         transaction.abort();
         return;
       }
-      moodStore.put(saved);
+      const addRequest = moodStore.add(saved);
+      addRequest.onerror = (event) => {
+        if (addRequest.error?.name === "ConstraintError") {
+          event.preventDefault();
+          transaction.abort();
+        }
+      };
       metadataStore.put({
         ...state,
         moodRecordIds: uniqueIds([...state.moodRecordIds, saved.id]),
       } satisfies GuestMedicationDatasetState);
     };
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error ?? new Error("감정 기록을 저장하지 못했어요."));
-    transaction.onabort = () => reject(transaction.error ?? new Error("감정 기록 저장이 중단됐어요."));
+    transaction.onerror = () => reject(transaction.error?.name === "ConstraintError" ? new DuplicateMoodRecordError() : transaction.error ?? new Error("감정 기록을 저장하지 못했어요."));
+    transaction.onabort = () => reject(transaction.error?.name === "ConstraintError" ? new DuplicateMoodRecordError() : transaction.error ?? new DuplicateMoodRecordError());
   });
   database.close();
   return saved;
+}
+
+export async function deleteMoodRecordByDate(date: string): Promise<void> {
+  const database = await openDatabase();
+  await ensureGuestMedicationDatasetState(database);
+  await new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction(
+      [MOOD_STORE, INTAKE_DATASET_STORE],
+      "readwrite",
+    );
+    const moodStore = transaction.objectStore(MOOD_STORE);
+    const metadataStore = transaction.objectStore(INTAKE_DATASET_STORE);
+    const stateRequest = metadataStore.get(INTAKE_DATASET_STATE_ID);
+
+    stateRequest.onsuccess = () => {
+      const state = stateRequest.result as GuestMedicationDatasetState | undefined;
+      if (!state || !state.moodRecordIds.includes(date)) return;
+
+      moodStore.delete(date);
+      metadataStore.put({
+        ...state,
+        moodRecordIds: state.moodRecordIds.filter((recordId) => recordId !== date),
+      } satisfies GuestMedicationDatasetState);
+    };
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(
+      transaction.error ?? new Error("감정 기록을 삭제하지 못했어요."),
+    );
+    transaction.onabort = () => reject(
+      transaction.error ?? new Error("감정 기록 삭제가 중단됐어요."),
+    );
+  });
+  database.close();
 }
 
 export async function getUpcomingVisit(): Promise<VisitSchedule | null> {

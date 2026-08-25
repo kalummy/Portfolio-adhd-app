@@ -86,7 +86,7 @@ export async function mergeGuestDataset(
   dataset: ReservedGuestMedicationDataset,
 ): Promise<GuestDatasetMergeResult> {
   const supabase = createBrowserSupabaseClient();
-  const { data, error } = await supabase.rpc("merge_guest_dataset", {
+  const { data, error } = await supabase.rpc("merge_guest_dataset_v2", {
     p_dataset_id: dataset.datasetId,
     p_medications: dataset.medications.map(toSupabaseMedicationMigrationInput),
     p_intakes: dataset.intakeRecords.map(toSupabaseMedicationIntakeMigrationInput),

@@ -71,7 +71,19 @@ const previewMoodRecords: MoodRecord[] = [
     mood: "good",
     moodLabel: "기분 좋아요",
     recordedAt: "2026-08-14T02:05:00.000Z",
-    diaryEntries: ["오늘은 안정적인 기분과 집중 개선이 있었어요."],
+    diaryEntries: ["오전에는 비교적 집중이 잘 되었어요."],
+    clinicPhrase: "오전에는 비교적 집중이 잘 되었고 특별한 관계의 어려움은 없었어요.",
+    catId: "calico",
+    analysisStatus: "completed",
+    analysisResult: {
+      todayEmotion: [
+        { text: "오전에는 비교적 집중이 잘 되었어요.", evidenceIds: ["step1:effective"] },
+      ],
+      clinicPhrase: {
+        text: "오전에는 비교적 집중이 잘 되었고 특별한 관계의 어려움은 없었어요.",
+        evidenceIds: ["step1:effective", "step3:none"],
+      },
+    },
   },
 ];
 

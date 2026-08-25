@@ -3793,22 +3793,22 @@ html[data-addi-splash="skip"] .splash-screen {
 }
 
 .mood-history-sheet-layer {
-  position: absolute;
-  inset: 0;
+  position: fixed;
+  inset: 0 auto 0 50%;
   z-index: 30;
-  min-height: 100dvh;
-  background: rgba(17, 17, 17, 0.02);
+  width: 100%;
+  max-width: 430px;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.3);
 }
 
 .mood-history-sheet {
-  position: fixed;
-  left: 50%;
+  position: absolute;
+  left: 0;
   bottom: 0;
   display: flex;
   width: 100%;
-  max-width: 430px;
-  padding-top: 8px;
-  transform: translateX(-50%);
+  padding-top: 12px;
   flex-direction: column;
   gap: 24px;
   overflow: hidden;
@@ -3821,12 +3821,12 @@ html[data-addi-splash="skip"] .splash-screen {
   padding: 0 20px;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 24px;
 }
 
 .mood-history-sheet-header > span {
   display: block;
-  width: 56px;
+  width: 88px;
   height: 8px;
   flex: 0 0 8px;
   border-radius: 100px;
@@ -4092,6 +4092,14 @@ html[data-addi-splash="skip"] .splash-screen {
   margin-top: 8px;
 }
 
+.home-mood-placeholder-cat {
+  display: block;
+  width: 120px;
+  height: 120px;
+  margin: -8px auto;
+  object-fit: contain;
+}
+
 .recorded-mood-card {
   display: grid;
   padding: 32px 20px;
@@ -4100,38 +4108,76 @@ html[data-addi-splash="skip"] .splash-screen {
 
 .recorded-mood-item {
   display: flex;
+  min-width: 0;
   min-height: 110px;
   flex-direction: column;
   align-items: center;
 }
 
-.recorded-mood-item > img {
+.recorded-mood-cat-frame {
+  position: relative;
   display: block;
-  width: 64px;
-  height: 64px;
-  object-fit: cover;
-  border-radius: 8px;
+  width: 160px;
+  height: 160px;
+  overflow: hidden;
+}
+
+.recorded-mood-cat-frame img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: contain;
+}
+
+.recorded-mood-cat-frame.mood-result-cat-white img {
+  top: -21.45%;
+  left: -35.83%;
+  width: 171.67%;
+  height: 143.16%;
+  object-fit: fill;
+}
+
+.recorded-mood-cat-frame.mood-result-cat-calico img {
+  top: -14.17%;
+  left: -16.45%;
+  width: 132.9%;
+  height: 132.9%;
+  object-fit: fill;
 }
 
 .recorded-mood-item strong {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
   color: var(--color-blue-500);
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 20px;
+  line-height: 28px;
   font-weight: 600;
-  letter-spacing: -0.4px;
+  letter-spacing: -0.5px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: break-word;
 }
 
 .recorded-mood-item span {
   margin-top: 4px;
-  color: var(--color-font-base-05);
-  font-size: 12px;
+  color: var(--color-font-base-04);
+  font-size: 13px;
   line-height: 18px;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.325px;
 }
 
 .mood-diary-card {
-  min-height: 136px;
+  display: flex;
+  width: 100%;
+  min-width: 0;
   padding: 20px;
+  flex-direction: column;
+  gap: 16px;
   border-radius: 12px;
   background: #f0f8fe;
 }
@@ -4150,12 +4196,18 @@ html[data-addi-splash="skip"] .splash-screen {
 .mood-diary-title strong {
   font-size: 14px;
   line-height: 20px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.35px;
 }
 
 .mood-diary-card p {
-  margin-top: 12px;
+  margin: 0;
+  color: var(--color-font-base-03);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  letter-spacing: -0.4px;
+  word-break: break-word;
 }
 
 .home-footer {
@@ -4264,30 +4316,81 @@ html[data-addi-splash="skip"] .splash-screen {
 .mood-question-custom-input { height: 52px; }
 .mood-question-screen .bottom-actions,
 .mood-result-screen .bottom-actions { border-top: 0; backdrop-filter: blur(4px); background: rgba(255, 255, 255, 0.9); }
-.mood-summary-screen { display: block; background: var(--color-bg-base-01); }
-.mood-summary-screen .flow-header { position: sticky; top: 0; z-index: 5; }
-.mood-summary-copy { position: absolute; top: calc(220px + env(safe-area-inset-top)); left: 0; display: grid; width: 100%; padding: 0 20px; justify-items: center; gap: 32px; transform: none; }
-.mood-summary-screen .mood-summary-copy h1 { position: static; padding: 0; text-align: center; }
-.mood-summary-animation-frame { width: 92px; height: 92px; overflow: hidden; }
-.mood-loading-prototype { position: relative; display: block; width: 92px; height: 92px; overflow: hidden; }
-.mood-loading-prototype img { position: absolute; top: 7.6%; left: calc(50% - 0.16px); width: 67.675px; height: 78.852px; transform: translateX(-50%); }
-.mood-loading-prototype-start { opacity: 1; }
-.mood-loading-prototype-end { opacity: 0; animation: mood-loading-prototype 600ms ease-in forwards; }
-@keyframes mood-loading-prototype { to { opacity: 1; } }
+.mood-summary-screen {
+  display: block;
+  min-height: 100dvh;
+  background: linear-gradient(154.75deg, #fff 0%, var(--color-mint-50) 132.55%);
+}
+
+.mood-summary-copy {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  display: flex;
+  width: 100%;
+  padding: 0 20px;
+  transform: translateY(-50%);
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+
+.mood-summary-screen .mood-summary-copy h1 {
+  position: static;
+  display: flex;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--color-font-base-02);
+  font-size: 24px;
+  line-height: 34px;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+  text-align: center;
+}
+
+.mood-summary-animation-frame {
+  width: 238px;
+  height: 238px;
+  overflow: hidden;
+}
+
+.mood-summary-reveal-cat {
+  display: block;
+  width: 238px;
+  height: 238px;
+  object-fit: contain;
+  opacity: 0;
+  will-change: opacity;
+  animation: mood-summary-reveal-cat 3s infinite;
+}
+
+@keyframes mood-summary-reveal-cat {
+  0% { opacity: 0; animation-timing-function: ease-in-out; }
+  33.33% { opacity: 1; animation-timing-function: linear; }
+  66.67% { opacity: 1; animation-timing-function: ease-in-out; }
+  100% { opacity: 0; }
+}
 .mood-result-screen { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .mood-result-header { position: sticky; top: 0; z-index: 5; display: flex; height: calc(56px + env(safe-area-inset-top)); padding: calc(16px + env(safe-area-inset-top)) 20px 16px; align-items: center; background: var(--color-bg-base-01); }
 .mood-result-header strong { font-size: 16px; line-height: 24px; font-weight: 700; letter-spacing: -0.4px; }
 .mood-result-share { margin-left: auto; }
 .mood-result-share img { display: block; width: 18px; height: 18px; }
-.mood-result-content { padding: 20px 20px 32px; gap: 0; }
+.mood-result-content { padding: 32px 20px 32px; gap: 0; }
 .mood-result-animation-frame { position: relative; display: block; width: 216px; height: 216px; margin: 0 auto; overflow: visible; opacity: 1; visibility: visible; transform: none; z-index: 0; }
 .mood-result-animation { position: relative; display: block; width: 216px; height: 216px; overflow: visible; opacity: 1; visibility: visible; transform: none; }
 .mood-result-animation > svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .mood-result-heading { padding: 12px 0; text-align: center; }
-.mood-result-heading h1 { margin: 0; color: var(--color-font-base-03); font-size: 24px; line-height: 34px; font-weight: 600; }
-.mood-result-heading p { margin: 2px 0 0; color: var(--color-font-base-05); font-size: 16px; line-height: 24px; }
+.mood-result-heading h1 { margin: 0; color: var(--color-font-base-03); font-size: 24px; line-height: 34px; font-weight: 600; letter-spacing: -0.6px; }
+.mood-result-heading p { margin: 2px 0 0; color: var(--color-font-base-05); font-size: 16px; line-height: 24px; letter-spacing: -0.4px; }
+.mood-result-cat-frame { position: relative; width: 160px; height: 160px; margin: 4px auto 0; overflow: hidden; }
+.mood-result-cat-frame img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; max-width: none; object-fit: contain; }
+.mood-result-cat-white img { top: -21.45%; left: -35.83%; width: 171.67%; height: 143.16%; object-fit: fill; }
+.mood-result-cat-calico img { top: -14.17%; left: -16.45%; width: 132.9%; height: 132.9%; object-fit: fill; }
 .mood-check-card, .mood-clinic-card { padding: 20px; border-radius: 12px; }
-.mood-check-card { margin-top: 12px; border: 1px solid var(--color-border-base-03); background: var(--color-bg-base-03); }
+.mood-check-card { margin-top: 0; border: 1px solid var(--color-border-base-03); background: var(--color-bg-base-03); }
 .mood-clinic-card { margin-top: 16px; background: #f0f8fe; }
 .mood-check-card h2, .mood-clinic-card h2 { display: flex; align-items: center; gap: 4px; margin: 0; background: linear-gradient(169deg, #2981ed 0.75%, #dea2ff 99.25%); background-clip: text; color: transparent; font-size: 14px; line-height: 20px; font-weight: 700; letter-spacing: -0.35px; }
 .mood-check-card h2 img, .mood-clinic-card h2 img { display: block; width: 20px; height: 20px; flex: 0 0 20px; }
@@ -4313,7 +4416,7 @@ html[data-addi-splash="skip"] .splash-screen {
 .mood-history-clinic { margin: 0; }
 .recorded-mood-item > img { width: 120px; height: 120px; }
 .recorded-mood-card { padding: 32px 20px; }
-.mood-diary-title strong { font-size: 12px; }
+.mood-diary-title strong { font-size: 14px; }
 
 @media (max-width: 340px) {
   .mood-history-metrics { gap: 4px; }
@@ -4385,4 +4488,947 @@ html[data-addi-splash="skip"] .splash-screen {
   padding: 16px;
   border-radius: 12px;
   background: var(--color-bg-base-03);
+}
+
+/* Mood record order/detail: Figma 300:23674, 300:25449, 300:25617 */
+.mood-records-screen,
+.mood-record-detail-screen {
+  min-height: 100dvh;
+  background: var(--color-bg-base-01);
+}
+
+.mood-records-header,
+.mood-record-detail-header {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  height: calc(56px + env(safe-area-inset-top));
+  padding: calc(16px + env(safe-area-inset-top)) 20px 16px;
+  align-items: center;
+  background: var(--color-bg-base-01);
+}
+
+.mood-records-header strong {
+  color: var(--color-font-base-03);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+.mood-records-header .icon-button {
+  margin-left: auto;
+}
+
+.mood-record-tabs {
+  display: flex;
+  margin: 24px 20px 0;
+  gap: 8px;
+}
+
+.mood-record-tabs button {
+  display: grid;
+  padding: 8px 16px;
+  place-items: center;
+  border: 1px solid var(--color-border-base-04);
+  border-radius: 999px;
+  background: var(--color-bg-base-01);
+  color: var(--color-font-base-03);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: -0.35px;
+  white-space: nowrap;
+}
+
+.mood-record-tabs button.active {
+  border-color: var(--color-brand-primary);
+  background: var(--color-mint-50);
+}
+
+/* Monthly mood report: Figma 300:24281 and month sheet variants */
+.mood-monthly-report {
+  padding-bottom: calc(56px + env(safe-area-inset-bottom));
+}
+
+.mood-report-month-select {
+  display: flex;
+  width: calc(100% - 40px);
+  height: 44px;
+  margin: 36px 20px 0;
+  padding: 12px 16px;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--color-border-base-05);
+  border-radius: 12px;
+  background: var(--color-bg-base-01);
+  color: var(--color-font-base-02);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  letter-spacing: -0.35px;
+  text-align: left;
+}
+
+.mood-report-month-select span {
+  min-width: 0;
+  flex: 1;
+}
+
+.mood-report-month-select img {
+  flex: 0 0 auto;
+}
+
+.mood-report-month-select:focus-visible,
+.mood-report-sheet button:focus-visible {
+  outline: 2px solid var(--color-border-focus-default);
+  outline-offset: 2px;
+}
+
+.mood-report-summary {
+  margin-top: 32px;
+}
+
+.mood-report-summary > h2,
+.mood-report-patterns > h2 {
+  margin: 0 20px;
+  color: var(--color-font-base-04);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+
+.mood-report-summary-cards {
+  display: grid;
+  margin: 20px 20px 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mood-report-summary-cards article {
+  display: flex;
+  min-width: 0;
+  min-height: 118px;
+  padding: 16px 8px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--color-border-base-04);
+  border-radius: 12px;
+  background: var(--color-bg-base-04);
+  color: var(--color-font-base-02);
+  text-align: center;
+}
+
+.mood-report-summary-cards span {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: -0.35px;
+}
+
+.mood-report-summary-cards strong {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+}
+
+.mood-report-patterns {
+  margin-top: 52px;
+}
+
+.mood-report-pattern-list {
+  display: flex;
+  margin-top: 20px;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mood-report-pattern {
+  display: grid;
+  min-height: 30px;
+  padding: 5px 20px;
+  grid-template-columns: minmax(0, 1fr) 129px max-content;
+  align-items: center;
+  gap: 20px;
+  color: var(--color-font-base-03);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: -0.35px;
+}
+
+.mood-report-pattern > span:first-child {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.mood-report-pattern-track {
+  display: block;
+  width: 129px;
+  height: 20px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--color-gray-150);
+}
+
+.mood-report-pattern-track > span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--color-brand-primary);
+}
+
+.mood-report-pattern strong {
+  white-space: nowrap;
+}
+
+.mood-report-clinic {
+  display: flex;
+  margin: 32px 20px 0;
+  padding: 20px;
+  flex-direction: column;
+  gap: 16px;
+  border-radius: 12px;
+  background: #f0f8fe;
+}
+
+.mood-report-clinic h2 {
+  display: flex;
+  margin: 0;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(173deg, #2981ed 0.75%, #dea2ff 99.25%);
+  background-clip: text;
+  color: transparent;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  letter-spacing: -0.35px;
+}
+
+.mood-report-clinic h2 img {
+  flex: 0 0 20px;
+}
+
+.mood-report-clinic p {
+  margin: 0;
+  color: var(--color-font-base-03);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  letter-spacing: -0.4px;
+  text-wrap: pretty;
+}
+
+.mood-report-sheet-layer {
+  position: fixed;
+  inset: 0 auto 0 50%;
+  z-index: 50;
+  width: 100%;
+  max-width: 430px;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.mood-bottom-sheet-layer {
+  opacity: 0;
+  transition: opacity 280ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mood-bottom-sheet-panel {
+  transform: translate3d(0, 100%, 0);
+  transition: transform 280ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.mood-bottom-sheet-layer.is-entered {
+  opacity: 1;
+}
+
+.mood-bottom-sheet-layer.is-entered .mood-bottom-sheet-panel {
+  transform: translate3d(0, 0, 0);
+}
+
+.mood-report-sheet {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  width: 100%;
+  max-height: calc(100dvh - 100px);
+  padding-top: 12px;
+  flex-direction: column;
+  gap: 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 16px 16px 0 0;
+  background: var(--color-bg-base-01);
+}
+
+.mood-report-sheet > header {
+  display: flex;
+  padding: 0 20px;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.mood-report-sheet > header > span {
+  width: 88px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 100px;
+  background: var(--color-gray-200);
+}
+
+.mood-report-sheet h2 {
+  width: 100%;
+  margin: 0;
+  color: var(--color-font-base-02);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 700;
+  letter-spacing: -0.45px;
+}
+
+.mood-report-month-options {
+  position: relative;
+  display: block;
+  padding: 0 20px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+}
+
+.mood-report-month-options button {
+  position: absolute;
+  top: 0;
+  left: 20px;
+  right: 20px;
+  height: 48px;
+  padding: 12px 16px;
+  transform: translate3d(0, var(--mood-report-picker-y), 0) scale(var(--mood-report-picker-scale));
+  opacity: var(--mood-report-picker-opacity);
+  border: 0;
+  border-radius: 12px;
+  background: var(--color-bg-interactive-neutral-default);
+  color: var(--color-font-base-04);
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  transform-origin: center;
+  will-change: transform, opacity;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mood-report-month-options.is-settling button {
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 200ms ease-out,
+    background-color 180ms ease-out,
+    color 180ms ease-out;
+}
+
+.mood-report-month-options button.selected {
+  background: var(--color-bg-interactive-neutral-focused);
+  color: var(--color-font-base-02);
+}
+
+.mood-report-sheet-actions {
+  display: grid;
+  padding: 10px 20px max(10px, env(safe-area-inset-bottom));
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  background: var(--color-bg-base-01);
+}
+
+.mood-report-sheet-actions.has-reset {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mood-report-sheet-actions button {
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+
+.mood-report-reset {
+  background: var(--color-bg-interactive-neutral-focused);
+  color: var(--color-font-base-03);
+}
+
+.mood-report-confirm {
+  background: var(--color-bg-interactive-mint-default);
+  color: var(--color-font-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mood-summary-reveal-cat {
+    opacity: 1;
+    animation: none;
+    will-change: auto;
+  }
+
+  .mood-bottom-sheet-layer,
+  .mood-bottom-sheet-panel,
+  .mood-report-month-options.is-settling button {
+    transition: none;
+  }
+}
+
+.mood-cat-collection {
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+}
+
+.mood-cat-collection-sort {
+  display: flex;
+  width: calc(100% - 40px);
+  height: 36px;
+  margin: 30px 20px 12px;
+  padding: 8px 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  color: var(--color-font-base-02);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: -0.35px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.mood-cat-collection-sort img {
+  flex: 0 0 20px;
+}
+
+.mood-cat-collection-grid {
+  display: grid;
+  margin: 0;
+  padding: 0 20px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  list-style: none;
+}
+
+.mood-cat-collection-grid > li {
+  display: flex;
+  min-width: 0;
+  min-height: 114px;
+  padding: 8px 16px;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  border: 1px solid var(--color-border-base-03);
+  border-radius: 16px;
+  background: var(--color-bg-base-03);
+}
+
+.mood-cat-collection-image {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.mood-cat-collection-image img {
+  object-fit: contain;
+}
+
+.mood-cat-collection-image.cat-white img {
+  top: -21.45% !important;
+  left: -35.83% !important;
+  width: 171.67% !important;
+  height: 143.16% !important;
+  max-width: none !important;
+  object-fit: fill;
+}
+
+.mood-cat-collection-image.cat-calico img {
+  top: -14.17% !important;
+  left: -16.45% !important;
+  width: 132.9% !important;
+  height: 132.9% !important;
+  max-width: none !important;
+  object-fit: fill;
+}
+
+.mood-cat-collection-grid strong {
+  width: 100%;
+  overflow: hidden;
+  color: var(--color-font-primary);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mood-record-period {
+  display: flex;
+  width: calc(100% - 40px);
+  height: 44px;
+  margin: 36px 20px 20px;
+  padding: 12px 16px;
+  align-items: center;
+  border: 1px solid var(--color-border-base-05);
+  border-radius: 12px;
+  background: var(--color-bg-base-01);
+  color: var(--color-font-base-02);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: -0.35px;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mood-record-period img {
+  margin-left: auto;
+}
+
+.mood-record-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.mood-record-list-item {
+  position: relative;
+  display: flex;
+  min-height: 128px;
+  padding: 32px 20px;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid var(--color-border-base-03);
+  color: inherit;
+  text-decoration: none;
+}
+
+.mood-record-list-item::before {
+  position: absolute;
+  inset: 20px 4px;
+  border-radius: 8px;
+  background: transparent;
+  content: "";
+}
+
+.mood-record-list-item:active::before {
+  background: var(--color-bg-interactive-gray-default);
+}
+
+.mood-record-list-item:focus-visible {
+  outline: 2px solid var(--color-border-focus-default);
+  outline-offset: -3px;
+}
+
+.mood-record-list-cat,
+.mood-record-detail-cat,
+.mood-record-empty-cat {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.mood-record-list-cat {
+  z-index: 1;
+  width: 64px;
+  height: 64px;
+}
+
+.mood-record-list-cat img,
+.mood-record-detail-cat img,
+.mood-record-empty-cat img {
+  object-fit: contain;
+}
+
+.mood-record-list-cat.cat-white img,
+.mood-record-detail-cat.cat-white img {
+  top: -21.45% !important;
+  left: -35.83% !important;
+  width: 171.67% !important;
+  height: 143.16% !important;
+  max-width: none !important;
+  object-fit: fill;
+}
+
+.mood-record-list-cat.cat-calico img,
+.mood-record-detail-cat.cat-calico img {
+  top: -14.17% !important;
+  left: -16.45% !important;
+  width: 132.9% !important;
+  height: 132.9% !important;
+  max-width: none !important;
+  object-fit: fill;
+}
+
+.mood-record-list-info {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mood-record-list-info > span {
+  overflow: hidden;
+  color: var(--color-font-base-05);
+  font-size: 12px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mood-record-list-info strong {
+  overflow: hidden;
+  color: var(--color-font-base-04);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  letter-spacing: -0.45px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mood-record-empty {
+  display: flex;
+  padding: 104px 20px 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.mood-record-empty-cat {
+  width: 160px;
+  height: 160px;
+}
+
+.mood-record-empty h1 {
+  width: 100%;
+  margin: 0 0 16px;
+  color: var(--color-gray-900);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
+.mood-record-empty > a {
+  display: grid;
+  width: 152px;
+  height: 56px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--color-bg-interactive-mint-default);
+  color: var(--color-font-primary);
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.45px;
+  text-decoration: none;
+}
+
+.mood-record-deleted-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(58px + env(safe-area-inset-bottom));
+  z-index: 40;
+  display: flex;
+  padding: 12px 16px;
+  transform: translateX(-50%);
+  align-items: center;
+  gap: 8px;
+  border-radius: 12px;
+  background: var(--color-gray-800);
+  color: var(--color-font-base-01);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: -0.35px;
+  white-space: nowrap;
+}
+
+.mood-record-deleted-toast img {
+  flex: 0 0 18px;
+}
+
+.mood-record-detail-screen {
+  padding-top: calc(56px + env(safe-area-inset-top));
+  padding-bottom: calc(110px + env(safe-area-inset-bottom));
+}
+
+.mood-record-detail-header {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  width: 100%;
+  max-width: 430px;
+  transform: translateX(-50%);
+}
+
+.mood-record-detail-hero {
+  display: flex;
+  padding: 20px 20px 0;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mood-record-detail-info {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.mood-record-detail-info span {
+  color: var(--color-font-base-05);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.mood-record-detail-info strong {
+  overflow: hidden;
+  width: 100%;
+  color: var(--color-font-base-04);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  letter-spacing: -0.45px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mood-record-detail-cat {
+  width: 160px;
+  height: 160px;
+}
+
+.mood-record-detail-cards {
+  display: flex;
+  margin-top: 24px;
+  padding: 4px 20px 32px;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mood-record-emotion-card,
+.mood-record-clinic-card {
+  display: flex;
+  padding: 20px;
+  flex-direction: column;
+  gap: 16px;
+  border-radius: 12px;
+}
+
+.mood-record-emotion-card {
+  border: 1px solid var(--color-border-base-03);
+  background: var(--color-bg-base-03);
+}
+
+.mood-record-clinic-card {
+  background: #f0f8fe;
+}
+
+.mood-record-emotion-card h1,
+.mood-record-clinic-card h1 {
+  display: flex;
+  margin: 0;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(169deg, #2981ed 0.75%, #dea2ff 99.25%);
+  background-clip: text;
+  color: transparent;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  letter-spacing: -0.35px;
+}
+
+.mood-record-emotion-card h1 img,
+.mood-record-clinic-card h1 img {
+  flex: 0 0 20px;
+}
+
+.mood-record-emotion-card ul {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+}
+
+.mood-record-emotion-card li {
+  display: flex;
+  padding: 0 4px;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--color-font-base-03);
+  font-size: 15px;
+  line-height: 22px;
+  letter-spacing: -0.375px;
+}
+
+.mood-record-emotion-card li > span {
+  width: 6px;
+  height: 6px;
+  margin-top: 7px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: var(--color-border-base-04);
+}
+
+.mood-record-emotion-card li p,
+.mood-record-clinic-card p {
+  margin: 0;
+}
+
+.mood-record-clinic-card p {
+  color: var(--color-font-base-03);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+  letter-spacing: -0.4px;
+}
+
+.mood-record-detail-footer {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  z-index: 10;
+  width: 100%;
+  max-width: 430px;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  backdrop-filter: blur(4px);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.mood-record-detail-footer button {
+  width: 100%;
+  height: 56px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--color-bg-interactive-gray-default);
+  color: var(--color-font-base-04);
+  font-family: inherit;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.45px;
+}
+
+.mood-record-delete-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+}
+
+.mood-record-delete-dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.mood-record-delete-dialog {
+  position: absolute;
+  top: 50%;
+  left: 36px;
+  right: 36px;
+  display: flex;
+  transform: translateY(-50%);
+  flex-direction: column;
+  border-radius: 20px;
+  background: var(--color-bg-base-01);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.mood-record-delete-dialog h2 {
+  margin: 0;
+  padding: 24px 20px 16px;
+  color: var(--color-font-base-03);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  letter-spacing: -0.45px;
+}
+
+.mood-record-delete-dialog h2 span {
+  display: block;
+}
+
+.mood-record-delete-dialog > p {
+  margin: 0;
+  padding: 0 20px;
+  color: var(--color-font-base-03);
+  font-size: 15px;
+  line-height: 22px;
+  letter-spacing: -0.375px;
+}
+
+.mood-record-delete-dialog > div {
+  display: flex;
+  padding: 24px 20px;
+  gap: 12px;
+}
+
+.mood-record-delete-dialog button {
+  min-width: 0;
+  height: 48px;
+  padding: 12px 16px;
+  flex: 1;
+  border: 0;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+
+.mood-record-delete-dialog button.cancel {
+  background: var(--color-bg-interactive-gray-default);
+  color: var(--color-font-base-03);
+}
+
+.mood-record-delete-dialog button.confirm {
+  background: var(--color-bg-interactive-mint-default);
+  color: var(--color-font-primary);
+}
+
+.mood-record-tabs button:focus-visible,
+.mood-record-empty > a:focus-visible,
+.mood-record-detail-footer button:focus-visible,
+.mood-record-delete-dialog button:focus-visible {
+  outline: 2px solid var(--color-border-focus-default);
+  outline-offset: 2px;
 }
