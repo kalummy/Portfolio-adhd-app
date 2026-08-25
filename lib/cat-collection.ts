@@ -1,4 +1,5 @@
 import { CAT_CATALOG, isCatId, UNKNOWN_CAT, type CatId } from "./cats";
+import { LEGACY_MOOD_RECORD_FALLBACK_CAT_ID } from "./mood-record-cat";
 import type { MoodRecord } from "./types";
 
 export type CatCollectionItem = {
@@ -17,6 +18,7 @@ export function deriveCatCollection(
   const acquiredIds = new Set<CatId>();
   records.forEach((record) => {
     if (isCatId(record.catId)) acquiredIds.add(record.catId);
+    if (record.catId === null) acquiredIds.add(LEGACY_MOOD_RECORD_FALLBACK_CAT_ID);
   });
 
   const items = CAT_CATALOG.map((cat) => {
