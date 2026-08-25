@@ -55,15 +55,22 @@ assert.equal(getMoodRecordDisplayCat("calico").displayName, "삼색이");
 assert.equal(getMoodRecordDisplayCat(PLACEHOLDER_CAT.id).id, "white");
 console.log("PASS legacy record display fallback uses white without changing reward identity");
 
-const emptyCollection = deriveCatCollection([
-  { catId: null },
-  { catId: undefined },
-  { catId: "not-in-catalog" },
-]);
+const emptyCollection = deriveCatCollection([]);
 assert.equal(emptyCollection.length, 5);
 assert.equal(emptyCollection.every((cat) => !cat.acquired), true);
 assert.equal(emptyCollection.every((cat) => cat.displayName === "???"), true);
 assert.equal(emptyCollection.every((cat) => cat.imagePath === UNKNOWN_CAT.imagePath), true);
+
+const invalidCollection = deriveCatCollection([
+  { catId: undefined },
+  { catId: "not-in-catalog" },
+]);
+assert.equal(invalidCollection.every((cat) => !cat.acquired), true);
+
+const legacyCollection = deriveCatCollection([{ catId: null }]);
+assert.equal(legacyCollection.filter((cat) => cat.acquired).length, 1);
+assert.equal(legacyCollection[0].catalogId, "white");
+assert.equal(legacyCollection[0].displayName, "하냥이");
 
 const duplicateCollection = deriveCatCollection([
   { catId: "white" },
@@ -90,7 +97,6 @@ assert.deepEqual(
 
 const afterDeleteCollection = deriveCatCollection([
   { catId: "calico" },
-  { catId: null },
 ]);
 assert.equal(afterDeleteCollection.find((cat) => cat.catalogId === "white")?.acquired, false);
 assert.equal(afterDeleteCollection.find((cat) => cat.catalogId === "calico")?.acquired, true);
@@ -240,8 +246,9 @@ console.log("PASS Figma-fixed result copy/layout hooks and non-production previe
 assert.doesNotMatch(homeSource, /record\.analysisResult\?\.todayEmotion/);
 assert.match(homeSource, /record\.analysisResult\?\.clinicPhrase/);
 assert.match(homeSource, /getMoodPresentation\(record\.mood\)\.label/);
-assert.match(homeSource, /isCatId\(moodRecord\.catId\)/);
-assert.match(homeSource, /getCat\(moodRecord\.catId\)/);
+assert.match(homeSource, /getMoodRecordDisplayCat\(moodRecord\.catId\)/);
+assert.match(homeSource, /const moodCatId = moodCat\.id/);
+assert.match(homeSource, /home-mood-placeholder-cat[^>]*UNKNOWN_CAT\.imagePath/u);
 assert.match(homeSource, /home-mood-placeholder-cat[^>]*width=\{160\}[^>]*height=\{160\}/u);
 assert.match(cssSource, /\.home-mood-placeholder-cat \{[^}]*width: 160px;[^}]*height: 160px;/u);
 assert.match(revealSource, /MOOD_CAT_REVEAL_DURATION_MS = 2000/);
@@ -339,6 +346,7 @@ assert.match(historySource, /getMoodRecordDisplayCat\(record\.catId\)/);
 assert.match(historySource, /cat-\$\{cat\.id\}/);
 assert.doesNotMatch(historySource, /trackMoodCatRewardRevealed/);
 assert.match(collectionSource, /deriveCatCollection\(records, showLockedFirst \? "locked-first" : "acquired-first"\)/);
+assert.match(recordCatSource, /LEGACY_MOOD_RECORD_FALLBACK_CAT_ID: CatId = "white"/);
 assert.match(collectionSource, /setShowLockedFirst\(\(current\) => !current\)/);
 assert.match(collectionSource, /useState\(false\)/);
 assert.match(collectionSource, /showLockedFirst \? "미보유순" : "보유순"/);

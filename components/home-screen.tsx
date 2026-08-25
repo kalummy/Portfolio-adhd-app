@@ -40,7 +40,8 @@ import {
   medicationScheduleLabel,
 } from "@/lib/medication-utils";
 import { getMoodDiarySummary, getMoodPresentation } from "@/lib/mood-summary";
-import { getCat, isCatId, UNKNOWN_CAT } from "@/lib/cats";
+import { UNKNOWN_CAT } from "@/lib/cats";
+import { getMoodRecordDisplayCat } from "@/lib/mood-record-cat";
 import { formatVisitDday, fromDateKey as fromVisitDateKey } from "@/lib/visit-date";
 import type {
   HomeDataSet,
@@ -359,10 +360,10 @@ export function HomeScreen({
     () => moodRecords.find((record) => record.date === selectedDateKey) ?? null,
     [moodRecords, selectedDateKey],
   );
-  const moodCat = moodRecord && isCatId(moodRecord.catId)
-    ? getCat(moodRecord.catId)
+  const moodCat = moodRecord
+    ? getMoodRecordDisplayCat(moodRecord.catId)
     : UNKNOWN_CAT;
-  const moodCatId = moodRecord && isCatId(moodRecord.catId) ? moodRecord.catId : "unknown";
+  const moodCatId = moodCat.id;
 
   const week = useMemo(() => {
     return getWeekDateKeys(selectedDateKey).map((dateKey) => {
