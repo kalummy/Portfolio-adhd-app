@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { CAT_CATALOG, UNKNOWN_CAT, selectRandomCatId } from "../lib/cats.ts";
+import {
+  CAT_CATALOG,
+  PLACEHOLDER_CAT,
+  REWARD_CAT_CATALOG,
+  REWARD_CAT_IDS,
+  UNKNOWN_CAT,
+  selectRandomCatId,
+  selectRandomRewardCatId,
+} from "../lib/cats.ts";
 import { deriveCatCollection } from "../lib/cat-collection.ts";
 import {
   LOCAL_PREVIEW_MOOD_MODEL,
@@ -18,10 +26,20 @@ import {
 
 assert.equal(CAT_CATALOG.length, 5);
 assert.equal(CAT_CATALOG.some((cat) => cat.displayName === UNKNOWN_CAT.displayName), false);
+assert.deepEqual(REWARD_CAT_IDS, ["white", "calico", "tuxedo", "rainbow", "sunglasses"]);
+assert.equal(REWARD_CAT_CATALOG.includes(PLACEHOLDER_CAT), false);
+assert.equal(REWARD_CAT_IDS.includes(PLACEHOLDER_CAT.id), false);
 assert.deepEqual(
   [0, 0.2, 0.4, 0.6, 0.8].map(selectRandomCatId),
   ["white", "calico", "tuxedo", "rainbow", "sunglasses"],
 );
+const repeatedRewards = Array.from(
+  { length: 1_000 },
+  (_, index) => selectRandomRewardCatId(() => (index % 5) / 5),
+);
+assert.equal(repeatedRewards.every((catId) => REWARD_CAT_IDS.includes(catId)), true);
+assert.equal(repeatedRewards.includes(PLACEHOLDER_CAT.id), false);
+assert.ok(new Set(repeatedRewards).size < repeatedRewards.length);
 assert.equal(selectRandomCatId(0), selectRandomCatId(0));
 console.log("PASS reward catalog, placeholder exclusion, equal buckets, and stable selection input");
 
@@ -180,7 +198,7 @@ assert.match(flowSource, /type="checkbox"/);
 assert.doesNotMatch(flowSource, /name=\{step === 2 \? "relationship"/);
 assert.match(flowSource, /item\.selected\.filter\(\(value\) => value !== "none"\)/);
 assert.match(flowSource, /stepOneKind === "medication_effect" \? MEDICATION_STEP : CONCENTRATION_STEP/);
-assert.match(flowSource, /catId \?\? selectRandomCatId\(\)/);
+assert.match(flowSource, /catId \?\? selectRandomRewardCatId\(\)/);
 assert.match(repositorySource, /\.insert\(toSupabaseMood/);
 assert.doesNotMatch(repositorySource, /\.upsert\(/);
 assert.match(idbSource, /moodStore\.add\(saved\)/);

@@ -15,8 +15,8 @@ export const MOOD_ANALYSIS_SCHEMA = {
     evidencedText: {
       type: "object", additionalProperties: false, required: ["text", "evidenceIds"],
       properties: {
-        text: { type: "string", minLength: 1, maxLength: 300 },
-        evidenceIds: { type: "array", minItems: 1, uniqueItems: true, items: { type: "string" } },
+        text: { type: "string" },
+        evidenceIds: { type: "array", minItems: 1, items: { type: "string" } },
       },
     },
   },

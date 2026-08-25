@@ -47,6 +47,20 @@ storage.setItem(getMoodDraftKey("2026-08-24"), JSON.stringify({
 assert.equal(readMoodDraft(storage, "2026-08-24")?.phase, "questions");
 console.log("PASS legacy result drafts without a persisted reward safely return to questions");
 
+storage.setItem(getMoodDraftKey("2026-08-24-placeholder"), JSON.stringify({
+  version: 2,
+  phase: "result",
+  step: 2,
+  answers: draftAnswers,
+  stepOneKind: "medication_effect",
+  catId: "unknown",
+  recordedAt: "2026-08-24T03:00:00.000Z",
+}));
+const placeholderDraft = readMoodDraft(storage, "2026-08-24-placeholder");
+assert.equal(placeholderDraft?.catId, undefined);
+assert.equal(placeholderDraft?.phase, "questions");
+console.log("PASS placeholder cat IDs cannot be restored as persisted rewards");
+
 writeMoodDraft(storage, "2026-08-25", {
   phase: "result",
   step: 2,
