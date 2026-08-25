@@ -17,11 +17,12 @@ export function MoodCatCollection({ records }: { records: MoodRecord[] }) {
         className="mood-cat-collection-sort"
         aria-label={`정렬: ${sortLabel}`}
         onClick={() => setShowLockedFirst((current) => !current)}
+        data-mp-replay-block=""
       >
         <Image src="/icons/sort-filter.svg" alt="" width={20} height={20} />
         <span>{sortLabel}</span>
       </button>
-      <ul className="mood-cat-collection-grid">
+      <ul className="mood-cat-collection-grid" data-mp-replay-block="">
         {cats.map((cat, index) => (
           <li className={cat.acquired ? "acquired" : "locked"} key={cat.catalogId}>
             <span

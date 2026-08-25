@@ -521,7 +521,7 @@ export function HomeScreen({
         </button>
       </div>
 
-      <section className="week-strip" aria-label="이번 주">
+      <section className="week-strip" aria-label="이번 주" data-mp-replay-block="">
         {week.map(({ day, date, dateKey, isToday, isSelected, progress }) => (
           <div key={dateKey} className={`${isToday ? "today" : ""} ${isSelected ? "selected" : ""}`}>
             <span>{day}</span>
@@ -532,6 +532,7 @@ export function HomeScreen({
 
       <Link
         className="appointment-row"
+        data-mp-replay-block=""
         href={visitSchedule ? "/visits" : "/visits/new"}
         aria-label={visitSchedule ? "내원일정 확인하기" : "다음 내원일 추가하기"}
         onClick={() => {
@@ -556,7 +557,7 @@ export function HomeScreen({
       </Link>
 
       {syncError ? (
-        <div className="visit-error home-sync-error" role="alert">
+        <div className="visit-error home-sync-error" role="alert" data-mp-replay-block="">
           <span>{syncError}</span>
           <button type="button" disabled={syncRetrying} onClick={() => void handleSyncRetry()}>
             {syncRetrying ? "불러오는 중..." : "다시 시도"}
@@ -565,7 +566,7 @@ export function HomeScreen({
       ) : null}
 
       <section className="home-content">
-        <div className="date-heading">
+        <div className="date-heading" data-mp-replay-block="">
           <button type="button" aria-label="이전 날" onClick={() => handleMoveDate(-1)}>
             <span className="date-chevron date-chevron-left" aria-hidden="true">
               <Image src="/icons/date-chevron-left.svg" alt="" width={12} height={6} />
@@ -583,7 +584,7 @@ export function HomeScreen({
           {loading ? (
             <div className="home-card loading-card" aria-label="복용약 불러오는 중" />
           ) : displayedMedications.length === 0 ? (
-            <div className="home-card empty-medication-card">
+            <div className="home-card empty-medication-card" data-mp-replay-block="">
               <div className="home-card-copy">
                 <strong>복용중인 약을 등록해주세요</strong>
                 <p>약을 등록하면<br />오늘의 복용 여부를 간단히 기록할 수 있어요.</p>
@@ -600,7 +601,7 @@ export function HomeScreen({
               </Link>
             </div>
           ) : (
-            <div className="home-card populated-medication-card">
+            <div className="home-card populated-medication-card" data-mp-replay-block="">
               <div className={`home-card-heading ${showDateEyebrow ? "with-date" : ""}`}>
                 {showDateEyebrow && <span className="card-date-eyebrow">{formatDateKey(selectedDateKey)}</span>}
                 <Link
@@ -695,13 +696,22 @@ export function HomeScreen({
           {moodRecord ? (
             <div className="home-card recorded-mood-card">
               <div className={`home-card-heading ${showDateEyebrow ? "with-date" : ""}`}>
-                {showDateEyebrow && <span className="card-date-eyebrow">{formatDateKey(selectedDateKey)}</span>}
-                <Link href="/moods" className="home-card-title mood-history-link">
+                {showDateEyebrow && (
+                  <span className="card-date-eyebrow" data-mp-replay-block="">
+                    {formatDateKey(selectedDateKey)}
+                  </span>
+                )}
+                <Link
+                  href="/moods"
+                  className="home-card-title mood-history-link"
+                  data-mp-replay-allow-interaction=""
+                  data-mp-replay-public=""
+                >
                   <strong>{selectedRelation === 0 ? "오늘의 감정" : "감정 기록"}</strong>
                   <ChevronRight />
                 </Link>
               </div>
-              <div className="recorded-mood-item">
+              <div className="recorded-mood-item" data-mp-replay-block="">
                 <span className={`recorded-mood-cat-frame mood-result-cat-${moodCatId}`}>
                   <Image
                     src={moodCat.imagePath}
@@ -713,7 +723,7 @@ export function HomeScreen({
                 <strong>{getHomeMoodSummary(moodRecord)}</strong>
                 <span>{formatRecordTime(moodRecord.recordedAt)} 기록</span>
               </div>
-              <div className="mood-diary-card">
+              <div className="mood-diary-card" data-mp-replay-block="">
                 <div className="mood-diary-title">
                   <Image src="/icons/mood-diary.svg" alt="" width={20} height={20} />
                   <strong>병원에서 이렇게 이야기 해보세요</strong>
@@ -723,7 +733,7 @@ export function HomeScreen({
             </div>
           ) : (
             <div className={`home-card mood-card date-aware-mood-card ${showDateEyebrow ? "with-date" : ""}`}>
-              <div className="home-card-copy">
+              <div className="home-card-copy" data-mp-replay-block="">
                 {showDateEyebrow && <span className="card-date-eyebrow">{formatDateKey(selectedDateKey)}</span>}
                 <strong>{moodEmptyTitle}</strong>
                 <p>감정을 기록하고 귀여운 고양이를 모아보세요!</p>
@@ -732,6 +742,8 @@ export function HomeScreen({
               <Link
                 href={`/moods/new?date=${selectedDateKey}`}
                 className="mood-record-link"
+                data-mp-replay-allow-interaction=""
+                data-mp-replay-public=""
                 onClick={() => startMoodAttempt("home")}
               >
                 감정 기록하기

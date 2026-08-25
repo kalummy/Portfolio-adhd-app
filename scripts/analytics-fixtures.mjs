@@ -642,7 +642,10 @@ try {
   const layoutSource = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
 
   assert.match(screenTrackerSource, /useEffect\(\(\) => \{\s*trackScreenViewed\(pathname\);\s*\}, \[pathname\]\)/);
-  assert.match(layoutSource, /<Suspense fallback=\{null\}>\s*<AnalyticsScreenTracker \/>\s*<\/Suspense>/);
+  assert.match(
+    layoutSource,
+    /<Suspense fallback=\{null\}>\s*<AnalyticsReplayController \/>\s*<AnalyticsScreenTracker \/>\s*<\/Suspense>/,
+  );
   assert.match(analyticsEventsSource, /if \(typeof window === "undefined" \|\| isAnalyticsPathBlocked\(pathname\)\) return;/);
   assert.match(analyticsEventsSource, /createScreenViewTransition\(screenTrackingState\.previousScreen, pathname\)/);
   assert.ok(

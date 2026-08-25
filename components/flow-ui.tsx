@@ -11,9 +11,18 @@ type FlowHeaderProps = {
   onBack?: () => void;
   onClose?: () => void;
   onBackOnly?: boolean;
+  replayPublicControls?: boolean;
 };
 
-export function FlowHeader({ title, fallbackHref, beforeBack, onBack, onClose, onBackOnly = false }: FlowHeaderProps) {
+export function FlowHeader({
+  title,
+  fallbackHref,
+  beforeBack,
+  onBack,
+  onClose,
+  onBackOnly = false,
+  replayPublicControls = false,
+}: FlowHeaderProps) {
   const router = useRouter();
 
   function goBack() {
@@ -35,12 +44,24 @@ export function FlowHeader({ title, fallbackHref, beforeBack, onBack, onClose, o
 
   return (
     <header className="flow-header">
-      <button className="icon-button" type="button" onClick={goBack} aria-label="이전 화면">
+      <button
+        className="icon-button"
+        type="button"
+        onClick={goBack}
+        aria-label="이전 화면"
+        data-mp-replay-allow-interaction={replayPublicControls ? "" : undefined}
+      >
         <Image src="/icons/back.svg" alt="" width={18} height={14} />
       </button>
       {title ? <strong>{title}</strong> : null}
       {onClose ? (
-        <button className="icon-button flow-header-close" type="button" onClick={onClose} aria-label="감정 기록 닫기">
+        <button
+          className="icon-button flow-header-close"
+          type="button"
+          onClick={onClose}
+          aria-label="감정 기록 닫기"
+          data-mp-replay-allow-interaction={replayPublicControls ? "" : undefined}
+        >
           <Image src="/icons/close.svg" alt="" width={16} height={16} />
         </button>
       ) : null}
