@@ -69,7 +69,7 @@ try {
   }
   console.log(`PASS route sanitizer ${routeCases.length}/${routeCases.length}`);
 
-  assert.equal(schema.ANALYTICS_EVENT_NAMES.length, 21);
+  assert.equal(schema.ANALYTICS_EVENT_NAMES.length, 26);
   assert.deepEqual(schema.ANALYTICS_EVENT_NAMES, [
     "app_opened",
     "screen_viewed",
@@ -85,6 +85,11 @@ try {
     "mood_started",
     "mood_step_completed",
     "mood_result_viewed",
+    "mood_completed",
+    "cat_reward_revealed",
+    "cat_collection_viewed",
+    "mood_report_viewed",
+    "mood_analysis_retried",
     "mood_saved",
     "visit_add_started",
     "visit_added",
@@ -254,6 +259,65 @@ try {
     eventName: "mood_step_completed",
     properties: { step: 5 },
   }), null);
+  assert.deepEqual(schema.buildAnalyticsPayload({
+    environment: "development",
+    pathname: "/moods/new",
+    authState: "guest",
+    eventName: "cat_reward_revealed",
+    properties: {
+      cat_id: "white",
+      mood_answer: "blocked",
+      direct_input: "blocked",
+      ai_result: "blocked",
+      medication_name: "blocked",
+      email: "blocked@example.com",
+      name: "blocked",
+    },
+  }), {
+    environment: "development",
+    route: "mood_entry",
+    auth_state: "guest",
+    cat_id: "white",
+  });
+  assert.equal(schema.buildAnalyticsPayload({
+    ...common,
+    authState: "guest",
+    eventName: "cat_reward_revealed",
+    properties: { cat_id: "unknown" },
+  }), null);
+  assert.deepEqual(schema.buildAnalyticsPayload({
+    environment: "development",
+    pathname: "/moods",
+    authState: "member",
+    eventName: "cat_collection_viewed",
+    properties: {
+      cat_id: "white",
+      mood_date: "blocked",
+      answer: "blocked",
+      ai_result: "blocked",
+    },
+  }), {
+    environment: "development",
+    route: "mood_history",
+    auth_state: "member",
+  });
+  assert.deepEqual(schema.buildAnalyticsPayload({
+    environment: "development",
+    pathname: "/moods?month=blocked",
+    authState: "member",
+    eventName: "mood_report_viewed",
+    properties: {
+      month: "blocked",
+      count: 12,
+      mood_answer: "blocked",
+      ai_result: "blocked",
+      medication_name: "blocked",
+    },
+  }), {
+    environment: "development",
+    route: "mood_history",
+    auth_state: "member",
+  });
   assert.deepEqual(schema.buildAnalyticsPayload({
     environment: "development",
     pathname: "/visits/new?date=private#confirm",
