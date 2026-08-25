@@ -181,6 +181,8 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
               aria-selected={selected}
               className={selected ? "active" : ""}
               onClick={() => selectTab(tab.id)}
+              data-mp-replay-allow-interaction=""
+              data-mp-replay-public=""
               key={tab.id}
             >
               {tab.label}
@@ -197,6 +199,8 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
           aria-haspopup="dialog"
           aria-expanded={periodSheet.mounted}
           onClick={openPeriodSheet}
+          data-mp-replay-allow-interaction=""
+          data-mp-replay-public=""
         >
           <span>최근 {appliedPeriodLabel}</span>
           <Image src="/icons/chevron-down.svg" alt="" width={10} height={5} />
@@ -205,7 +209,11 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
 
       {activeTab === "records" && !loading && records.length > 0 ? (
         <>
-          <section className="mood-record-list" aria-label={`최근 ${appliedPeriodLabel} 감정 기록`}>
+          <section
+            className="mood-record-list"
+            aria-label={`최근 ${appliedPeriodLabel} 감정 기록`}
+            data-mp-replay-block=""
+          >
             {records.map((record) => {
               const cat = getRecordCat(record);
               return (
@@ -231,13 +239,15 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
 
       {activeTab === "records" && !loading && records.length === 0 ? (
         <section className="mood-record-empty" aria-live="polite">
-          <span className="mood-record-empty-cat">
+          <span className="mood-record-empty-cat" data-mp-replay-block="">
             <Image src={UNKNOWN_CAT.imagePath} alt="" fill sizes="160px" priority />
           </span>
-          <h1>아직 감정 기록이 없어요</h1>
+          <h1 data-mp-replay-block="">아직 감정 기록이 없어요</h1>
           <Link
             href={`/moods/new?date=${getKstDateKey()}`}
             onClick={() => startMoodAttempt("mood_history")}
+            data-mp-replay-allow-interaction=""
+            data-mp-replay-public=""
           >
             감정기록 입력
           </Link>
@@ -254,13 +264,15 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
 
       {activeTab === "report" && !reportLoading && reportRecords.length === 0 ? (
         <section className="mood-record-empty" aria-live="polite">
-          <span className="mood-record-empty-cat">
+          <span className="mood-record-empty-cat" data-mp-replay-block="">
             <Image src={UNKNOWN_CAT.imagePath} alt="" fill sizes="160px" priority />
           </span>
-          <h1>아직 감정 기록이 없어요</h1>
+          <h1 data-mp-replay-block="">아직 감정 기록이 없어요</h1>
           <Link
             href={`/moods/new?date=${getKstDateKey()}`}
             onClick={() => startMoodAttempt("mood_history")}
+            data-mp-replay-allow-interaction=""
+            data-mp-replay-public=""
           >
             감정기록 입력
           </Link>
@@ -268,7 +280,7 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
       ) : null}
 
       {deletedToast ? (
-        <div className="mood-record-deleted-toast" role="status">
+        <div className="mood-record-deleted-toast" role="status" data-mp-replay-block="">
           <Image src="/icons/mood-delete-warning.svg" alt="" width={18} height={18} />
           <span>{deletedToast}</span>
         </div>
@@ -299,6 +311,8 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
                   aria-checked={pendingPeriod === period.value}
                   className={pendingPeriod === period.value ? "selected" : ""}
                   onClick={() => setPendingPeriod(period.value)}
+                  data-mp-replay-allow-interaction=""
+                  data-mp-replay-public=""
                   key={period.value}
                 >
                   {period.optionLabel}
@@ -306,7 +320,14 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
               ))}
             </div>
             <div className="mood-history-sheet-actions">
-              <button type="button" onClick={confirmPeriod}>확인</button>
+              <button
+                type="button"
+                onClick={confirmPeriod}
+                data-mp-replay-allow-interaction=""
+                data-mp-replay-public=""
+              >
+                확인
+              </button>
             </div>
           </section>
         </div>

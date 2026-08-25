@@ -9,6 +9,7 @@ type VisitDialogProps = {
   onCancel: () => void;
   onConfirm: () => void;
   busy?: boolean;
+  replayPublicActions?: boolean;
 };
 
 export function VisitDialog({
@@ -18,6 +19,7 @@ export function VisitDialog({
   onCancel,
   onConfirm,
   busy = false,
+  replayPublicActions = false,
 }: VisitDialogProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
@@ -72,10 +74,25 @@ export function VisitDialog({
       >
         <h2 id="visit-dialog-title">{title}</h2>
         <div className="visit-dialog-actions">
-          <button ref={cancelButtonRef} type="button" className="cancel" onClick={onCancel} disabled={busy}>
+          <button
+            ref={cancelButtonRef}
+            type="button"
+            className="cancel"
+            onClick={onCancel}
+            disabled={busy}
+            data-mp-replay-allow-interaction={replayPublicActions ? "" : undefined}
+            data-mp-replay-public={replayPublicActions ? "" : undefined}
+          >
             {cancelLabel}
           </button>
-          <button type="button" className="confirm" onClick={onConfirm} disabled={busy}>
+          <button
+            type="button"
+            className="confirm"
+            onClick={onConfirm}
+            disabled={busy}
+            data-mp-replay-allow-interaction={replayPublicActions ? "" : undefined}
+            data-mp-replay-public={replayPublicActions ? "" : undefined}
+          >
             {confirmLabel}
           </button>
         </div>

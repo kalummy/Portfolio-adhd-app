@@ -15,6 +15,7 @@ import {
   trackMoodSaved,
   trackMoodStepCompleted,
 } from "@/lib/analytics/events";
+import { stopAnalyticsReplay } from "@/lib/analytics/mixpanel";
 import { selectRandomRewardCatId, type CatId } from "@/lib/cats";
 import { createClientId } from "@/lib/client-id";
 import {
@@ -435,6 +436,7 @@ export function MoodQuestionFlow({
       });
       clearMoodDraft(window.sessionStorage, targetDateKey);
       await trackMoodSaved();
+      stopAnalyticsReplay();
       const destination = new URL(homeHref, window.location.origin);
       destination.searchParams.set("moodToast", "saved");
       destination.searchParams.set("toastId", createClientId());
@@ -481,17 +483,21 @@ export function MoodQuestionFlow({
         title="감정 기록하기"
         onBack={goBack}
         onClose={() => setShowExit(true)}
+        replayPublicControls
       />
       <div className="mood-progress" aria-label={`${step + 1}/3 단계`}>
         {questions.map((item, index) => (
           <span className={index === step ? "active" : ""} key={item.title} />
         ))}
       </div>
-      <section className="mood-question-heading">
+      <section className="mood-question-heading" data-mp-replay-block="">
         <h1>{question.title}</h1>
         <p>{question.subtitle}</p>
       </section>
-      <fieldset className={`mood-question-options ${"grid" in question && question.grid ? "two-column" : ""}`}>
+      <fieldset
+        className={`mood-question-options ${"grid" in question && question.grid ? "two-column" : ""}`}
+        data-mp-replay-block=""
+      >
         <legend className="visually-hidden">{question.title}</legend>
         {question.options.map((option) => {
           const selected = answer.selected.includes(option.id);
@@ -566,7 +572,13 @@ export function MoodQuestionFlow({
         </div>
       </fieldset>
       <BottomActions>
-        <PrimaryButton type="button" disabled={!canContinue} onClick={goToNextStep}>
+        <PrimaryButton
+          type="button"
+          disabled={!canContinue}
+          onClick={goToNextStep}
+          data-mp-replay-allow-interaction=""
+          data-mp-replay-public=""
+        >
           {step === 2 ? "완료" : `다음 (${step + 1}/3)`}
         </PrimaryButton>
       </BottomActions>
@@ -577,6 +589,7 @@ export function MoodQuestionFlow({
           confirmLabel="중단하기"
           onCancel={() => setShowExit(false)}
           onConfirm={discardDraftAndGoHome}
+          replayPublicActions
         />
       ) : null}
     </MobileShell>

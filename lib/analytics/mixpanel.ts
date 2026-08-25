@@ -1,7 +1,14 @@
 "use client";
 
-import mixpanel from "mixpanel-browser/src/loaders/loader-module-core";
+import mixpanelLoader from "mixpanel-browser/dist/mixpanel-with-async-modules.cjs.js";
+import type { BeforeSendHookPayload, Mixpanel } from "mixpanel-browser";
 import { isAnalyticsPathBlocked } from "./path-policy";
+import {
+  ANALYTICS_REPLAY_ALLOW_INTERACTION_SELECTOR,
+  ANALYTICS_REPLAY_BLOCK_SELECTOR,
+  ANALYTICS_REPLAY_INTERACTION_BLOCK_EVENT,
+  isReplayUrlPrivacySafe,
+} from "./replay-policy";
 import {
   buildAnalyticsPayload,
   type AnalyticsAuthState,
@@ -10,9 +17,19 @@ import {
   type AnalyticsEventProperties,
 } from "./schema";
 
+type ReplayCapableMixpanel = Mixpanel & {
+  pause_session_recording(): void;
+  resume_session_recording(): void;
+};
+
+const mixpanel = mixpanelLoader as unknown as ReplayCapableMixpanel;
+
 type AnalyticsState = {
   appOpenedTracked: boolean;
   initialized: boolean;
+  replayInteractionGuardInstalled: boolean;
+  replayPaused: boolean;
+  replayRequested: boolean;
 };
 
 const analyticsGlobal = globalThis as typeof globalThis & {
@@ -22,6 +39,9 @@ const analyticsGlobal = globalThis as typeof globalThis & {
 const analyticsState = analyticsGlobal.__addiAnalyticsState ??= {
   appOpenedTracked: false,
   initialized: false,
+  replayInteractionGuardInstalled: false,
+  replayPaused: false,
+  replayRequested: false,
 };
 
 const analyticsEnvironment: AnalyticsEnvironment =
@@ -31,6 +51,8 @@ const analyticsEnvironment: AnalyticsEnvironment =
 
 const URL_PROPERTY_BLACKLIST = [
   "$current_url",
+  "$el_attr__href",
+  "current_url_search",
   "$referrer",
   "$referring_domain",
   "$initial_referrer",
@@ -69,6 +91,27 @@ const URL_PROPERTY_BLACKLIST = [
   "initial_utm_marketing_tactic",
 ] as const;
 
+function stripHrefFromCapturedElement(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const element = { ...(value as Record<string, unknown>) };
+  delete element["$attr-href"];
+  return element;
+}
+
+function sanitizeHeatmapEvent(
+  payload: BeforeSendHookPayload,
+): BeforeSendHookPayload {
+  if (payload.event !== "$mp_click") return payload;
+
+  const properties = { ...payload.properties };
+  delete properties.$el_attr__href;
+  properties.$target = stripHrefFromCapturedElement(properties.$target);
+  if (Array.isArray(properties.$elements)) {
+    properties.$elements = properties.$elements.map(stripHrefFromCapturedElement);
+  }
+  return { ...payload, properties };
+}
+
 function isBrowser() {
   return typeof window !== "undefined";
 }
@@ -90,12 +133,21 @@ export function initAnalytics(): boolean {
       autocapture: false,
       debug: false,
       flags: false,
+      hooks: {
+        before_send_events: sanitizeHeatmapEvent,
+      },
       ip: false,
       persistence: "localStorage",
       property_blacklist: [...URL_PROPERTY_BLACKLIST],
+      record_block_selector: `img, video, audio, ${ANALYTICS_REPLAY_BLOCK_SELECTOR}`,
+      record_canvas: false,
       record_console: false,
+      record_heatmap_data: true,
+      record_mask_all_inputs: true,
+      record_mask_all_text: true,
       record_network: false,
       record_sessions_percent: 0,
+      record_unmask_text_selector: "[data-mp-replay-public]",
       save_referrer: false,
       skip_first_touch_marketing: true,
       stop_utm_persistence: true,
@@ -107,6 +159,105 @@ export function initAnalytics(): boolean {
   } catch {
     return false;
   }
+}
+
+export function startAnalyticsReplay(): boolean {
+  if (!isBrowser()) return false;
+  if (!isReplayUrlPrivacySafe({
+    hash: window.location.hash,
+    pathname: window.location.pathname,
+    search: window.location.search,
+  })) return false;
+  if (!initAnalytics()) return false;
+  if (analyticsState.replayRequested) return true;
+
+  try {
+    mixpanel.set_config({ record_heatmap_data: true });
+    mixpanel.start_session_recording();
+    analyticsState.replayPaused = false;
+    analyticsState.replayRequested = true;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function stopAnalyticsReplay(): boolean {
+  if (!isBrowser() || !analyticsState.initialized) return false;
+  if (!analyticsState.replayRequested) return false;
+
+  analyticsState.replayRequested = false;
+  analyticsState.replayPaused = false;
+  try {
+    mixpanel.set_config({ record_heatmap_data: false });
+    mixpanel.stop_session_recording();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function pauseAnalyticsReplay(): boolean {
+  if (
+    !isBrowser()
+    || !analyticsState.replayRequested
+    || analyticsState.replayPaused
+  ) return false;
+
+  try {
+    mixpanel.set_config({ record_heatmap_data: false });
+    mixpanel.pause_session_recording();
+    analyticsState.replayPaused = true;
+    return true;
+  } catch {
+    stopAnalyticsReplay();
+    return false;
+  }
+}
+
+export function resumeAnalyticsReplay(): boolean {
+  if (
+    !isBrowser()
+    || !analyticsState.replayRequested
+    || !analyticsState.replayPaused
+  ) return false;
+
+  try {
+    mixpanel.resume_session_recording();
+    mixpanel.set_config({ record_heatmap_data: true });
+    analyticsState.replayPaused = false;
+    return true;
+  } catch {
+    stopAnalyticsReplay();
+    return false;
+  }
+}
+
+export function isAnalyticsReplayRequested() {
+  return analyticsState.replayRequested;
+}
+
+function shouldAllowReplayInteraction(target: EventTarget | null) {
+  return target instanceof Element
+    && Boolean(target.closest(ANALYTICS_REPLAY_ALLOW_INTERACTION_SELECTOR));
+}
+
+function blockUnapprovedReplayInteraction(event: Event) {
+  if (!analyticsState.replayRequested || shouldAllowReplayInteraction(event.target)) return;
+  pauseAnalyticsReplay();
+  window.dispatchEvent(new Event(ANALYTICS_REPLAY_INTERACTION_BLOCK_EVENT));
+}
+
+export function installAnalyticsReplayInteractionGuard() {
+  if (!isBrowser() || analyticsState.replayInteractionGuardInstalled) return;
+  analyticsState.replayInteractionGuardInstalled = true;
+
+  window.addEventListener("pointerdown", blockUnapprovedReplayInteraction, true);
+  window.addEventListener("click", blockUnapprovedReplayInteraction, true);
+  window.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    blockUnapprovedReplayInteraction(event);
+  }, true);
 }
 
 export function trackAnalyticsEvent<T extends AnalyticsEventName>(

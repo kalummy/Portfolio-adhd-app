@@ -133,12 +133,18 @@ export function MoodMonthlyReport({ records }: { records: MoodRecord[] }) {
         aria-haspopup="dialog"
         aria-expanded={monthSheet.mounted}
         onClick={openSheet}
+        data-mp-replay-allow-interaction=""
+        data-mp-replay-public=""
       >
         <span>{formatMoodReportMonth(appliedMonth)}</span>
         <Image src="/icons/chevron-down.svg" alt="" width={10} height={5} />
       </button>
 
-      <section className="mood-report-summary" aria-labelledby="mood-report-summary-title">
+      <section
+        className="mood-report-summary"
+        aria-labelledby="mood-report-summary-title"
+        data-mp-replay-block=""
+      >
         <h2 id="mood-report-summary-title">전체 요약</h2>
         <div className="mood-report-summary-cards">
           <article>
@@ -156,7 +162,11 @@ export function MoodMonthlyReport({ records }: { records: MoodRecord[] }) {
         </div>
       </section>
 
-      <section className="mood-report-patterns" aria-labelledby="mood-report-patterns-title">
+      <section
+        className="mood-report-patterns"
+        aria-labelledby="mood-report-patterns-title"
+        data-mp-replay-block=""
+      >
         <h2 id="mood-report-patterns-title">주요 변화 패턴</h2>
         <div className="mood-report-pattern-list">
           {report.patterns.map((pattern) => (
@@ -171,7 +181,7 @@ export function MoodMonthlyReport({ records }: { records: MoodRecord[] }) {
         </div>
       </section>
 
-      <article className="mood-report-clinic">
+      <article className="mood-report-clinic" data-mp-replay-block="">
         <h2>
           <Image src="/icons/mood-summary-sparkle.svg" alt="" width={20} height={20} />
           병원에서 이렇게 이야기 해보세요
@@ -234,6 +244,8 @@ export function MoodMonthlyReport({ records }: { records: MoodRecord[] }) {
                       event.preventDefault();
                       movePendingMonth(event.key === "ArrowDown" ? 1 : -1);
                     }}
+                    data-mp-replay-allow-interaction=""
+                    data-mp-replay-public=""
                     key={month}
                   >
                     {formatMoodReportMonth(month)}
@@ -247,11 +259,19 @@ export function MoodMonthlyReport({ records }: { records: MoodRecord[] }) {
                   type="button"
                   className="mood-report-reset"
                   onClick={() => setPendingMonth(latestMonth)}
+                  data-mp-replay-allow-interaction=""
+                  data-mp-replay-public=""
                 >
                   초기화
                 </button>
               ) : null}
-              <button type="button" className="mood-report-confirm" onClick={confirmMonth}>
+              <button
+                type="button"
+                className="mood-report-confirm"
+                onClick={confirmMonth}
+                data-mp-replay-allow-interaction=""
+                data-mp-replay-public=""
+              >
                 확인
               </button>
             </div>

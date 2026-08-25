@@ -52,7 +52,7 @@ export function MoodResult({
           <Image src="/icons/mood-share.svg" alt="" width={18} height={18} />
         </button>
       </header>
-      <section className="mood-result-content">
+      <section className="mood-result-content" data-mp-replay-block="">
         <div className="mood-result-heading">
           <h1>{cat.displayName}가 나왔어요!</h1>
           <p>오늘의 감정기록을 확인해주세요.</p>
@@ -86,7 +86,13 @@ export function MoodResult({
         </section>
       </section>
       <BottomActions>
-        <PrimaryButton type="button" onClick={onSave} disabled={saving}>
+        <PrimaryButton
+          type="button"
+          onClick={onSave}
+          disabled={saving}
+          data-mp-replay-allow-interaction=""
+          data-mp-replay-public=""
+        >
           저장
         </PrimaryButton>
       </BottomActions>
