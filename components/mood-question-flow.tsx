@@ -15,7 +15,7 @@ import {
   trackMoodSaved,
   trackMoodStepCompleted,
 } from "@/lib/analytics/events";
-import { selectRandomCatId, type CatId } from "@/lib/cats";
+import { selectRandomRewardCatId, type CatId } from "@/lib/cats";
 import { createClientId } from "@/lib/client-id";
 import {
   clearMoodDraft,
@@ -394,7 +394,7 @@ export function MoodQuestionFlow({
 
     completionHandled.current = true;
     restoredRequestStarted.current = true;
-    const reward = catId ?? selectRandomCatId();
+    const reward = catId ?? selectRandomRewardCatId();
     const timestamp = recordedAt ?? new Date().toISOString();
     setCatId(reward);
     setRecordedAt(timestamp);

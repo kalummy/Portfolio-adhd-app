@@ -6,6 +6,7 @@ import {
 } from "@/lib/mood-analysis";
 import {
   DEFAULT_OPENAI_MOOD_MODEL,
+  getMoodAnalysisFailureDiagnostic,
   requestOpenAIMoodAnalysis,
 } from "@/lib/openai-mood-provider";
 
@@ -35,7 +36,8 @@ export async function POST(request: Request) {
       model: process.env.OPENAI_MOOD_MODEL?.trim() || DEFAULT_OPENAI_MOOD_MODEL,
     });
     return NextResponse.json(result, { headers: NO_STORE_HEADERS });
-  } catch {
+  } catch (error) {
+    console.error("mood_analysis_failed", getMoodAnalysisFailureDiagnostic(error));
     return NextResponse.json({ code: "ANALYSIS_FAILED" }, { status: 422, headers: NO_STORE_HEADERS });
   }
 }

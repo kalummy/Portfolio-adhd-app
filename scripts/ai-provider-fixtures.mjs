@@ -5,6 +5,8 @@ import {
 } from "../lib/mood-analysis.ts";
 import {
   DEFAULT_OPENAI_MOOD_MODEL,
+  getMoodAnalysisFailureDiagnostic,
+  MoodAnalysisProviderError,
   requestOpenAIMoodAnalysis,
 } from "../lib/openai-mood-provider.ts";
 
@@ -59,26 +61,40 @@ assert.equal(capturedRequest.init.headers.Authorization, "Bearer fixture-only-se
 const requestBody = JSON.parse(capturedRequest.init.body);
 assert.equal(requestBody.model, DEFAULT_OPENAI_MOOD_MODEL);
 assert.equal(requestBody.store, false);
+assert.deepEqual(requestBody.reasoning, { effort: "minimal" });
+assert.equal(requestBody.max_output_tokens, 2_000);
 assert.equal(requestBody.text.format.type, "json_schema");
 assert.equal(requestBody.text.format.strict, true);
+assert.equal(JSON.stringify(requestBody.text.format.schema).includes("uniqueItems"), false);
+assert.equal(JSON.stringify(requestBody.text.format.schema).includes("minLength"), false);
+assert.equal(JSON.stringify(requestBody.text.format.schema).includes("maxLength"), false);
 assert.deepEqual(Object.keys(JSON.parse(requestBody.input)).sort(), ["date", "evidence", "hasMedicationIntake", "recordedAt"]);
 assert.doesNotMatch(requestBody.input, /userId|email|kakao|google|analytics|local-medication-id/u);
 assert.deepEqual(metadata.result, validResult);
 assert.equal(metadata.createdAt, "2026-08-25T04:00:01.000Z");
 console.log("PASS server provider request uses strict schema and excludes account identifiers");
 
-await assert.rejects(
-  requestOpenAIMoodAnalysis({ input, apiKey: "fixture-only-secret", fetchImpl: async () => responseFor({ todayEmotion: [] }) }),
-  /invalid_schema/,
-);
-await assert.rejects(
-  requestOpenAIMoodAnalysis({
+const schemaFailure = await requestOpenAIMoodAnalysis({
+  input,
+  apiKey: "fixture-only-secret",
+  fetchImpl: async () => responseFor({ todayEmotion: [] }),
+}).catch((error) => error);
+assert.ok(schemaFailure instanceof MoodAnalysisProviderError);
+assert.deepEqual(getMoodAnalysisFailureDiagnostic(schemaFailure), {
+  stage: "schema_validation",
+  code: "invalid_schema",
+});
+
+const groundingFailure = await requestOpenAIMoodAnalysis({
     input,
     apiKey: "fixture-only-secret",
     fetchImpl: async () => responseFor({ ...validResult, clinicPhrase: { text: "상담하고 싶어요.", evidenceIds: ["unknown"] } }),
-  }),
-  /invalid_evidence/,
-);
+  }).catch((error) => error);
+assert.ok(groundingFailure instanceof MoodAnalysisProviderError);
+assert.deepEqual(getMoodAnalysisFailureDiagnostic(groundingFailure), {
+  stage: "evidence_grounding",
+  code: "invalid_evidence",
+});
 assert.throws(
   () => validateMoodAnalysisResult({ ...validResult, clinicPhrase: { text: "점심부터 두통이 있었어요.", evidenceIds: ["step1:weak"] } }, input),
   /unsupported_fact/,
@@ -110,13 +126,66 @@ const retryFetch = async () => {
     ? new Response("provider unavailable", { status: 503 })
     : responseFor(validResult);
 };
-await assert.rejects(
-  requestOpenAIMoodAnalysis({ input, apiKey: "fixture-only-secret", fetchImpl: retryFetch }),
-  /provider_request_failed:503/,
-);
+const httpFailure = await requestOpenAIMoodAnalysis({
+  input,
+  apiKey: "fixture-only-secret",
+  fetchImpl: retryFetch,
+}).catch((error) => error);
+assert.ok(httpFailure instanceof MoodAnalysisProviderError);
+assert.deepEqual(getMoodAnalysisFailureDiagnostic(httpFailure), {
+  stage: "provider_http",
+  code: "provider_http_error",
+  providerStatus: 503,
+});
 const retried = await requestOpenAIMoodAnalysis({ input, apiKey: "fixture-only-secret", fetchImpl: retryFetch });
 assert.deepEqual(retried.result, validResult);
 assert.equal(attempts, 2);
 console.log("PASS a provider failure can be retried without changing client draft state");
 
-console.log("AI provider fixture cases: 3/3 passed");
+const outputFailureCases = [
+  {
+    response: new Response("not-json", { status: 200 }),
+    diagnostic: { stage: "response_body", code: "provider_response_not_json" },
+  },
+  {
+    response: new Response(JSON.stringify({ output: [] }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    diagnostic: { stage: "output_extract", code: "provider_output_missing" },
+  },
+  {
+    response: new Response(JSON.stringify({
+      status: "incomplete",
+      incomplete_details: { reason: "max_output_tokens" },
+      output: [{ type: "reasoning" }],
+    }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    diagnostic: { stage: "output_extract", code: "provider_output_incomplete_max_tokens" },
+  },
+  {
+    response: new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: "not-json" }] }] }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    diagnostic: { stage: "output_json", code: "provider_output_not_json" },
+  },
+];
+for (const fixture of outputFailureCases) {
+  const failure = await requestOpenAIMoodAnalysis({
+    input,
+    apiKey: "fixture-only-secret",
+    fetchImpl: async () => fixture.response,
+  }).catch((error) => error);
+  assert.ok(failure instanceof MoodAnalysisProviderError);
+  assert.deepEqual(getMoodAnalysisFailureDiagnostic(failure), fixture.diagnostic);
+}
+
+const medicalFailure = await requestOpenAIMoodAnalysis({
+  input,
+  apiKey: "fixture-only-secret",
+  fetchImpl: async () => responseFor({
+    ...validResult,
+    clinicPhrase: { text: "약 용량을 늘려야 합니다.", evidenceIds: ["step1:weak"] },
+  }),
+}).catch((error) => error);
+assert.deepEqual(getMoodAnalysisFailureDiagnostic(medicalFailure), {
+  stage: "medical_safety",
+  code: "unsafe_medical_claim",
+});
+console.log("PASS provider, output parsing, grounding, and medical safety failures are safely classified");
+
+console.log("AI provider fixture cases: 4/4 passed");
