@@ -11,6 +11,10 @@ import {
 } from "../lib/cats.ts";
 import { deriveCatCollection } from "../lib/cat-collection.ts";
 import {
+  LEGACY_MOOD_RECORD_FALLBACK_CAT_ID,
+  getMoodRecordDisplayCat,
+} from "../lib/mood-record-cat.ts";
+import {
   LOCAL_PREVIEW_MOOD_MODEL,
   createLocalPreviewMoodAnalysis,
   createMoodAnalysisInput,
@@ -42,6 +46,14 @@ assert.equal(repeatedRewards.includes(PLACEHOLDER_CAT.id), false);
 assert.ok(new Set(repeatedRewards).size < repeatedRewards.length);
 assert.equal(selectRandomCatId(0), selectRandomCatId(0));
 console.log("PASS reward catalog, placeholder exclusion, equal buckets, and stable selection input");
+
+assert.equal(LEGACY_MOOD_RECORD_FALLBACK_CAT_ID, "white");
+assert.deepEqual(getMoodRecordDisplayCat(null), REWARD_CAT_CATALOG[0]);
+assert.equal(getMoodRecordDisplayCat(null).displayName, "하냥이");
+assert.equal(getMoodRecordDisplayCat("calico").id, "calico");
+assert.equal(getMoodRecordDisplayCat("calico").displayName, "삼색이");
+assert.equal(getMoodRecordDisplayCat(PLACEHOLDER_CAT.id).id, "white");
+console.log("PASS legacy record display fallback uses white without changing reward identity");
 
 const emptyCollection = deriveCatCollection([
   { catId: null },
@@ -301,6 +313,7 @@ assert.equal(
 const historySource = await readFile(new URL("../components/mood-history.tsx", import.meta.url), "utf8");
 const collectionSource = await readFile(new URL("../components/mood-cat-collection.tsx", import.meta.url), "utf8");
 const detailSource = await readFile(new URL("../components/mood-record-detail.tsx", import.meta.url), "utf8");
+const recordCatSource = await readFile(new URL("../lib/mood-record-cat.ts", import.meta.url), "utf8");
 const repositoryTypeSource = await readFile(new URL("../lib/repositories/moods/types.ts", import.meta.url), "utf8");
 assert.match(repositorySource, /\.gte\("mood_date", startDate\)/);
 assert.match(repositorySource, /\.order\("mood_date", \{ ascending: false \}\)/);
@@ -320,6 +333,9 @@ assert.match(historySource, /setPendingPeriod\(period\.value\)/);
 assert.match(historySource, /setAppliedPeriod\(selectedPeriod\)/);
 assert.match(historySource, /getMoodHistoryDateRange\(appliedPeriod\)/);
 assert.match(historySource, /UNKNOWN_CAT/);
+assert.match(historySource, /getMoodRecordDisplayCat\(record\.catId\)/);
+assert.match(historySource, /cat-\$\{cat\.id\}/);
+assert.doesNotMatch(historySource, /trackMoodCatRewardRevealed/);
 assert.match(collectionSource, /deriveCatCollection\(records, showLockedFirst \? "locked-first" : "acquired-first"\)/);
 assert.match(collectionSource, /setShowLockedFirst\(\(current\) => !current\)/);
 assert.match(collectionSource, /useState\(false\)/);
@@ -327,6 +343,10 @@ assert.match(collectionSource, /showLockedFirst \? "미보유순" : "보유순"/
 assert.match(collectionSource, /cat\.acquired \? `cat-\$\{cat\.catalogId\}` : "cat-unknown"/);
 assert.doesNotMatch(collectionSource, /IndexedDB|Supabase|createBrowserSupabaseClient/u);
 assert.match(detailSource, /record\.analysisResult\?\.todayEmotion/);
+assert.match(detailSource, /getMoodRecordDisplayCat\(record\.catId\)/);
+assert.match(detailSource, /cat-\$\{cat\.id\}/);
+assert.doesNotMatch(detailSource, /trackMoodCatRewardRevealed/);
+assert.doesNotMatch(recordCatSource, /analytics|trackMoodCatRewardRevealed/);
 assert.match(detailSource, /repository\.findByDate\(dateKey\)/);
 assert.match(detailSource, /repository\.deleteByDate\(record\.date\)/);
 assert.doesNotMatch(detailSource, /api\/moods\/analyze|createMoodAnalysisInput|requestOpenAI/u);
