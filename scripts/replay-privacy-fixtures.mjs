@@ -9,6 +9,7 @@ import {
 } from "../lib/analytics/consent.ts";
 import {
   getReplaySamplePercent,
+  isPreviewReplayQaEnabled,
   isReplayRouteAllowed,
   isReplaySampleIncluded,
   isReplayUrlPrivacySafe,
@@ -65,14 +66,17 @@ assert.equal(getReplaySamplePercent({ runtimeEnvironment: "production", qaMode: 
 assert.equal(getReplaySamplePercent({ runtimeEnvironment: "production", qaMode: true }), 1);
 assert.equal(getReplaySamplePercent({ runtimeEnvironment: "preview", qaMode: false }), 0);
 assert.equal(getReplaySamplePercent({ runtimeEnvironment: "preview", qaMode: true }), 100);
-assert.equal(getReplaySamplePercent({ runtimeEnvironment: "development", qaMode: true }), 100);
+assert.equal(getReplaySamplePercent({ runtimeEnvironment: "development", qaMode: true }), 0);
 assert.equal(getReplaySamplePercent({ runtimeEnvironment: "unknown", qaMode: true }), 0);
+assert.equal(isPreviewReplayQaEnabled({ runtimeEnvironment: "preview", qaMode: true }), true);
+assert.equal(isPreviewReplayQaEnabled({ runtimeEnvironment: "production", qaMode: true }), false);
+assert.equal(isPreviewReplayQaEnabled({ runtimeEnvironment: "development", qaMode: true }), false);
 assert.equal(isReplaySampleIncluded(1, 0), true);
 assert.equal(isReplaySampleIncluded(1, 0.0099), true);
 assert.equal(isReplaySampleIncluded(1, 0.01), false);
 assert.equal(isReplaySampleIncluded(100, 0.999), true);
 assert.equal(isReplaySampleIncluded(0, 0), false);
-console.log("PASS Production 1 percent and explicit Preview or Dev QA 100 percent sampling");
+console.log("PASS Production 1 percent and explicit Preview-only QA 100 percent sampling");
 
 const eligiblePolicy = {
   consentGranted: true,
@@ -124,6 +128,9 @@ assert.match(mixpanelSource, /delete properties\.\$el_attr__href/);
 assert.match(mixpanelSource, /delete element\["\$attr-href"\]/);
 assert.match(mixpanelSource, /data-mp-replay-public/);
 assert.match(mixpanelSource, /ANALYTICS_REPLAY_BLOCK_SELECTOR/);
+assert.match(mixpanelSource, /send_immediately: true/);
+assert.match(mixpanelSource, /transport: "xhr"/);
+assert.match(mixpanelSource, /timeout_ms: IMMEDIATE_DELIVERY_TIMEOUT_MS/);
 
 const instrumentationSource = sources["../instrumentation-client.ts"];
 assert.ok(
@@ -133,7 +140,7 @@ assert.ok(
 assert.match(instrumentationSource, /onRouterTransitionStart[\s\S]*stopAnalyticsReplay/);
 
 const controllerSource = sources["../components/analytics-replay-controller.tsx"];
-assert.match(controllerSource, /readAnalyticsConsent\(\) === "granted"/);
+assert.match(controllerSource, /previewReplayQaEnabled \|\| readAnalyticsConsent\(\) === "granted"/);
 assert.match(controllerSource, /NEXT_PUBLIC_VERCEL_ENV/);
 assert.match(controllerSource, /NEXT_PUBLIC_MIXPANEL_REPLAY_QA/);
 assert.match(controllerSource, /window\.location\.search/);

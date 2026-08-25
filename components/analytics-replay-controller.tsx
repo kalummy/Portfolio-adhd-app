@@ -16,6 +16,7 @@ import {
   ANALYTICS_REPLAY_POLICY_CHANGE_EVENT,
   ANALYTICS_REPLAY_SAMPLE_STORAGE_KEY,
   getReplaySamplePercent,
+  isPreviewReplayQaEnabled,
   isReplaySampleIncluded,
   isReplayUrlPrivacySafe,
   normalizeReplayRuntimeEnvironment,
@@ -23,6 +24,18 @@ import {
 } from "@/lib/analytics/replay-policy";
 
 const INTERACTION_RESUME_DELAY_MS = 400;
+
+const replayRuntimeEnvironment = normalizeReplayRuntimeEnvironment(
+  process.env.NEXT_PUBLIC_VERCEL_ENV,
+);
+const previewReplayQaEnabled = isPreviewReplayQaEnabled({
+  qaMode: process.env.NEXT_PUBLIC_MIXPANEL_REPLAY_QA === "true",
+  runtimeEnvironment: replayRuntimeEnvironment,
+});
+
+function hasReplayConsent() {
+  return previewReplayQaEnabled || readAnalyticsConsent() === "granted";
+}
 
 function getRandomUnitValue() {
   try {
@@ -131,7 +144,7 @@ export function AnalyticsReplayController() {
       refreshPolicy();
     };
     const onConsentChange = () => {
-      if (readAnalyticsConsent() !== "granted") stopAnalyticsReplay();
+      if (!hasReplayConsent()) stopAnalyticsReplay();
       refreshPolicy();
     };
     const onPageHide = () => stopAnalyticsReplay();
@@ -172,13 +185,13 @@ export function AnalyticsReplayController() {
   }, [refreshPolicy]);
 
   useEffect(() => {
-    const runtimeEnvironment = normalizeReplayRuntimeEnvironment(
-      process.env.NEXT_PUBLIC_VERCEL_ENV,
-    );
     const qaMode = process.env.NEXT_PUBLIC_MIXPANEL_REPLAY_QA === "true";
-    const samplePercent = getReplaySamplePercent({ qaMode, runtimeEnvironment });
+    const samplePercent = getReplaySamplePercent({
+      qaMode,
+      runtimeEnvironment: replayRuntimeEnvironment,
+    });
     const startAllowed = shouldStartReplay({
-      consentGranted: readAnalyticsConsent() === "granted",
+      consentGranted: hasReplayConsent(),
       interactionSuspended,
       sampleIncluded: getReplaySampleDecision(samplePercent),
       surfacePaused: Boolean(document.querySelector(ANALYTICS_REPLAY_PAUSE_SELECTOR)),
