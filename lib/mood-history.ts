@@ -1,37 +1,92 @@
 import type { MoodRecord } from "./types";
+import {
+  addDaysToDateKey,
+  getDateKeyDay,
+  getKstDateKey,
+  KST_TIME_ZONE,
+} from "./kst-date";
 import { toDateKey } from "./visit-date";
 
+export const RECENT_MOOD_DAY_COUNT = 30;
+
 export const MOOD_HISTORY_PERIODS = [
-  { value: "14d", optionLabel: "14일", summaryLabel: "2주" },
-  { value: "1m", optionLabel: "1개월", summaryLabel: "1개월" },
-  { value: "3m", optionLabel: "3개월", summaryLabel: "3개월" },
+  { value: "1m", optionLabel: "1개월", dayCount: RECENT_MOOD_DAY_COUNT },
+  { value: "3m", optionLabel: "3개월", dayCount: 90 },
+  { value: "1y", optionLabel: "1년", dayCount: 365 },
 ] as const;
 
 export type MoodHistoryPeriod = typeof MOOD_HISTORY_PERIODS[number]["value"];
+
+const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"] as const;
+const KST_TIME_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+  timeZone: KST_TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+export function getRecentMoodDateRange(todayDateKey = getKstDateKey()) {
+  return getMoodHistoryDateRange("1m", todayDateKey);
+}
+
+export function getMoodHistoryDateRange(
+  period: MoodHistoryPeriod,
+  todayDateKey = getKstDateKey(),
+) {
+  const dayCount = getMoodHistoryPeriod(period).dayCount;
+  return {
+    startDate: addDaysToDateKey(todayDateKey, -(dayCount - 1)),
+    endDate: todayDateKey,
+  };
+}
+
+export function sortMoodRecordsNewestFirst(records: MoodRecord[]) {
+  return [...records].sort(
+    (left, right) => right.date.localeCompare(left.date)
+      || right.recordedAt.localeCompare(left.recordedAt),
+  );
+}
+
+export function filterRecentMoodRecords(
+  records: MoodRecord[],
+  todayDateKey = getKstDateKey(),
+) {
+  const { startDate, endDate } = getRecentMoodDateRange(todayDateKey);
+  return sortMoodRecordsNewestFirst(
+    records.filter((record) => record.date >= startDate && record.date <= endDate),
+  );
+}
+
+export function formatMoodRecordDate(dateKey: string) {
+  return `${dateKey}(${DAY_LABELS[getDateKeyDay(dateKey)]})`;
+}
+
+export function formatMoodRecordTime(recordedAt: string) {
+  const date = new Date(recordedAt);
+  return Number.isNaN(date.getTime()) ? "" : KST_TIME_FORMATTER.format(date);
+}
+
+export function formatMoodRecordDateTime(record: Pick<MoodRecord, "date" | "recordedAt">) {
+  const time = formatMoodRecordTime(record.recordedAt);
+  return time ? `${formatMoodRecordDate(record.date)} ${time}` : formatMoodRecordDate(record.date);
+}
 
 export function isMoodHistoryPeriod(value: string | undefined): value is MoodHistoryPeriod {
   return MOOD_HISTORY_PERIODS.some((period) => period.value === value);
 }
 
-function subtractCalendarMonths(date: Date, months: number) {
-  const target = new Date(date.getFullYear(), date.getMonth() - months, 1);
-  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
-  target.setDate(Math.min(date.getDate(), lastDay));
-  return target;
-}
-
 export function periodStart(period: MoodHistoryPeriod, today: Date) {
   const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  if (period === "14d") { localToday.setDate(localToday.getDate() - 13); return localToday; }
-  return subtractCalendarMonths(localToday, period === "1m" ? 1 : 3);
+  localToday.setDate(localToday.getDate() - (getMoodHistoryPeriod(period).dayCount - 1));
+  return localToday;
 }
 
 export function filterMoodRecordsByPeriod(records: MoodRecord[], period: MoodHistoryPeriod, today = new Date()) {
   const startDateKey = toDateKey(periodStart(period, today));
   const todayKey = toDateKey(today);
-  return records
-    .filter((record) => record.date >= startDateKey && record.date <= todayKey)
-    .sort((left, right) => right.recordedAt.localeCompare(left.recordedAt) || right.date.localeCompare(left.date));
+  return sortMoodRecordsNewestFirst(
+    records.filter((record) => record.date >= startDateKey && record.date <= todayKey),
+  );
 }
 
 export function getMoodHistoryPeriod(period: MoodHistoryPeriod) {

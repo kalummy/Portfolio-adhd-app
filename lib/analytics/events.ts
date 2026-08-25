@@ -347,6 +347,12 @@ export function trackMoodResultViewed() {
   if (result.shouldTrack) queueResolvedEvent("mood_result_viewed", {});
 }
 
+export function trackMoodCompleted() { return queueResolvedEvent("mood_completed", {}); }
+export function trackMoodCatRewardRevealed(catId: import("../cats").CatId) { return queueResolvedEvent("cat_reward_revealed", { cat_id: catId }); }
+export function trackCatCollectionViewed() { return queueResolvedEvent("cat_collection_viewed", {}); }
+export function trackMoodReportViewed() { return queueResolvedEvent("mood_report_viewed", {}); }
+export function trackMoodAnalysisRetried() { return queueResolvedEvent("mood_analysis_retried", {}); }
+
 export function trackMoodSaved() {
   const current = readMoodAttempt() ?? createMoodAttempt("home");
   const result = markMoodSaved(current);

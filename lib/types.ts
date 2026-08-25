@@ -69,8 +69,16 @@ export type MoodRecord = {
   diaryEntries?: string[];
   memberSummary?: string;
   clinicPhrase?: string;
+  catId?: import("./cats").CatId | null;
+  analysisStatus?: "completed" | null;
+  analysisResult?: import("./mood-analysis").MoodAnalysisResult | null;
+  analysisVersion?: string | null;
+  analysisModel?: string | null;
+  analysisCreatedAt?: string | null;
   details?: {
+    stepOneKind?: import("./mood-summary").StepOneKind;
     medicationEffects: string[];
+    concentrationStates?: string[];
     medicationEffectTimings: Record<string, string[]>;
     moods: string[];
     relationships: string[];
