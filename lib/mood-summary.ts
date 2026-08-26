@@ -10,7 +10,7 @@ export type MoodResultData = MoodPresentation & { moodType: MoodType; recordedAt
 
 export const MOOD_PRESENTATIONS: Record<MoodType, MoodPresentation> = {
   good: { label: "기분이 좋아요", imagePath: "/moods/good.png" }, lethargic: { label: "무기력해요", imagePath: "/moods/lethargic.png" },
-  "lethargic-depressed": { label: "무기력하고 우울해요", imagePath: "/moods/lethargic-depressed.png" }, "poor-condition": { label: "컨디션이 나빠요", imagePath: "/moods/poor-condition.png" }, irritable: { label: "화가 나고 예민해요", imagePath: "/moods/irritable.png" },
+  "lethargic-depressed": { label: "무기력하고 우울해요", imagePath: "/moods/lethargic-depressed.png" }, "poor-condition": { label: "컨디션이 나빠요", imagePath: "/moods/poor-condition.png" }, irritable: { label: "예민해요", imagePath: "/moods/irritable.png" },
 };
 function cleanCustom(answer: MoodAnswerDraft | undefined) { return answer?.selected.includes(CUSTOM_MOOD_OPTION_ID) ? answer.customText.replace(/\s+/gu, " ").trim() : ""; }
 export function determineMoodType(answers: MoodAnswerDraft[]): MoodType {

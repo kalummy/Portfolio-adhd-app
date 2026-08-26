@@ -6,7 +6,7 @@ import {
   readMoodDraft,
   writeMoodDraft,
 } from "../lib/mood-draft.ts";
-import { buildMoodDetails, determineMoodType } from "../lib/mood-summary.ts";
+import { buildMoodDetails, determineMoodType, getMoodPresentation } from "../lib/mood-summary.ts";
 
 const answer = (selected = [], customText = "", timingsByOption = {}) => ({
   selected,
@@ -84,6 +84,7 @@ assert.deepEqual(medicationDetails.medicationEffects, ["weak"]);
 assert.deepEqual(medicationDetails.concentrationStates, []);
 assert.deepEqual(medicationDetails.medicationEffectTimings.weak, ["점심"]);
 assert.equal(determineMoodType([answer(), answer(["irritable"]), answer()]), "irritable");
+assert.equal(getMoodPresentation("irritable").label, "예민해요");
 
 const concentrationDetails = buildMoodDetails([
   answer(["work-focus-difficulty"], "", { "work-focus-difficulty": ["아침", "점심"] }),
