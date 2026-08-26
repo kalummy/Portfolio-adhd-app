@@ -38,28 +38,28 @@ import {
   type StepOneKind,
 } from "@/lib/mood-summary";
 
-const TIMED_EFFECT_IDS = new Set(["weak", "strong"]);
+const TIMED_EFFECT_IDS = new Set(["work-focus-difficulty", "task-completion-difficulty"]);
 const TIMING_OPTIONS = ["아침", "점심", "저녁"];
 
 const MEDICATION_STEP = {
   title: "오늘 약 효과는 어땠나요?",
   subtitle: "전반적인 약 효과 느낌을 선택해주세요. (복수선택 가능)",
   options: [
-    { id: "effective", label: "약 효과를 잘 느꼈어요" },
+    { id: "medication-focus-good", label: "집중이 잘 됐어요" },
     { id: "similar", label: "평소와 비슷해요" },
-    { id: "weak", label: "효과가 약했어요" },
-    { id: "strong", label: "약이 너무 강하게 느껴졌어요" },
+    { id: "work-focus-difficulty", label: "업무 또는 과제 집중이 어려웠어요" },
+    { id: "task-completion-difficulty", label: "해야할 일을 끝내기가 어려웠어요" },
   ],
 };
 
 const CONCENTRATION_STEP = {
-  title: "오늘 집중 상태는 어땠나요?",
-  subtitle: "오늘의 집중 상태를 선택해주세요. (복수선택 가능)",
+  title: "오늘 약 효과는 어땠나요?",
+  subtitle: "전반적인 약 효과 느낌을 선택해주세요. (복수선택 가능)",
   options: [
-    { id: "concentration_good", label: "집중이 잘 되었어요" },
-    { id: "concentration_similar", label: "평소와 비슷했어요" },
-    { id: "concentration_difficult", label: "집중하기 어려웠어요" },
-    { id: "concentration_unstable", label: "집중이 자주 흐트러졌어요" },
+    { id: "medication-focus-good", label: "집중이 잘 됐어요" },
+    { id: "similar", label: "평소와 비슷해요" },
+    { id: "work-focus-difficulty", label: "업무 또는 과제 집중이 어려웠어요" },
+    { id: "task-completion-difficulty", label: "해야할 일을 끝내기가 어려웠어요" },
   ],
 };
 
@@ -76,18 +76,18 @@ const COMMON_STEPS = [
       { id: "hyperfocus", label: "과몰입" },
       { id: "impulsive", label: "충동성" },
       { id: "sleep", label: "수면 문제" },
-      { id: "appetite", label: "식욕 변화" },
+      { id: "appetite-decrease", label: "식욕 감소" },
       { id: "palpitation", label: "두근 거림" },
       { id: "headache", label: "두통" },
     ],
   },
   {
     title: "오늘 사람들과의 관계는 어땠나요?",
-    subtitle: "가장 가까운 항목을 선택해주세요.",
+    subtitle: "되도록이면 가장 가까운 것에 선택해주면 좋아요.",
     options: [
-      { id: "task", label: "업무, 과제 집중이 어려웠어요" },
-      { id: "conversation", label: "사람들과의 대화에 집중이 안되고 힘들었어요" },
-      { id: "unfinished", label: "할일을 모두 끝내지 못했어요" },
+      { id: "conversation-flow", label: "대화에 집중이 안되고 다른 생각을 했어요" },
+      { id: "conversation-understanding", label: "집중하려 해도 이해가 잘 되지 않았어요" },
+      { id: "social-withdrawal", label: "요즘은 혼자있는게 좋았어요" },
       { id: "none", label: "특별한 문제는 없었어요" },
     ],
   },
@@ -169,8 +169,7 @@ export function MoodQuestionFlow({
       const intakes = await repositories.medicationIntakes.listByDate(targetDateKey);
       const intakeIds = intakes.map((item) => item.medicationId);
       const draft = readMoodDraft(window.sessionStorage, targetDateKey);
-      const kind = draft?.stepOneKind
-        ?? (intakes.length > 0 ? "medication_effect" : "concentration");
+      const kind = draft?.stepOneKind ?? "medication_effect";
 
       setIntakeMedicationIds(intakeIds);
       setStepOneKind(kind);
@@ -345,6 +344,9 @@ export function MoodQuestionFlow({
         ...item,
         selected,
         customText: step === 2 && id === "none" ? "" : item.customText,
+        timingsByOption: alreadySelected && TIMED_EFFECT_IDS.has(id)
+          ? Object.fromEntries(Object.entries(item.timingsByOption ?? {}).filter(([key]) => key !== id))
+          : item.timingsByOption,
       };
     });
   }
@@ -489,7 +491,9 @@ export function MoodQuestionFlow({
       </div>
       <section className="mood-question-heading">
         <h1>{question.title}</h1>
-        <p>{question.subtitle}</p>
+        <p>{step === 2 && answer.selected.length > 0
+          ? "가장 가까운 것에 선택해주세요."
+          : question.subtitle}</p>
       </section>
       <fieldset className={`mood-question-options ${"grid" in question && question.grid ? "two-column" : ""}`}>
         <legend className="visually-hidden">{question.title}</legend>
@@ -513,7 +517,6 @@ export function MoodQuestionFlow({
                 <span>{option.label}</span>
               </label>
               {step === 0
-              && stepOneKind === "medication_effect"
               && selected
               && TIMED_EFFECT_IDS.has(option.id) ? (
                 <div className="mood-timing-options">

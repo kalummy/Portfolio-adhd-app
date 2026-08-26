@@ -4310,9 +4310,10 @@ html[data-addi-splash="skip"] .splash-screen {
 .mood-question-options.two-column .mood-question-option.custom { grid-column: 1 / -1; }
 .mood-timing-options { display: grid; gap: 16px; }
 .mood-timing-options p { margin: 0; color: var(--color-font-base-04); font-size: 14px; line-height: 20px; font-weight: 400; }
-.mood-timing-options button { display: flex; width: 100%; height: 52px; padding: 16px; align-items: center; justify-content: space-between; border: 0; border-radius: 12px; background: var(--color-bg-base-04); font: inherit; cursor: pointer; }
-.mood-timing-options button span:last-child { color: var(--color-font-base-06); font-size: 18px; visibility: hidden; }
-.mood-timing-options button.selected span:last-child { visibility: visible; }
+.mood-timing-options button { display: flex; width: 100%; height: 52px; padding: 16px; align-items: center; justify-content: space-between; border: 1px solid transparent; border-radius: 12px; background: var(--color-bg-base-04); font: inherit; cursor: pointer; }
+.mood-timing-options button span:last-child { color: var(--color-font-base-06); font-size: 18px; }
+.mood-timing-options button.selected { border-color: var(--color-brand-primary); }
+.mood-timing-options button.selected span:last-child { color: var(--color-font-semantic-success); }
 .mood-question-custom-input { height: 52px; }
 .mood-question-screen .bottom-actions,
 .mood-result-screen .bottom-actions { border-top: 0; backdrop-filter: blur(4px); background: rgba(255, 255, 255, 0.9); }

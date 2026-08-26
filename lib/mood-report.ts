@@ -1,17 +1,19 @@
 import type { MoodRecord } from "./types";
 
-export const POSITIVE_MEDICATION_EFFECT_IDS = ["effective"] as const;
+export const POSITIVE_MEDICATION_EFFECT_IDS = ["effective", "medication-focus-good"] as const;
 export const AFTERNOON_MEDICATION_DECLINE_IDS = ["weak"] as const;
 export const AFTERNOON_TIMING_LABELS = ["점심", "저녁"] as const;
 export const CONCENTRATION_DIFFICULT_IDS = [
   "concentration_difficult",
   "concentration_unstable",
 ] as const;
-export const CONCENTRATION_RELATIONSHIP_IDS = ["task", "conversation"] as const;
-export const RELATIONSHIP_DIFFICULT_IDS = ["task", "conversation", "unfinished"] as const;
+export const WORK_FOCUS_EFFECT_IDS = ["work-focus-difficulty"] as const;
+export const CONCENTRATION_RELATIONSHIP_IDS = ["task"] as const;
+export const RELATIONSHIP_DIFFICULT_IDS = ["task", "conversation", "unfinished", "conversation-flow", "conversation-understanding", "social-withdrawal"] as const;
 export const IRRITABLE_MOOD_IDS = ["irritable"] as const;
 export const SLEEP_DIFFICULT_IDS = ["sleep"] as const;
 export const DEADLINE_DIFFICULT_IDS = ["unfinished"] as const;
+export const TASK_COMPLETION_EFFECT_IDS = ["task-completion-difficulty"] as const;
 
 const MONTH_KEY_PATTERN = /^(\d{4})-(\d{2})$/u;
 const DATE_KEY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/u;
@@ -111,6 +113,8 @@ function hasConcentrationDifficulty(record: MoodRecord) {
   const details = record.details;
   return Boolean(details && (
     includesAny(details.concentrationStates, CONCENTRATION_DIFFICULT_IDS)
+    || includesAny(details.medicationEffects, WORK_FOCUS_EFFECT_IDS)
+    || includesAny(details.concentrationStates, WORK_FOCUS_EFFECT_IDS)
     || includesAny(details.relationships, CONCENTRATION_RELATIONSHIP_IDS)
   ));
 }
@@ -201,7 +205,9 @@ export function buildMoodMonthlyReport(
     {
       id: "deadlineDifficulty",
       label: "업무 기한 맞추기 어려움",
-      predicate: (record) => includesAny(record.details?.relationships, DEADLINE_DIFFICULT_IDS),
+      predicate: (record) => includesAny(record.details?.relationships, DEADLINE_DIFFICULT_IDS)
+        || includesAny(record.details?.medicationEffects, TASK_COMPLETION_EFFECT_IDS)
+        || includesAny(record.details?.concentrationStates, TASK_COMPLETION_EFFECT_IDS),
     },
   ];
   const patterns = patternDefinitions.map(({ id, label, predicate }) => {

@@ -109,6 +109,13 @@ export function buildMoodHistoryStats(records: MoodRecord[]) {
   const effectRecordedDays = count((record) => (record.details?.medicationEffects.length ?? 0) > 0);
   const relationshipDifficultDays = count((record) => record.details?.relationships.some((id) => id !== "none") ?? false);
   const allPatterns = [
+    { label: "업무·과제 집중 어려움", count: count((record) => record.details?.medicationEffects.includes("work-focus-difficulty") || record.details?.concentrationStates?.includes("work-focus-difficulty") || false) },
+    { label: "할 일 마무리 어려움", count: count((record) => record.details?.medicationEffects.includes("task-completion-difficulty") || record.details?.concentrationStates?.includes("task-completion-difficulty") || false) },
+    { label: "대화 흐름 유지 어려움", count: count((record) => record.details?.relationships.includes("conversation-flow") ?? false) },
+    { label: "대화 이해·따라가기 어려움", count: count((record) => record.details?.relationships.includes("conversation-understanding") ?? false) },
+    { label: "혼자 있고 싶었음", count: count((record) => record.details?.relationships.includes("social-withdrawal") ?? false) },
+    { label: "식욕 감소", count: count((record) => record.details?.moods.includes("appetite-decrease") ?? false) },
+    { label: "식욕 변화", count: count((record) => record.details?.moods.includes("appetite") ?? false) },
     { label: "오후 약효 저하 느낌", count: count((record) => record.details?.medicationEffects.includes("weak") && Object.values(record.details.medicationEffectTimings).flat().includes("저녁") || false) },
     { label: "집중력 저하", count: count((record) => record.details?.relationships.includes("task") ?? false) },
     { label: "예민함", count: count((record) => record.details?.moods.includes("irritable") ?? false) },
@@ -119,6 +126,16 @@ export function buildMoodHistoryStats(records: MoodRecord[]) {
   const patterns = allPatterns.filter((pattern) => pattern.count >= 2);
   const repeated = (label: string) => (patternCount[label] ?? 0) >= 3 ? "반복해서 " : "";
   const clinicParts = [
+    patternCount["업무·과제 집중 어려움"] >= 2
+      ? `업무 또는 과제 집중이 어려웠던 날을 ${repeated("업무·과제 집중 어려움")}${patternCount["업무·과제 집중 어려움"]}일 기록했어요.` : "",
+    patternCount["할 일 마무리 어려움"] >= 2
+      ? `해야 할 일을 끝내기 어려웠던 날을 ${repeated("할 일 마무리 어려움")}${patternCount["할 일 마무리 어려움"]}일 기록했어요.` : "",
+    patternCount["대화 흐름 유지 어려움"] >= 2
+      ? `대화 중 다른 생각이 들어 흐름을 놓친 날을 ${repeated("대화 흐름 유지 어려움")}${patternCount["대화 흐름 유지 어려움"]}일 기록했어요.` : "",
+    patternCount["대화 이해·따라가기 어려움"] >= 2
+      ? `상대방의 말을 이해하고 따라가기 어려웠던 날을 ${repeated("대화 이해·따라가기 어려움")}${patternCount["대화 이해·따라가기 어려움"]}일 기록했어요.` : "",
+    patternCount["식욕 감소"] >= 2
+      ? `식욕 감소를 ${repeated("식욕 감소")}${patternCount["식욕 감소"]}일 기록했어요.` : "",
     patternCount["오후 약효 저하 느낌"] >= 2
       ? `오후에 약 효과가 줄어든 느낌을 ${repeated("오후 약효 저하 느낌")}${patternCount["오후 약효 저하 느낌"]}일 기록했어요.` : "",
     patternCount["예민함"] >= 2
