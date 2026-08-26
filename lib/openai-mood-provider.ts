@@ -18,7 +18,7 @@ const MOOD_ANALYSIS_INSTRUCTIONS = `역할: 사용자의 하루 감정기록을 
 5. 하루 기록을 '최근', '반복적으로', '평소보다 계속' 같은 기간 패턴으로 확대하지 않는다.
 6. 아침/오전/점심/오후/저녁은 evidence의 timeSlots로 직접 뒷받침될 때만 쓴다.
 7. 각 문장 객체의 evidenceIds에는 그 문장을 직접 뒷받침하는 ID만 넣는다. 입력에 없는 ID를 만들지 않는다.
-8. todayEmotion은 서로 다른 관찰을 담은 2~3개 문장, clinicPhrase는 1인칭 진료 전달 문장 1개로 작성한다.
+8. todayEmotion은 서로 다른 관찰을 담은 2~3개 문장, clinicPhrase는 1인칭 진료 전달 문장 1개를 줄바꿈 없는 단일 문단으로 작성한다.
 9. JSON schema 외의 텍스트는 출력하지 않는다.`;
 
 type OpenAIOutputContent = { type?: unknown; text?: unknown };

@@ -66,11 +66,11 @@ writeMoodDraft(storage, "2026-08-25", {
   step: 2,
   answers: draftAnswers,
   stepOneKind: "medication_effect",
-  catId: "white",
+  catId: "winter",
   recordedAt: "2026-08-25T03:00:00.000Z",
   analysisFailed: true,
 });
-assert.equal(readMoodDraft(storage, "2026-08-25")?.catId, "white");
+assert.equal(readMoodDraft(storage, "2026-08-25")?.catId, "winter");
 clearMoodDraft(storage, "2026-08-25");
 assert.equal(readMoodDraft(storage, "2026-08-25"), null);
 console.log("PASS To-Be reward drafts are date-scoped, restorable, and clearable");
@@ -103,9 +103,13 @@ assert.match(flowSource, /window\.history\.back\(\)/);
 assert.match(flowSource, /title="감정 기록을 중단할까요\?"/);
 assert.match(flowSource, /clearMoodDraft\(window\.sessionStorage, targetDateKey\)/);
 assert.match(flowSource, /대화에 집중이 안되고 다른 생각을 했어요/);
-assert.match(flowSource, /집중하려 해도 이해가 잘 되지 않았어요/);
+assert.match(flowSource, /다른 사람의 이야기를 이해하기 어려웠어요/);
+assert.match(flowSource, /혼자있고 싶었어요/);
 assert.match(flowSource, /언제부터 그렇게 느꼈나요\? \(선택\)/);
 assert.match(flowSource, /\["아침", "점심", "저녁"\]/);
+assert.match(flowSource, /\/icons\/timing-check-selected\.svg/);
+assert.match(flowSource, /\/icons\/timing-check-unselected\.svg/);
+assert.doesNotMatch(flowSource, /aria-hidden="true">✓<\/span>/u);
 assert.match(flowSource, /Object\.entries\(item\.timingsByOption \?\? \{\}\)\.filter\(\(\[key\]\) => key !== id\)/);
 assert.doesNotMatch(flowSource, /stepOneKind === "medication_effect"\s*&& selected/u);
 assert.match(flowSource, /destination\.searchParams\.set\("moodToast", "saved"\)/);

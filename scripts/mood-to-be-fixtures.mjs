@@ -10,6 +10,7 @@ import {
   selectRandomRewardCatId,
 } from "../lib/cats.ts";
 import { deriveCatCollection } from "../lib/cat-collection.ts";
+import { normalizeClinicPhraseForDisplay } from "../lib/clinic-phrase.ts";
 import {
   LEGACY_MOOD_RECORD_FALLBACK_CAT_ID,
   getMoodRecordDisplayCat,
@@ -28,24 +29,35 @@ import {
   MOOD_HISTORY_PERIODS,
 } from "../lib/mood-history.ts";
 
-assert.equal(CAT_CATALOG.length, 5);
+const expectedRewardIds = [
+  "white", "calico", "tuxedo", "rainbow", "sunglasses",
+  "winter", "party", "whats-up", "tube", "graduation", "nerd",
+];
+assert.equal(CAT_CATALOG.length, 11);
 assert.equal(CAT_CATALOG.some((cat) => cat.displayName === UNKNOWN_CAT.displayName), false);
-assert.deepEqual(REWARD_CAT_IDS, ["white", "calico", "tuxedo", "rainbow", "sunglasses"]);
+assert.deepEqual(REWARD_CAT_IDS, expectedRewardIds);
 assert.equal(REWARD_CAT_CATALOG.includes(PLACEHOLDER_CAT), false);
 assert.equal(REWARD_CAT_IDS.includes(PLACEHOLDER_CAT.id), false);
 assert.deepEqual(
-  [0, 0.2, 0.4, 0.6, 0.8].map(selectRandomCatId),
-  ["white", "calico", "tuxedo", "rainbow", "sunglasses"],
+  expectedRewardIds.map((_, index) => selectRandomCatId(index / expectedRewardIds.length)),
+  expectedRewardIds,
 );
 const repeatedRewards = Array.from(
-  { length: 1_000 },
-  (_, index) => selectRandomRewardCatId(() => (index % 5) / 5),
+  { length: 10_000 },
+  (_, index) => selectRandomRewardCatId(() => (index % expectedRewardIds.length) / expectedRewardIds.length),
 );
 assert.equal(repeatedRewards.every((catId) => REWARD_CAT_IDS.includes(catId)), true);
 assert.equal(repeatedRewards.includes(PLACEHOLDER_CAT.id), false);
-assert.ok(new Set(repeatedRewards).size < repeatedRewards.length);
+assert.equal(repeatedRewards.some((catId) => catId === undefined || catId === null), false);
+assert.equal(new Set(repeatedRewards).size, 11);
 assert.equal(selectRandomCatId(0), selectRandomCatId(0));
-console.log("PASS reward catalog, placeholder exclusion, equal buckets, and stable selection input");
+console.log("PASS 11-cat reward catalog, 10,000 picker draws, placeholder exclusion, equal buckets, and stable selection input");
+
+for (const cat of REWARD_CAT_CATALOG) {
+  const asset = await readFile(new URL(`../public${cat.imagePath}`, import.meta.url));
+  assert.equal(asset.subarray(1, 4).toString("ascii"), "PNG");
+}
+console.log("PASS all 11 reward assets are committed PNG files");
 
 assert.equal(LEGACY_MOOD_RECORD_FALLBACK_CAT_ID, "white");
 assert.deepEqual(getMoodRecordDisplayCat(null), REWARD_CAT_CATALOG[0]);
@@ -56,7 +68,7 @@ assert.equal(getMoodRecordDisplayCat(PLACEHOLDER_CAT.id).id, "white");
 console.log("PASS legacy record display fallback uses white without changing reward identity");
 
 const emptyCollection = deriveCatCollection([]);
-assert.equal(emptyCollection.length, 5);
+assert.equal(emptyCollection.length, 11);
 assert.equal(emptyCollection.every((cat) => !cat.acquired), true);
 assert.equal(emptyCollection.every((cat) => cat.displayName === "???"), true);
 assert.equal(emptyCollection.every((cat) => cat.imagePath === UNKNOWN_CAT.imagePath), true);
@@ -87,13 +99,16 @@ const multiCollection = deriveCatCollection([
   { catId: "calico" },
 ]);
 assert.deepEqual(
-  multiCollection.map((cat) => cat.catalogId),
-  ["calico", "sunglasses", "white", "tuxedo", "rainbow"],
+  multiCollection.filter((cat) => cat.acquired).map((cat) => cat.catalogId),
+  ["calico", "sunglasses"],
 );
+
+const newCatCollection = deriveCatCollection([{ catId: "winter" }, { catId: "nerd" }]);
 assert.deepEqual(
-  multiCollection.map((cat) => cat.acquired),
-  [true, true, false, false, false],
+  newCatCollection.filter((cat) => cat.acquired).map((cat) => cat.catalogId),
+  ["winter", "nerd"],
 );
+assert.equal(newCatCollection.find((cat) => cat.catalogId === "party")?.imagePath, UNKNOWN_CAT.imagePath);
 
 const afterDeleteCollection = deriveCatCollection([
   { catId: "calico" },
@@ -106,6 +121,20 @@ const lockedFirstCollection = deriveCatCollection([
 assert.equal(lockedFirstCollection[0]?.acquired, false);
 assert.equal(lockedFirstCollection.at(-1)?.catalogId, "white");
 console.log("PASS cat collection zero, one, duplicate, multiple, legacy, and deletion-derived states");
+
+assert.equal(
+  normalizeClinicPhraseForDisplay("약효가 오후에 줄어드는 느낌이 있고,\n예민함이 함께 나타나요."),
+  "약효가 오후에 줄어드는 느낌이 있고, 예민함이 함께 나타나요.",
+);
+assert.equal(
+  normalizeClinicPhraseForDisplay("  “오전에는\r\n집중이   어려웠어요.”  "),
+  "“오전에는 집중이 어려웠어요.”",
+);
+assert.equal(
+  normalizeClinicPhraseForDisplay("긴 한글 문장도 내부 의미와 마침표를 바꾸지 않고 화면 너비에 따라 자연스럽게 표시되어야 해요."),
+  "긴 한글 문장도 내부 의미와 마침표를 바꾸지 않고 화면 너비에 따라 자연스럽게 표시되어야 해요.",
+);
+console.log("PASS clinic phrase display normalization removes forced newlines only");
 
 const answers = [
   { selected: ["weak"], customText: "", timingsByOption: { weak: ["점심", "저녁"] } },
@@ -211,10 +240,19 @@ const homeSource = await readFile(new URL("../components/home-screen.tsx", impor
 const revealSource = await readFile(new URL("../components/mood-summary-loading.tsx", import.meta.url), "utf8");
 const reportSource = await readFile(new URL("../components/mood-monthly-report.tsx", import.meta.url), "utf8");
 const sheetMotionSource = await readFile(new URL("../components/use-mood-bottom-sheet.ts", import.meta.url), "utf8");
+const catImageSource = await readFile(new URL("../components/cat-reward-image.tsx", import.meta.url), "utf8");
+const providerSource = await readFile(new URL("../lib/openai-mood-provider.ts", import.meta.url), "utf8");
+const analysisSource = await readFile(new URL("../lib/mood-analysis.ts", import.meta.url), "utf8");
+const clinicPhraseSource = await readFile(new URL("../lib/clinic-phrase.ts", import.meta.url), "utf8");
+const timingCheckSelected = await readFile(new URL("../public/icons/timing-check-selected.svg", import.meta.url), "utf8");
+const timingCheckUnselected = await readFile(new URL("../public/icons/timing-check-unselected.svg", import.meta.url), "utf8");
 
 assert.match(flowSource, /type="checkbox"/);
 assert.match(flowSource, /대화에 집중이 안되고 다른 생각을 했어요/);
-assert.match(flowSource, /집중하려 해도 이해가 잘 되지 않았어요/);
+assert.match(flowSource, /다른 사람의 이야기를 이해하기 어려웠어요/);
+assert.match(flowSource, /혼자있고 싶었어요/);
+assert.match(flowSource, /conversation-understanding/);
+assert.match(flowSource, /social-withdrawal/);
 assert.match(flowSource, /가장 가까운 것에 선택해주세요\./);
 assert.doesNotMatch(flowSource, /name=\{step === 2 \? "relationship"/);
 assert.match(flowSource, /item\.selected\.filter\(\(value\) => value !== "none"\)/);
@@ -244,6 +282,11 @@ assert.match(cssSource, /\.mood-check-card \{ margin-top: 0;/u);
 assert.match(flowSource, /analysisStatus: "completed"/);
 assert.doesNotMatch(flowSource, /experiment_variant|experiment_id|experiment_exposed/u);
 assert.match(homeSource, /getMoodPresentation\(record\.mood\)\.label/);
+assert.match(resultSource, /normalizeClinicPhraseForDisplay\(result\.clinicPhrase\)/);
+assert.match(providerSource, /줄바꿈 없는 단일 문단/u);
+assert.match(cssSource, /\.mood-clinic-card p \{[^}]*white-space: normal;[^}]*overflow-wrap: break-word;/u);
+assert.doesNotMatch(cssSource, /\.mood-clinic-card p \{[^}]*text-wrap: pretty;/u);
+assert.match(clinicPhraseSource, /replace\(\/\\s\+\/gu, " "\)\.trim\(\)/u);
 console.log("PASS Figma-fixed result copy/layout hooks and non-production preview routing");
 
 assert.doesNotMatch(homeSource, /record\.analysisResult\?\.todayEmotion/);
@@ -251,6 +294,10 @@ assert.match(homeSource, /record\.analysisResult\?\.clinicPhrase/);
 assert.match(homeSource, /getMoodPresentation\(record\.mood\)\.label/);
 assert.match(homeSource, /getMoodRecordDisplayCat\(moodRecord\.catId\)/);
 assert.match(homeSource, /const moodCatId = moodCat\.id/);
+assert.match(homeSource, /normalizeClinicPhraseForDisplay\(record\.analysisResult\?\.clinicPhrase\.text \?\? ""\)/);
+assert.match(catImageSource, /cat_asset_load_failed/);
+assert.match(catImageSource, /UNKNOWN_CAT\.imagePath/);
+assert.match(catImageSource, /cat-reward-image-fallback/);
 assert.match(homeSource, /home-mood-placeholder-cat[^>]*UNKNOWN_CAT\.imagePath/u);
 assert.match(homeSource, /home-mood-placeholder-cat[^>]*width=\{160\}[^>]*height=\{160\}/u);
 assert.match(cssSource, /\.home-mood-placeholder-cat \{[^}]*width: 160px;[^}]*height: 160px;/u);
@@ -258,6 +305,10 @@ assert.match(revealSource, /MOOD_CAT_REVEAL_DURATION_MS = 2000/);
 assert.match(revealSource, /두근 두근/);
 assert.match(revealSource, /어떤 고양이가 나올까요\?/);
 assert.match(revealSource, /UNKNOWN_CAT\.imagePath/);
+assert.match(revealSource, /rewardCat\.imagePath/);
+assert.match(revealSource, /loading="eager"/);
+assert.match(revealSource, /fetchPriority="high"/);
+assert.match(flowSource, /catId=\{catId\}/);
 assert.doesNotMatch(revealSource, /기록중이에요|작성중이에요|분석 중이에요|잠시만 기다려주세요/u);
 assert.match(sheetMotionSource, /MOOD_BOTTOM_SHEET_DURATION_MS = 280/);
 assert.match(reportSource, /useMoodBottomSheet\(\)/);
@@ -350,6 +401,30 @@ assert.match(historySource, /cat-\$\{cat\.id\}/);
 assert.doesNotMatch(historySource, /trackMoodCatRewardRevealed/);
 assert.match(collectionSource, /deriveCatCollection\(records, showLockedFirst \? "locked-first" : "acquired-first"\)/);
 assert.match(recordCatSource, /LEGACY_MOOD_RECORD_FALLBACK_CAT_ID: CatId = "white"/);
+assert.match(flowSource, /CURRENT_EMOTION_OPTIONS/);
+for (const option of ["불안", "예민", "우울", "무기력", "과몰입", "충동성"]) {
+  assert.match(flowSource, new RegExp(`label: "${option}"`, "u"));
+}
+for (const removedOption of ["수면 문제", "식욕 감소", "두근 거림", "두통"]) {
+  assert.doesNotMatch(flowSource, new RegExp(`label: "${removedOption}"`, "u"));
+  assert.match(analysisSource, new RegExp(removedOption, "u"));
+}
+assert.match(flowSource, /selected: answer\.selected\.filter\(\(id\) => CURRENT_EMOTION_OPTION_IDS\.has\(id\)\)/u);
+assert.match(cssSource, /\.mood-question-options\.two-column \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*column-gap: 16px;[^}]*row-gap: 16px;/u);
+assert.match(cssSource, /\.mood-question-options\.two-column \.mood-question-option\.custom \{ grid-column: 1 \/ -1; \}/u);
+assert.match(cssSource, /\.mood-records-screen \{[^}]*padding-top: calc\(56px \+ env\(safe-area-inset-top\)\);/u);
+assert.match(cssSource, /\.mood-records-header \{[^}]*position: fixed;[^}]*top: 0;[^}]*width: min\(100%, 430px\);/u);
+assert.doesNotMatch(cssSource, /\.mood-record-tabs \{[^}]*position: sticky;/u);
+assert.match(historySource, /return \(\s*<>\s*<header className="mood-records-header">[\s\S]*?<\/header>\s*<MobileShell className="mood-records-screen">/u);
+assert.match(cssSource, /\.mood-question-option:has\(\.mood-question-option-toggle:active\)/u);
+assert.match(cssSource, /\.home-card:has\(\.home-card-title:active\)/u);
+assert.match(cssSource, /\.mood-record-detail-screen button:active:not\(:disabled\)/u);
+assert.match(cssSource, /transition: transform 100ms ease-out;/u);
+assert.match(cssSource, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.mood-question-screen \.primary-button:active:not\(:disabled\)[\s\S]*transform: none;/u);
+assert.match(flowSource, /\/icons\/timing-check-selected\.svg/);
+assert.match(flowSource, /\/icons\/timing-check-unselected\.svg/);
+assert.match(timingCheckSelected, /stroke="#43A047"/u);
+assert.match(timingCheckUnselected, /stroke="#83868E"/u);
 assert.match(collectionSource, /setShowLockedFirst\(\(current\) => !current\)/);
 assert.match(collectionSource, /useState\(false\)/);
 assert.match(collectionSource, /showLockedFirst \? "미보유순" : "보유순"/);

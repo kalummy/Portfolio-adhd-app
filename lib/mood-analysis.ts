@@ -62,7 +62,7 @@ const STEP_LABELS: Record<StepOneKind, Record<string, string>> = {
   concentration: { concentration_good: "집중이 잘 되었어요", concentration_similar: "평소와 비슷했어요", concentration_difficult: "집중하기 어려웠어요", concentration_unstable: "집중이 자주 흐트러졌어요", "medication-focus-good": "집중이 잘 됐어요", similar: "평소와 비슷해요", "work-focus-difficulty": "업무 또는 과제 집중이 어려웠어요", "task-completion-difficulty": "해야할 일을 끝내기가 어려웠어요" },
 };
 const EMOTION_LABELS: Record<string, string> = { anxious: "불안", irritable: "예민", depressed: "우울", lethargic: "무기력", hyperfocus: "과몰입", impulsive: "충동성", sleep: "수면 문제", appetite: "식욕 변화", "appetite-decrease": "식욕 감소", palpitation: "두근 거림", headache: "두통" };
-const RELATIONSHIP_LABELS: Record<string, string> = { task: "업무, 과제 집중이 어려웠어요", conversation: "사람들과의 대화에 집중이 안되고 힘들었어요", unfinished: "할일을 모두 끝내지 못했어요", "conversation-flow": "대화에 집중이 안되고 다른 생각을 했어요", "conversation-understanding": "집중하려 해도 이해가 잘 되지 않았어요", "social-withdrawal": "요즘은 혼자있는게 좋았어요", none: "특별한 문제는 없었어요" };
+const RELATIONSHIP_LABELS: Record<string, string> = { task: "업무, 과제 집중이 어려웠어요", conversation: "사람들과의 대화에 집중이 안되고 힘들었어요", unfinished: "할일을 모두 끝내지 못했어요", "conversation-flow": "대화에 집중이 안되고 다른 생각을 했어요", "conversation-understanding": "다른 사람의 이야기를 이해하기 어려웠어요", "social-withdrawal": "혼자있고 싶었어요", none: "특별한 문제는 없었어요" };
 
 function clean(value: string) { return value.replace(/\s+/gu, " ").trim(); }
 

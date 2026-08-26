@@ -4328,6 +4328,14 @@ html[data-addi-splash="skip"] .splash-screen {
   object-fit: fill;
 }
 
+.recorded-mood-cat-frame.mood-result-cat-nerd img {
+  top: -8.12%;
+  left: -8.21%;
+  width: 116.43%;
+  height: 116.43%;
+  object-fit: fill;
+}
+
 .recorded-mood-item strong {
   width: 100%;
   min-width: 0;
@@ -4387,6 +4395,8 @@ html[data-addi-splash="skip"] .splash-screen {
   line-height: 24px;
   font-weight: 400;
   letter-spacing: -0.4px;
+  white-space: normal;
+  overflow-wrap: break-word;
   word-break: break-word;
 }
 
@@ -4491,9 +4501,9 @@ html[data-addi-splash="skip"] .splash-screen {
 .mood-timing-options { display: grid; gap: 16px; }
 .mood-timing-options p { margin: 0; color: var(--color-font-base-04); font-size: 14px; line-height: 20px; font-weight: 400; }
 .mood-timing-options button { display: flex; width: 100%; height: 52px; padding: 16px; align-items: center; justify-content: space-between; border: 1px solid transparent; border-radius: 12px; background: var(--color-bg-base-04); font: inherit; cursor: pointer; }
-.mood-timing-options button span:last-child { color: var(--color-font-base-06); font-size: 18px; }
+.mood-timing-check { display: grid; width: 20px; height: 20px; flex: 0 0 20px; place-items: center; }
+.mood-timing-check img { display: block; width: 15px; height: 11.6667px; }
 .mood-timing-options button.selected { border-color: var(--color-brand-primary); }
-.mood-timing-options button.selected span:last-child { color: var(--color-font-semantic-success); }
 .mood-question-custom-input { height: 52px; }
 .mood-question-screen .bottom-actions,
 .mood-result-screen .bottom-actions { border-top: 0; backdrop-filter: blur(4px); background: rgba(255, 255, 255, 0.9); }
@@ -4533,9 +4543,20 @@ html[data-addi-splash="skip"] .splash-screen {
 }
 
 .mood-summary-animation-frame {
+  position: relative;
   width: 238px;
   height: 238px;
   overflow: hidden;
+}
+
+.mood-summary-reward-preload {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 160px;
+  height: 160px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .mood-summary-reveal-cat {
@@ -4570,6 +4591,7 @@ html[data-addi-splash="skip"] .splash-screen {
 .mood-result-cat-frame img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; max-width: none; object-fit: contain; }
 .mood-result-cat-white img { top: -21.45%; left: -35.83%; width: 171.67%; height: 143.16%; object-fit: fill; }
 .mood-result-cat-calico img { top: -14.17%; left: -16.45%; width: 132.9%; height: 132.9%; object-fit: fill; }
+.mood-result-cat-nerd img { top: -8.12%; left: -8.21%; width: 116.43%; height: 116.43%; object-fit: fill; }
 .mood-check-card, .mood-clinic-card { padding: 20px; border-radius: 12px; }
 .mood-check-card { margin-top: 0; border: 1px solid var(--color-border-base-03); background: var(--color-bg-base-03); }
 .mood-clinic-card { margin-top: 16px; background: #f0f8fe; }
@@ -4579,7 +4601,7 @@ html[data-addi-splash="skip"] .splash-screen {
 .mood-check-card li { display: flex; gap: 8px; padding: 0 4px; align-items: flex-start; color: var(--color-font-base-03); font-size: 15px; line-height: 22px; letter-spacing: -0.375px; }
 .mood-check-card li > span { width: 6px; height: 6px; margin-top: 7px; flex: 0 0 6px; border-radius: 50%; background: var(--color-border-base-04); }
 .mood-check-card li p { margin: 0; }
-.mood-clinic-card p { margin: 16px 0 0; color: var(--color-font-base-03); font-size: 16px; line-height: 24px; font-weight: 500; letter-spacing: -0.4px; text-wrap: pretty; }
+.mood-clinic-card p { margin: 16px 0 0; color: var(--color-font-base-03); font-size: 16px; line-height: 24px; font-weight: 500; letter-spacing: -0.4px; white-space: normal; overflow-wrap: break-word; }
 .mood-history-header { justify-content: flex-start; }
 .mood-history-header .icon-button:last-child { margin-left: auto; }
 .mood-history-select > img { margin-left: auto; }
@@ -4678,6 +4700,10 @@ html[data-addi-splash="skip"] .splash-screen {
   background: var(--color-bg-base-01);
 }
 
+.mood-records-screen {
+  padding-top: calc(56px + env(safe-area-inset-top));
+}
+
 .mood-records-header,
 .mood-record-detail-header {
   position: relative;
@@ -4699,6 +4725,14 @@ html[data-addi-splash="skip"] .splash-screen {
 
 .mood-records-header .icon-button {
   margin-left: auto;
+}
+
+.mood-records-header {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  width: min(100%, 430px);
+  transform: translateX(-50%);
 }
 
 .mood-record-tabs {
@@ -5152,6 +5186,15 @@ html[data-addi-splash="skip"] .splash-screen {
   object-fit: fill;
 }
 
+.mood-cat-collection-image.cat-nerd img {
+  top: -8.12% !important;
+  left: -8.21% !important;
+  width: 116.43% !important;
+  height: 116.43% !important;
+  max-width: none !important;
+  object-fit: fill;
+}
+
 .mood-cat-collection-grid strong {
   width: 100%;
   overflow: hidden;
@@ -5223,6 +5266,76 @@ html[data-addi-splash="skip"] .splash-screen {
   outline-offset: -3px;
 }
 
+/* Scoped pressed feedback for the Home and Mood surfaces changed in this PR. */
+.appointment-row,
+.home-card,
+.mood-question-option,
+.mood-timing-options button,
+.mood-question-screen .icon-button,
+.mood-result-screen button:not(.primary-button),
+.mood-records-header .icon-button,
+.mood-records-screen button,
+.mood-records-screen a,
+.mood-record-detail-screen button,
+.mood-record-detail-screen a {
+  transition: transform 100ms ease-out;
+}
+
+.appointment-row:active,
+.home-card:has(.home-card-title:active),
+.home-card:has(.inline-add-button:active),
+.home-card:has(.mood-record-link:active),
+.mood-question-option:has(.mood-question-option-toggle:active),
+.mood-timing-options button:active,
+.mood-question-screen .icon-button:active,
+.mood-result-screen button:not(.primary-button):active,
+.mood-records-header .icon-button:active,
+.mood-records-screen button:active:not(:disabled),
+.mood-records-screen a:active,
+.mood-record-detail-screen button:active:not(:disabled),
+.mood-record-detail-screen a:active {
+  transform: scale(0.98);
+}
+
+.mood-question-screen .primary-button,
+.mood-result-screen .primary-button {
+  transition-timing-function: ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .appointment-row,
+  .home-card,
+  .mood-question-option,
+  .mood-timing-options button,
+  .mood-question-screen .icon-button,
+  .mood-question-screen .primary-button,
+  .mood-result-screen button,
+  .mood-records-header .icon-button,
+  .mood-records-screen button,
+  .mood-records-screen a,
+  .mood-record-detail-screen button,
+  .mood-record-detail-screen a {
+    transition: none;
+  }
+
+  .appointment-row:active,
+  .home-card:has(.home-card-title:active),
+  .home-card:has(.inline-add-button:active),
+  .home-card:has(.mood-record-link:active),
+  .mood-question-option:has(.mood-question-option-toggle:active),
+  .mood-timing-options button:active,
+  .mood-question-screen .icon-button:active,
+  .mood-question-screen .primary-button:active:not(:disabled),
+  .mood-result-screen button:active:not(:disabled),
+  .mood-records-header .icon-button:active,
+  .mood-records-screen button:active:not(:disabled),
+  .mood-records-screen a:active,
+  .mood-record-detail-screen button:active:not(:disabled),
+  .mood-record-detail-screen a:active {
+    transform: none;
+  }
+}
+
 .mood-record-list-cat,
 .mood-record-detail-cat,
 .mood-record-empty-cat {
@@ -5260,6 +5373,16 @@ html[data-addi-splash="skip"] .splash-screen {
   left: -16.45% !important;
   width: 132.9% !important;
   height: 132.9% !important;
+  max-width: none !important;
+  object-fit: fill;
+}
+
+.mood-record-list-cat.cat-nerd img,
+.mood-record-detail-cat.cat-nerd img {
+  top: -8.12% !important;
+  left: -8.21% !important;
+  width: 116.43% !important;
+  height: 116.43% !important;
   max-width: none !important;
   object-fit: fill;
 }
@@ -5496,6 +5619,8 @@ html[data-addi-splash="skip"] .splash-screen {
   line-height: 24px;
   font-weight: 500;
   letter-spacing: -0.4px;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .mood-record-detail-footer {
@@ -5509,6 +5634,14 @@ html[data-addi-splash="skip"] .splash-screen {
   transform: translateX(-50%);
   backdrop-filter: blur(4px);
   background: rgba(255, 255, 255, 0.9);
+}
+
+img.cat-reward-image-fallback.cat-reward-image-fallback {
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  object-fit: contain !important;
 }
 
 .mood-record-detail-footer button {

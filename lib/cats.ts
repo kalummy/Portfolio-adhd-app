@@ -4,6 +4,12 @@ export const REWARD_CAT_CATALOG = [
   { id: "tuxedo", displayName: "턱시도", imagePath: "/cats/tuxedo.png" },
   { id: "rainbow", displayName: "무지개", imagePath: "/cats/rainbow.png" },
   { id: "sunglasses", displayName: "썬구리", imagePath: "/cats/sunglasses.png" },
+  { id: "winter", displayName: "춥냥이", imagePath: "/cats/winter.png" },
+  { id: "party", displayName: "꼬깔이", imagePath: "/cats/party.png" },
+  { id: "whats-up", displayName: "왓썹이", imagePath: "/cats/whats-up.png" },
+  { id: "tube", displayName: "튜브", imagePath: "/cats/tube.png" },
+  { id: "graduation", displayName: "학사모", imagePath: "/cats/graduation.png" },
+  { id: "nerd", displayName: "범생이", imagePath: "/cats/nerd.png" },
 ] as const;
 
 export const REWARD_CAT_IDS = REWARD_CAT_CATALOG.map((cat) => cat.id);
