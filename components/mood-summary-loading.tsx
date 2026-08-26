@@ -3,17 +3,20 @@
 import Image from "next/image";
 import { useEffect, useRef } from "react";
 import { MobileShell } from "@/components/mobile-shell";
-import { UNKNOWN_CAT } from "@/lib/cats";
+import { getCat, UNKNOWN_CAT, type CatId } from "@/lib/cats";
 
 type MoodSummaryLoadingProps = {
+  catId?: CatId;
   onAnimationComplete: () => void;
 };
 
 export const MOOD_CAT_REVEAL_DURATION_MS = 2000;
 
 export function MoodSummaryLoading({
+  catId,
   onAnimationComplete,
 }: MoodSummaryLoadingProps) {
+  const rewardCat = catId ? getCat(catId) : undefined;
   const completedRef = useRef(false);
   const onAnimationCompleteRef = useRef(onAnimationComplete);
   onAnimationCompleteRef.current = onAnimationComplete;
@@ -43,6 +46,17 @@ export function MoodSummaryLoading({
             height={238}
             priority
           />
+          {rewardCat ? (
+            <Image
+              className="mood-summary-reward-preload"
+              src={rewardCat.imagePath}
+              alt=""
+              width={160}
+              height={160}
+              loading="eager"
+              fetchPriority="high"
+            />
+          ) : null}
         </div>
       </div>
     </MobileShell>

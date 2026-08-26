@@ -242,10 +242,17 @@ const reportSource = await readFile(new URL("../components/mood-monthly-report.t
 const sheetMotionSource = await readFile(new URL("../components/use-mood-bottom-sheet.ts", import.meta.url), "utf8");
 const catImageSource = await readFile(new URL("../components/cat-reward-image.tsx", import.meta.url), "utf8");
 const providerSource = await readFile(new URL("../lib/openai-mood-provider.ts", import.meta.url), "utf8");
+const analysisSource = await readFile(new URL("../lib/mood-analysis.ts", import.meta.url), "utf8");
+const clinicPhraseSource = await readFile(new URL("../lib/clinic-phrase.ts", import.meta.url), "utf8");
+const timingCheckSelected = await readFile(new URL("../public/icons/timing-check-selected.svg", import.meta.url), "utf8");
+const timingCheckUnselected = await readFile(new URL("../public/icons/timing-check-unselected.svg", import.meta.url), "utf8");
 
 assert.match(flowSource, /type="checkbox"/);
 assert.match(flowSource, /대화에 집중이 안되고 다른 생각을 했어요/);
-assert.match(flowSource, /집중하려 해도 이해가 잘 되지 않았어요/);
+assert.match(flowSource, /다른 사람의 이야기를 이해하기 어려웠어요/);
+assert.match(flowSource, /혼자있고 싶었어요/);
+assert.match(flowSource, /conversation-understanding/);
+assert.match(flowSource, /social-withdrawal/);
 assert.match(flowSource, /가장 가까운 것에 선택해주세요\./);
 assert.doesNotMatch(flowSource, /name=\{step === 2 \? "relationship"/);
 assert.match(flowSource, /item\.selected\.filter\(\(value\) => value !== "none"\)/);
@@ -278,6 +285,8 @@ assert.match(homeSource, /getMoodPresentation\(record\.mood\)\.label/);
 assert.match(resultSource, /normalizeClinicPhraseForDisplay\(result\.clinicPhrase\)/);
 assert.match(providerSource, /줄바꿈 없는 단일 문단/u);
 assert.match(cssSource, /\.mood-clinic-card p \{[^}]*white-space: normal;[^}]*overflow-wrap: break-word;/u);
+assert.doesNotMatch(cssSource, /\.mood-clinic-card p \{[^}]*text-wrap: pretty;/u);
+assert.match(clinicPhraseSource, /replace\(\/\\s\+\/gu, " "\)\.trim\(\)/u);
 console.log("PASS Figma-fixed result copy/layout hooks and non-production preview routing");
 
 assert.doesNotMatch(homeSource, /record\.analysisResult\?\.todayEmotion/);
@@ -296,6 +305,10 @@ assert.match(revealSource, /MOOD_CAT_REVEAL_DURATION_MS = 2000/);
 assert.match(revealSource, /두근 두근/);
 assert.match(revealSource, /어떤 고양이가 나올까요\?/);
 assert.match(revealSource, /UNKNOWN_CAT\.imagePath/);
+assert.match(revealSource, /rewardCat\.imagePath/);
+assert.match(revealSource, /loading="eager"/);
+assert.match(revealSource, /fetchPriority="high"/);
+assert.match(flowSource, /catId=\{catId\}/);
 assert.doesNotMatch(revealSource, /기록중이에요|작성중이에요|분석 중이에요|잠시만 기다려주세요/u);
 assert.match(sheetMotionSource, /MOOD_BOTTOM_SHEET_DURATION_MS = 280/);
 assert.match(reportSource, /useMoodBottomSheet\(\)/);
@@ -388,6 +401,23 @@ assert.match(historySource, /cat-\$\{cat\.id\}/);
 assert.doesNotMatch(historySource, /trackMoodCatRewardRevealed/);
 assert.match(collectionSource, /deriveCatCollection\(records, showLockedFirst \? "locked-first" : "acquired-first"\)/);
 assert.match(recordCatSource, /LEGACY_MOOD_RECORD_FALLBACK_CAT_ID: CatId = "white"/);
+assert.match(flowSource, /CURRENT_EMOTION_OPTIONS/);
+for (const option of ["불안", "예민", "우울", "무기력", "과몰입", "충동성"]) {
+  assert.match(flowSource, new RegExp(`label: "${option}"`, "u"));
+}
+for (const removedOption of ["수면 문제", "식욕 감소", "두근 거림", "두통"]) {
+  assert.doesNotMatch(flowSource, new RegExp(`label: "${removedOption}"`, "u"));
+  assert.match(analysisSource, new RegExp(removedOption, "u"));
+}
+assert.match(flowSource, /selected: answer\.selected\.filter\(\(id\) => CURRENT_EMOTION_OPTION_IDS\.has\(id\)\)/u);
+assert.match(cssSource, /\.mood-question-options\.two-column \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*column-gap: 16px;[^}]*row-gap: 16px;/u);
+assert.match(cssSource, /\.mood-question-options\.two-column \.mood-question-option\.custom \{ grid-column: 1 \/ -1; \}/u);
+assert.match(cssSource, /\.mood-records-header \{[^}]*position: sticky;[^}]*top: 0;/u);
+assert.doesNotMatch(cssSource, /\.mood-record-tabs \{[^}]*position: sticky;/u);
+assert.match(flowSource, /\/icons\/timing-check-selected\.svg/);
+assert.match(flowSource, /\/icons\/timing-check-unselected\.svg/);
+assert.match(timingCheckSelected, /stroke="#43A047"/u);
+assert.match(timingCheckUnselected, /stroke="#83868E"/u);
 assert.match(collectionSource, /setShowLockedFirst\(\(current\) => !current\)/);
 assert.match(collectionSource, /useState\(false\)/);
 assert.match(collectionSource, /showLockedFirst \? "미보유순" : "보유순"/);

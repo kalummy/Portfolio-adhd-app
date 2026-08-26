@@ -40,6 +40,18 @@ import {
 
 const TIMED_EFFECT_IDS = new Set(["work-focus-difficulty", "task-completion-difficulty"]);
 const TIMING_OPTIONS = ["아침", "점심", "저녁"];
+const CURRENT_EMOTION_OPTIONS = [
+  { id: "anxious", label: "불안" },
+  { id: "irritable", label: "예민" },
+  { id: "depressed", label: "우울" },
+  { id: "lethargic", label: "무기력" },
+  { id: "hyperfocus", label: "과몰입" },
+  { id: "impulsive", label: "충동성" },
+] as const;
+const CURRENT_EMOTION_OPTION_IDS = new Set<string>([
+  ...CURRENT_EMOTION_OPTIONS.map((option) => option.id),
+  CUSTOM_MOOD_OPTION_ID,
+]);
 
 const MEDICATION_STEP = {
   title: "오늘 약 효과는 어땠나요?",
@@ -68,26 +80,15 @@ const COMMON_STEPS = [
     title: "오늘 감정 기복은 어땠나요?",
     subtitle: "전반적인 감정 상태를 모두 선택해주세요. (복수선택)",
     grid: true,
-    options: [
-      { id: "anxious", label: "불안" },
-      { id: "irritable", label: "예민" },
-      { id: "depressed", label: "우울" },
-      { id: "lethargic", label: "무기력" },
-      { id: "hyperfocus", label: "과몰입" },
-      { id: "impulsive", label: "충동성" },
-      { id: "sleep", label: "수면 문제" },
-      { id: "appetite-decrease", label: "식욕 감소" },
-      { id: "palpitation", label: "두근 거림" },
-      { id: "headache", label: "두통" },
-    ],
+    options: CURRENT_EMOTION_OPTIONS,
   },
   {
     title: "오늘 사람들과의 관계는 어땠나요?",
     subtitle: "되도록이면 가장 가까운 것에 선택해주면 좋아요.",
     options: [
       { id: "conversation-flow", label: "대화에 집중이 안되고 다른 생각을 했어요" },
-      { id: "conversation-understanding", label: "집중하려 해도 이해가 잘 되지 않았어요" },
-      { id: "social-withdrawal", label: "요즘은 혼자있는게 좋았어요" },
+      { id: "conversation-understanding", label: "다른 사람의 이야기를 이해하기 어려웠어요" },
+      { id: "social-withdrawal", label: "혼자있고 싶었어요" },
       { id: "none", label: "특별한 문제는 없었어요" },
     ],
   },
@@ -110,6 +111,13 @@ function emptyAnswers(): MoodAnswerDraft[] {
     customText: "",
     timingsByOption: {},
   }));
+}
+
+function normalizeRestoredAnswers(answers: MoodAnswerDraft[]) {
+  return answers.map((answer, index) => index === 1 ? {
+    ...answer,
+    selected: answer.selected.filter((id) => CURRENT_EMOTION_OPTION_IDS.has(id)),
+  } : answer);
 }
 
 export function MoodQuestionFlow({
@@ -174,6 +182,7 @@ export function MoodQuestionFlow({
       setIntakeMedicationIds(intakeIds);
       setStepOneKind(kind);
       if (draft) {
+        const restoredAnswers = normalizeRestoredAnswers(draft.answers);
         let restoredAnalysis: MoodAnalysisMetadata | undefined;
         if (draft.analysis && draft.recordedAt) {
           try {
@@ -181,7 +190,7 @@ export function MoodQuestionFlow({
               date: targetDateKey,
               recordedAt: draft.recordedAt,
               stepOneKind: kind,
-              answers: draft.answers,
+              answers: restoredAnswers,
               intakeMedicationIds: intakeIds,
             });
             restoredAnalysis = {
@@ -193,7 +202,7 @@ export function MoodQuestionFlow({
           }
         }
 
-        setAnswers(draft.answers);
+        setAnswers(restoredAnswers);
         setStep(draft.step);
         const restoredPhase = draft.phase === "result" && !restoredAnalysis
           ? "summarizing"
@@ -461,6 +470,7 @@ export function MoodQuestionFlow({
   if (phase === "summarizing") {
     return (
       <MoodSummaryLoading
+        catId={catId}
         onAnimationComplete={() => setLoadingDone(true)}
       />
     );
@@ -529,7 +539,16 @@ export function MoodQuestionFlow({
                       key={timing}
                     >
                       <span>{timing}</span>
-                      <span aria-hidden="true">✓</span>
+                      <span className="mood-timing-check" aria-hidden="true">
+                        <Image
+                          src={answer.timingsByOption?.[option.id]?.includes(timing)
+                            ? "/icons/timing-check-selected.svg"
+                            : "/icons/timing-check-unselected.svg"}
+                          alt=""
+                          width={15}
+                          height={12}
+                        />
+                      </span>
                     </button>
                   ))}
                 </div>
