@@ -16,6 +16,7 @@ import {
   formatMoodReportMonth,
   listMoodReportMonths,
 } from "@/lib/mood-report";
+import { normalizeClinicPhraseForDisplay } from "@/lib/clinic-phrase";
 import type { MoodRecord } from "@/lib/types";
 
 export function MoodMonthlyReport({ records }: { records: MoodRecord[] }) {
@@ -176,7 +177,7 @@ export function MoodMonthlyReport({ records }: { records: MoodRecord[] }) {
           <Image src="/icons/mood-summary-sparkle.svg" alt="" width={20} height={20} />
           병원에서 이렇게 이야기 해보세요
         </h2>
-        <p>“{report.clinicPhrase}”</p>
+        <p>“{normalizeClinicPhraseForDisplay(report.clinicPhrase)}”</p>
       </article>
 
       {monthSheet.mounted ? (
