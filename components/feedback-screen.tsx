@@ -19,6 +19,7 @@ export function FeedbackScreen() {
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitFailed, setSubmitFailed] = useState(false);
+  const [privateInteractionActive, setPrivateInteractionActive] = useState(false);
   const feedbackTextRef = useRef(feedbackText);
   const submittingRef = useRef(false);
   const allowNavigationRef = useRef(false);
@@ -143,7 +144,13 @@ export function FeedbackScreen() {
     <MobileShell className="feedback-screen">
       <header className="feedback-header">
         <strong>의견 보내기</strong>
-        <button type="button" onClick={handleClose} aria-label="의견 보내기 닫기">
+        <button
+          type="button"
+          onClick={handleClose}
+          aria-label="의견 보내기 닫기"
+          data-mp-replay-allow-interaction=""
+          data-mp-replay-public=""
+        >
           <Image src="/icons/close.svg" alt="" width={14} height={14} />
         </button>
       </header>
@@ -154,13 +161,17 @@ export function FeedbackScreen() {
       </section>
 
       <form className="feedback-form" onSubmit={handleSubmit}>
-        <label className="feedback-textarea-shell">
+        <label className="feedback-textarea-shell" data-mp-replay-block="">
           <span className="sr-only">의견 내용</span>
           <textarea
             className="feedback-private-input"
+            data-mp-replay-block=""
+            data-mp-replay-pause={privateInteractionActive ? "" : undefined}
             value={feedbackText}
             maxLength={FEEDBACK_MAX_LENGTH}
             placeholder="작성한 의견은 서비스 개선을 위해 활용됩니다."
+            onFocus={() => setPrivateInteractionActive(true)}
+            onBlur={() => setPrivateInteractionActive(false)}
             onChange={(event) => {
               const nextFeedbackText = event.target.value;
               feedbackTextRef.current = nextFeedbackText;
@@ -187,6 +198,8 @@ export function FeedbackScreen() {
             type="submit"
             disabled={!normalizedFeedback || submitting}
             aria-busy={submitting}
+            data-mp-replay-allow-interaction=""
+            data-mp-replay-public=""
           >
             의견 보내기
           </PrimaryButton>
@@ -208,6 +221,7 @@ export function FeedbackScreen() {
             setShowExitDialog(false);
           }}
           onConfirm={() => leaveFeedback()}
+          replayPublicActions
         />
       ) : null}
     </MobileShell>

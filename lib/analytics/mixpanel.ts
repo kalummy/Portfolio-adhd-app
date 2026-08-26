@@ -13,6 +13,7 @@ import {
   ANALYTICS_REPLAY_BLOCK_SELECTOR,
   ANALYTICS_REPLAY_INTERACTION_BLOCK_EVENT,
   isReplayUrlPrivacySafe,
+  sanitizeReplayHeatmapEvent,
 } from "./replay-policy";
 import {
   buildAnalyticsPayload,
@@ -41,6 +42,7 @@ type AnalyticsState = {
   appOpenedTracked: boolean;
   initialized: boolean;
   replayInteractionGuardInstalled: boolean;
+  replayHeatmapClickAllowed: boolean;
   replayPaused: boolean;
   replayRequested: boolean;
 };
@@ -53,6 +55,7 @@ const analyticsState = analyticsGlobal.__addiAnalyticsState ??= {
   appOpenedTracked: false,
   initialized: false,
   replayInteractionGuardInstalled: false,
+  replayHeatmapClickAllowed: false,
   replayPaused: false,
   replayRequested: false,
 };
@@ -104,25 +107,13 @@ const URL_PROPERTY_BLACKLIST = [
   "initial_utm_marketing_tactic",
 ] as const;
 
-function stripHrefFromCapturedElement(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
-  const element = { ...(value as Record<string, unknown>) };
-  delete element["$attr-href"];
-  return element;
-}
-
 function sanitizeHeatmapEvent(
   payload: BeforeSendHookPayload,
-): BeforeSendHookPayload {
-  if (payload.event !== "$mp_click") return payload;
-
-  const properties = { ...payload.properties };
-  delete properties.$el_attr__href;
-  properties.$target = stripHrefFromCapturedElement(properties.$target);
-  if (Array.isArray(properties.$elements)) {
-    properties.$elements = properties.$elements.map(stripHrefFromCapturedElement);
-  }
-  return { ...payload, properties };
+): BeforeSendHookPayload | null {
+  return sanitizeReplayHeatmapEvent(
+    payload,
+    analyticsState.replayHeatmapClickAllowed,
+  );
 }
 
 function isBrowser() {
@@ -256,7 +247,15 @@ function shouldAllowReplayInteraction(target: EventTarget | null) {
 }
 
 function blockUnapprovedReplayInteraction(event: Event) {
-  if (!analyticsState.replayRequested || shouldAllowReplayInteraction(event.target)) return;
+  if (!analyticsState.replayRequested) return;
+  const interactionAllowed = shouldAllowReplayInteraction(event.target);
+  if (event.type === "click") {
+    analyticsState.replayHeatmapClickAllowed = interactionAllowed;
+    window.queueMicrotask(() => {
+      analyticsState.replayHeatmapClickAllowed = false;
+    });
+  }
+  if (interactionAllowed) return;
   pauseAnalyticsReplay();
   window.dispatchEvent(new Event(ANALYTICS_REPLAY_INTERACTION_BLOCK_EVENT));
 }
@@ -267,10 +266,7 @@ export function installAnalyticsReplayInteractionGuard() {
 
   window.addEventListener("pointerdown", blockUnapprovedReplayInteraction, true);
   window.addEventListener("click", blockUnapprovedReplayInteraction, true);
-  window.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    blockUnapprovedReplayInteraction(event);
-  }, true);
+  window.addEventListener("keydown", blockUnapprovedReplayInteraction, true);
 }
 
 export function trackAnalyticsEvent<T extends AnalyticsEventName>(

@@ -14,6 +14,7 @@ import {
   isReplaySampleIncluded,
   isReplayUrlPrivacySafe,
   normalizeReplayRuntimeEnvironment,
+  sanitizeReplayHeatmapEvent,
   shouldCanonicalizeMoodReplayUrl,
   shouldStartReplay,
 } from "../lib/analytics/replay-policy.ts";
@@ -42,7 +43,7 @@ assert.equal(withdrawAnalyticsConsent(storage), true);
 assert.equal(readAnalyticsConsent(storage), "denied");
 console.log("PASS Replay consent defaults off and grant, deny, withdrawal persist safely");
 
-for (const pathname of ["/", "/moods/new", "/moods"]) {
+for (const pathname of ["/", "/moods/new", "/moods", "/feedback"]) {
   assert.equal(isReplayRouteAllowed(pathname), true);
   assert.equal(isReplayUrlPrivacySafe({ pathname, search: "", hash: "" }), true);
 }
@@ -66,6 +67,29 @@ for (const location of [
   { pathname: "/moods/new", search: "?date=2026-08-25", hash: "#private" },
 ]) assert.equal(shouldCanonicalizeMoodReplayUrl(location), false);
 console.log("PASS Replay exact-route allowlist and canonical URL-only policy");
+
+const privateCanary = "REPLAY_PRIVATE_CANARY_20260826";
+const syntheticPrivateClick = {
+  event: "$mp_click",
+  properties: {
+    $current_url: `https://preview.example/feedback?draft=${privateCanary}`,
+    current_url_search: `?draft=${privateCanary}`,
+    $el_attr__aria_label: privateCanary,
+    $el_attr__href: `/?draft=${privateCanary}`,
+    $el_text: privateCanary,
+    $target: {
+      "$attr-aria-label": privateCanary,
+      "$attr-href": `/?draft=${privateCanary}`,
+      "$classes": ["feedback-private-input"],
+    },
+    $elements: [{ "$attr-title": privateCanary, "$tag_name": "textarea" }],
+  },
+};
+assert.equal(sanitizeReplayHeatmapEvent(syntheticPrivateClick, false), null);
+const sanitizedPublicClick = sanitizeReplayHeatmapEvent(syntheticPrivateClick, true);
+assert.ok(sanitizedPublicClick);
+assert.equal(JSON.stringify(sanitizedPublicClick).includes(privateCanary), false);
+console.log("PASS unauthorized heatmap clicks drop and allowed controls strip text, URL, href, and aria attributes");
 
 assert.equal(normalizeReplayRuntimeEnvironment("production"), "production");
 assert.equal(normalizeReplayRuntimeEnvironment("preview"), "preview");
@@ -111,6 +135,7 @@ const sources = Object.fromEntries(await Promise.all([
   "../components/mood-history.tsx",
   "../components/mood-monthly-report.tsx",
   "../components/mood-cat-collection.tsx",
+  "../components/feedback-screen.tsx",
 ].map(async (relativePath) => [
   relativePath,
   await readFile(new URL(relativePath, import.meta.url), "utf8"),
@@ -132,8 +157,8 @@ assert.match(mixpanelSource, /record_network: false/);
 assert.match(mixpanelSource, /record_canvas: false/);
 assert.match(mixpanelSource, /current_url_search/);
 assert.match(mixpanelSource, /sanitizeHeatmapEvent/);
-assert.match(mixpanelSource, /delete properties\.\$el_attr__href/);
-assert.match(mixpanelSource, /delete element\["\$attr-href"\]/);
+assert.match(mixpanelSource, /analyticsState\.replayHeatmapClickAllowed/);
+assert.match(mixpanelSource, /window\.queueMicrotask/);
 assert.match(mixpanelSource, /data-mp-replay-public/);
 assert.match(mixpanelSource, /ANALYTICS_REPLAY_BLOCK_SELECTOR/);
 assert.match(mixpanelSource, /send_immediately: true/);
@@ -198,6 +223,14 @@ assert.match(reportSource, /mood-report-confirm[\s\S]{0,300}data-mp-replay-allow
 
 const collectionSource = sources["../components/mood-cat-collection.tsx"];
 assert.match(collectionSource, /mood-cat-collection-grid[^>]*data-mp-replay-block/);
+const feedbackSource = sources["../components/feedback-screen.tsx"];
+assert.match(feedbackSource, /feedback-textarea-shell[^>]*data-mp-replay-block/);
+assert.match(feedbackSource, /feedback-private-input[\s\S]{0,200}data-mp-replay-pause/);
+assert.match(feedbackSource, /onFocus=\{\(\) => setPrivateInteractionActive\(true\)\}/);
+assert.match(feedbackSource, /onBlur=\{\(\) => setPrivateInteractionActive\(false\)\}/);
+assert.match(feedbackSource, /aria-label="의견 보내기 닫기"[\s\S]{0,200}data-mp-replay-allow-interaction/);
+assert.match(feedbackSource, /type="submit"[\s\S]{0,300}data-mp-replay-allow-interaction/);
+assert.match(feedbackSource, /replayPublicActions/);
 console.log("PASS source-level loader, privacy defaults, route controller, block markers, and UX allowlist");
 
-console.log("replay privacy fixture cases: 6/6 groups passed");
+console.log("replay privacy fixture cases: 7/7 groups passed");

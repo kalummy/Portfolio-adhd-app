@@ -2,6 +2,7 @@ export const ANALYTICS_REPLAY_ALLOWED_PATHS = [
   "/",
   "/moods/new",
   "/moods",
+  "/feedback",
 ] as const;
 
 export const ANALYTICS_REPLAY_SAMPLE_STORAGE_KEY =
@@ -123,4 +124,40 @@ export function shouldStartReplay({
     && urlPrivacySafe
     && !surfacePaused
     && !interactionSuspended;
+}
+
+type ReplayHeatmapPayload = {
+  event: string;
+  properties: Record<string, unknown>;
+};
+
+function sanitizeCapturedElement(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => !key.startsWith("$attr-")),
+  );
+}
+
+export function sanitizeReplayHeatmapEvent<T extends ReplayHeatmapPayload>(
+  payload: T,
+  interactionAllowed: boolean,
+): T | null {
+  if (payload.event !== "$mp_click") return payload;
+  if (!interactionAllowed) return null;
+
+  const properties = { ...payload.properties };
+  for (const key of Object.keys(properties)) {
+    if (
+      key.startsWith("$el_attr__")
+      || key === "$el_text"
+      || key === "$current_url"
+      || key === "current_url_search"
+    ) delete properties[key];
+  }
+  properties.$target = sanitizeCapturedElement(properties.$target);
+  if (Array.isArray(properties.$elements)) {
+    properties.$elements = properties.$elements.map(sanitizeCapturedElement);
+  }
+  return { ...payload, properties };
 }

@@ -59,7 +59,10 @@ try {
   assert.doesNotMatch(screen, /analytics|mixpanel|console\./iu);
   assert.doesNotMatch(route, /console\.|feedbackText[^\n]*Response\.json/iu);
   assert.match(screen, /className="feedback-private-input"/u);
-  assert.match(mixpanel, /record_block_selector: "\.feedback-private-input"/u);
+  assert.match(screen, /data-mp-replay-block=""/u);
+  assert.match(screen, /data-mp-replay-pause=\{privateInteractionActive \? "" : undefined\}/u);
+  assert.match(screen, /replayPublicActions/u);
+  assert.match(mixpanel, /record_block_selector: `[^`]*\.feedback-private-input[^`]*`/u);
   assert.match(mixpanel, /record_sessions_percent: 0/u);
 
   console.log("PASS feedback validation, duplicate guard, privacy, and RLS fixture");
