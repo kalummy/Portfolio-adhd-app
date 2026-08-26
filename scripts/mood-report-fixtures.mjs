@@ -144,4 +144,15 @@ assert.equal(fuzzyReport.patterns.find(({ id }) => id === "irritability")?.count
 assert.equal(fuzzyReport.patterns.find(({ id }) => id === "sleepDifficulty")?.count, 0);
 console.log("PASS labels and custom text are not fuzzy-matched into canonical counts");
 
-console.log("Mood report fixtures passed (5 groups)");
+const latestReport = buildMoodMonthlyReport([
+  moodRecord({ id: "latest-1", date: "2026-12-01", medicationEffects: ["medication-focus-good", "work-focus-difficulty"], timings: { "work-focus-difficulty": ["점심"] }, moods: ["appetite-decrease"], relationships: ["conversation-flow"] }),
+  moodRecord({ id: "latest-2", date: "2026-12-02", medicationEffects: ["task-completion-difficulty"], timings: { "task-completion-difficulty": [] }, relationships: ["conversation-understanding"] }),
+], "2026-12");
+assert.equal(latestReport.effectiveMedicationDays, 1);
+assert.equal(latestReport.relationshipDifficultyDays, 2);
+assert.equal(latestReport.patterns.find(({ id }) => id === "concentrationDifficulty")?.count, 1);
+assert.equal(latestReport.patterns.find(({ id }) => id === "deadlineDifficulty")?.count, 1);
+assert.equal(latestReport.patterns.find(({ id }) => id === "afternoonMedicationDecline")?.count, 0);
+console.log("PASS latest work-focus, task-completion, social, and optional timing meanings remain separate");
+
+console.log("Mood report fixtures passed (6 groups)");

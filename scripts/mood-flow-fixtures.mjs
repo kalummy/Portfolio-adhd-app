@@ -6,7 +6,7 @@ import {
   readMoodDraft,
   writeMoodDraft,
 } from "../lib/mood-draft.ts";
-import { buildMoodDetails, determineMoodType } from "../lib/mood-summary.ts";
+import { buildMoodDetails, determineMoodType, getMoodPresentation } from "../lib/mood-summary.ts";
 
 const answer = (selected = [], customText = "", timingsByOption = {}) => ({
   selected,
@@ -84,14 +84,16 @@ assert.deepEqual(medicationDetails.medicationEffects, ["weak"]);
 assert.deepEqual(medicationDetails.concentrationStates, []);
 assert.deepEqual(medicationDetails.medicationEffectTimings.weak, ["점심"]);
 assert.equal(determineMoodType([answer(), answer(["irritable"]), answer()]), "irritable");
+assert.equal(getMoodPresentation("irritable").label, "예민해요");
 
 const concentrationDetails = buildMoodDetails([
-  answer(["concentration_difficult"]),
+  answer(["work-focus-difficulty"], "", { "work-focus-difficulty": ["아침", "점심"] }),
   answer(["lethargic"]),
   answer(["none"]),
 ], "concentration");
 assert.deepEqual(concentrationDetails.medicationEffects, []);
-assert.deepEqual(concentrationDetails.concentrationStates, ["concentration_difficult"]);
+assert.deepEqual(concentrationDetails.concentrationStates, ["work-focus-difficulty"]);
+assert.deepEqual(concentrationDetails.medicationEffectTimings, {});
 console.log("PASS medication and no-intake concentration branches persist compatible structured details");
 
 const flowSource = await readFile(new URL("../components/mood-question-flow.tsx", import.meta.url), "utf8");
@@ -100,6 +102,12 @@ assert.match(flowSource, /window\.history\.pushState/);
 assert.match(flowSource, /window\.history\.back\(\)/);
 assert.match(flowSource, /title="감정 기록을 중단할까요\?"/);
 assert.match(flowSource, /clearMoodDraft\(window\.sessionStorage, targetDateKey\)/);
+assert.match(flowSource, /대화에 집중이 안되고 다른 생각을 했어요/);
+assert.match(flowSource, /집중하려 해도 이해가 잘 되지 않았어요/);
+assert.match(flowSource, /언제부터 그렇게 느꼈나요\? \(선택\)/);
+assert.match(flowSource, /\["아침", "점심", "저녁"\]/);
+assert.match(flowSource, /Object\.entries\(item\.timingsByOption \?\? \{\}\)\.filter\(\(\[key\]\) => key !== id\)/);
+assert.doesNotMatch(flowSource, /stepOneKind === "medication_effect"\s*&& selected/u);
 assert.match(flowSource, /destination\.searchParams\.set\("moodToast", "saved"\)/);
 assert.match(flowSource, /await repository\.save/);
 assert.ok(

@@ -58,11 +58,11 @@ export function validateMoodAnalysisInput(value: unknown): MoodAnalysisInput {
 }
 
 const STEP_LABELS: Record<StepOneKind, Record<string, string>> = {
-  medication_effect: { effective: "약 효과를 잘 느꼈어요", similar: "평소와 비슷해요", weak: "효과가 약했어요", strong: "약이 너무 강하게 느껴졌어요" },
-  concentration: { concentration_good: "집중이 잘 되었어요", concentration_similar: "평소와 비슷했어요", concentration_difficult: "집중하기 어려웠어요", concentration_unstable: "집중이 자주 흐트러졌어요" },
+  medication_effect: { effective: "약 효과를 잘 느꼈어요", similar: "평소와 비슷해요", weak: "효과가 약했어요", strong: "약이 너무 강하게 느껴졌어요", "medication-focus-good": "집중이 잘 됐어요", "work-focus-difficulty": "업무 또는 과제 집중이 어려웠어요", "task-completion-difficulty": "해야할 일을 끝내기가 어려웠어요" },
+  concentration: { concentration_good: "집중이 잘 되었어요", concentration_similar: "평소와 비슷했어요", concentration_difficult: "집중하기 어려웠어요", concentration_unstable: "집중이 자주 흐트러졌어요", "medication-focus-good": "집중이 잘 됐어요", similar: "평소와 비슷해요", "work-focus-difficulty": "업무 또는 과제 집중이 어려웠어요", "task-completion-difficulty": "해야할 일을 끝내기가 어려웠어요" },
 };
-const EMOTION_LABELS: Record<string, string> = { anxious: "불안", irritable: "예민", depressed: "우울", lethargic: "무기력", hyperfocus: "과몰입", impulsive: "충동성", sleep: "수면 문제", appetite: "식욕 변화", palpitation: "두근 거림", headache: "두통" };
-const RELATIONSHIP_LABELS: Record<string, string> = { task: "업무, 과제 집중이 어려웠어요", conversation: "사람들과의 대화에 집중이 안되고 힘들었어요", unfinished: "할일을 모두 끝내지 못했어요", none: "특별한 문제는 없었어요" };
+const EMOTION_LABELS: Record<string, string> = { anxious: "불안", irritable: "예민", depressed: "우울", lethargic: "무기력", hyperfocus: "과몰입", impulsive: "충동성", sleep: "수면 문제", appetite: "식욕 변화", "appetite-decrease": "식욕 감소", palpitation: "두근 거림", headache: "두통" };
+const RELATIONSHIP_LABELS: Record<string, string> = { task: "업무, 과제 집중이 어려웠어요", conversation: "사람들과의 대화에 집중이 안되고 힘들었어요", unfinished: "할일을 모두 끝내지 못했어요", "conversation-flow": "대화에 집중이 안되고 다른 생각을 했어요", "conversation-understanding": "집중하려 해도 이해가 잘 되지 않았어요", "social-withdrawal": "요즘은 혼자있는게 좋았어요", none: "특별한 문제는 없었어요" };
 
 function clean(value: string) { return value.replace(/\s+/gu, " ").trim(); }
 
@@ -102,7 +102,7 @@ const FORBIDDEN_DISEASE_TOKENS = ["ADHD", "주의력결핍", "우울증", "불�
 const FORBIDDEN_MEDICATION_NAMES = ["콘서타", "메디키넷", "페니드", "스트라테라", "아토목세틴", "메틸페니데이트"];
 const CONCEPT_RULES: Array<{ tokens: string[]; supports: (evidence: MoodEvidence) => boolean }> = [
   { tokens: ["두통"], supports: (e) => e.canonicalId === "headache" || e.label.includes("두통") },
-  { tokens: ["식욕"], supports: (e) => e.canonicalId === "appetite" || e.label.includes("식욕") },
+  { tokens: ["식욕"], supports: (e) => e.canonicalId === "appetite" || e.canonicalId === "appetite-decrease" || e.label.includes("식욕") },
   { tokens: ["수면", "잠"], supports: (e) => e.canonicalId === "sleep" || /수면|잠/u.test(e.label) },
   { tokens: ["두근"], supports: (e) => e.canonicalId === "palpitation" || e.label.includes("두근") },
   { tokens: ["불안"], supports: (e) => e.canonicalId === "anxious" || e.label.includes("불안") },
@@ -111,11 +111,11 @@ const CONCEPT_RULES: Array<{ tokens: string[]; supports: (evidence: MoodEvidence
   { tokens: ["무기력"], supports: (e) => e.canonicalId === "lethargic" || e.label.includes("무기력") },
   { tokens: ["충동"], supports: (e) => e.canonicalId === "impulsive" || e.label.includes("충동") },
   { tokens: ["과몰입"], supports: (e) => e.canonicalId === "hyperfocus" || e.label.includes("과몰입") },
-  { tokens: ["집중"], supports: (e) => e.category === "concentration" || e.canonicalId === "task" || e.canonicalId === "conversation" || e.label.includes("집중") },
+  { tokens: ["집중"], supports: (e) => e.category === "concentration" || e.canonicalId === "task" || e.canonicalId === "conversation" || e.canonicalId === "work-focus-difficulty" || e.label.includes("집중") },
   { tokens: ["약효", "약 효과", "효과가", "약이"], supports: (e) => e.category === "medication_effect" || /약|효과/u.test(e.label) },
-  { tokens: ["대화"], supports: (e) => e.canonicalId === "conversation" || e.label.includes("대화") },
-  { tokens: ["업무", "과제"], supports: (e) => e.canonicalId === "task" || /업무|과제/u.test(e.label) },
-  { tokens: ["할 일", "할일", "마무리"], supports: (e) => e.canonicalId === "unfinished" || /할 ?일|마무리/u.test(e.label) },
+  { tokens: ["대화"], supports: (e) => e.canonicalId === "conversation" || e.canonicalId === "conversation-flow" || e.canonicalId === "conversation-understanding" || e.label.includes("대화") },
+  { tokens: ["업무", "과제"], supports: (e) => e.canonicalId === "task" || e.canonicalId === "work-focus-difficulty" || /업무|과제/u.test(e.label) },
+  { tokens: ["할 일", "할일", "마무리"], supports: (e) => e.canonicalId === "unfinished" || e.canonicalId === "task-completion-difficulty" || /할 ?일|마무리/u.test(e.label) },
 ];
 
 function validateClinicPhraseQuality(text: string) {
@@ -176,7 +176,7 @@ function previewClause(evidence: MoodEvidence, connective: boolean) {
   const timing = previewTiming(evidence);
   const canonical: Record<string, [string, string]> = {
     effective: ["약 효과가 비교적 잘 느껴졌어요", "약 효과가 비교적 잘 느껴졌고"],
-    similar: ["약 효과가 평소와 비슷하게 느껴졌어요", "약 효과가 평소와 비슷하게 느껴졌고"],
+    similar: ["평소와 비슷하게 느껴졌어요", "평소와 비슷하게 느껴졌고"],
     weak: [`${timing}약 효과가 약하게 느껴졌어요`, `${timing}약 효과가 약하게 느껴졌고`],
     strong: [`${timing}약이 강하게 느껴졌어요`, `${timing}약이 강하게 느껴졌고`],
     concentration_good: ["집중이 비교적 잘 되었어요", "집중이 비교적 잘 되었고"],
@@ -191,11 +191,18 @@ function previewClause(evidence: MoodEvidence, connective: boolean) {
     impulsive: ["충동적으로 느껴지는 순간이 있었어요", "충동적으로 느껴지는 순간이 있었고"],
     sleep: ["수면과 관련한 어려움이 있었어요", "수면과 관련한 어려움이 있었고"],
     appetite: ["식욕의 변화가 있었어요", "식욕의 변화가 있었고"],
+    "appetite-decrease": ["식욕이 감소했어요", "식욕이 감소했고"],
     palpitation: ["두근거림을 느낀 순간이 있었어요", "두근거림을 느낀 순간이 있었고"],
     headache: ["두통을 느낀 순간이 있었어요", "두통을 느낀 순간이 있었고"],
     task: ["업무나 과제에 집중하기 어려웠어요", "업무나 과제에 집중하기 어려웠고"],
     conversation: ["사람들과 대화할 때 집중하기 어려웠어요", "사람들과 대화할 때 집중하기 어려웠고"],
     unfinished: ["할 일을 모두 마무리하기 어려웠어요", "할 일을 모두 마무리하기 어려웠고"],
+    "medication-focus-good": ["집중이 잘 됐어요", "집중이 잘 됐고"],
+    "work-focus-difficulty": ["업무나 과제에 집중하기 어려웠어요", "업무나 과제에 집중하기 어려웠고"],
+    "task-completion-difficulty": ["해야 할 일을 끝내기 어려웠어요", "해야 할 일을 끝내기 어려웠고"],
+    "conversation-flow": ["대화 중 다른 생각이 들어 흐름을 놓쳤어요", "대화 중 다른 생각이 들어 흐름을 놓쳤고"],
+    "conversation-understanding": ["상대방의 말을 이해하고 따라가기 어려웠어요", "상대방의 말을 이해하고 따라가기 어려웠고"],
+    "social-withdrawal": ["사람들과 어울리기보다 혼자 있고 싶었어요", "사람들과 어울리기보다 혼자 있고 싶었고"],
     none: ["사람들과의 관계에서 특별한 어려움은 없었어요", "사람들과의 관계에서 특별한 어려움은 없었고"],
   };
   const pair = evidence.canonicalId ? canonical[evidence.canonicalId] : undefined;
@@ -241,6 +248,7 @@ function medicationClinicObservation(evidence: MoodEvidence): ClinicObservation 
     similar: "약을 복용했을 때 효과가 평소와 비슷하게 느껴졌습니다.",
     weak: `${timing}약 효과가 줄어드는 느낌이 있었습니다.`,
     strong: `${timing}약 효과가 강하게 느껴졌습니다.`,
+    "medication-focus-good": "약을 복용한 뒤 집중이 비교적 잘 되었습니다.",
   };
   const text = evidence.canonicalId ? textById[evidence.canonicalId] : undefined;
   return text ? { text, evidenceIds: [evidence.id] } : null;
@@ -248,14 +256,17 @@ function medicationClinicObservation(evidence: MoodEvidence): ClinicObservation 
 
 function concentrationClinicObservation(evidence: MoodEvidence[]): ClinicObservation | null {
   const concentration = evidence.filter((item) => item.category === "concentration");
-  const task = evidence.find((item) => item.canonicalId === "task");
+  const task = evidence.find((item) => item.canonicalId === "task" || item.canonicalId === "work-focus-difficulty");
+  const taskCompletion = evidence.find((item) => item.canonicalId === "task-completion-difficulty");
   const conversation = evidence.find((item) => item.canonicalId === "conversation");
-  const related = [...concentration, ...[task, conversation].filter((item): item is MoodEvidence => Boolean(item))];
+  const related = [...concentration, ...[task, taskCompletion, conversation].filter((item): item is MoodEvidence => Boolean(item))];
   if (related.length === 0) return null;
 
   let text = "집중 상태가 평소와 비슷하게 느껴졌습니다.";
-  if (task && conversation) text = "업무나 과제, 대화 상황에서 집중을 유지하기 어려웠습니다.";
-  else if (task) text = "업무나 과제를 할 때 집중을 유지하기 어려웠습니다.";
+  if (task && taskCompletion) text = `${previewTiming(task)}업무나 과제에 집중하고 해야 할 일을 끝내기 어려웠습니다.`;
+  else if (task && conversation) text = "업무나 과제, 대화 상황에서 집중을 유지하기 어려웠습니다.";
+  else if (task) text = `${previewTiming(task)}업무나 과제를 할 때 집중을 유지하기 어려웠습니다.`;
+  else if (taskCompletion) text = `${previewTiming(taskCompletion)}해야 할 일을 끝까지 마무리하기 어려웠습니다.`;
   else if (conversation) text = "대화 중에 집중을 이어가기 어려웠습니다.";
   else if (concentration.some((item) => item.canonicalId === "concentration_unstable")) text = "집중을 이어가기 어렵게 느껴지는 때가 있었습니다.";
   else if (concentration.some((item) => item.canonicalId === "concentration_difficult")) text = "집중을 유지하기 어려운 순간이 있었습니다.";
@@ -276,6 +287,7 @@ function emotionClinicObservation(evidence: MoodEvidence[]): ClinicObservation |
     impulsive: "충동적으로 느껴지는 순간",
     sleep: "수면 관련 어려움",
     appetite: "식욕 변화",
+    "appetite-decrease": "식욕 감소",
     palpitation: "두근거림",
     headache: "두통",
   };
@@ -283,13 +295,33 @@ function emotionClinicObservation(evidence: MoodEvidence[]): ClinicObservation |
     .map((item) => item.canonicalId ? labels[item.canonicalId] : undefined)
     .filter((item): item is string => Boolean(item));
   if (observations.length === 0) return null;
+  const withSubjectParticle = (value: string) => {
+    const last = value.at(-1)?.charCodeAt(0) ?? 0;
+    const hasFinalConsonant = last >= 0xac00 && last <= 0xd7a3 && (last - 0xac00) % 28 !== 0;
+    return `${value}${hasFinalConsonant ? "이" : "가"}`;
+  };
   const text = observations.length === 1
-    ? `${observations[0]}이 나타나는 경우가 있었습니다.`
-    : `${observations.slice(0, -1).join(", ")} 및 ${observations.at(-1)}이 함께 나타났습니다.`;
+    ? `${withSubjectParticle(observations[0])} 나타나는 경우가 있었습니다.`
+    : `${observations.slice(0, -1).join(", ")} 및 ${withSubjectParticle(observations.at(-1) ?? "")} 함께 나타났습니다.`;
   return { text, evidenceIds: emotions.map((item) => item.id) };
 }
 
 function relationshipClinicObservation(evidence: MoodEvidence[]): ClinicObservation | null {
+  const conversationFlow = evidence.find((item) => item.canonicalId === "conversation-flow");
+  const conversationUnderstanding = evidence.find((item) => item.canonicalId === "conversation-understanding");
+  const socialWithdrawal = evidence.find((item) => item.canonicalId === "social-withdrawal");
+  const socialEvidence = [conversationFlow, conversationUnderstanding, socialWithdrawal]
+    .filter((item): item is MoodEvidence => Boolean(item));
+  if (socialEvidence.length > 0) {
+    const text = conversationFlow && conversationUnderstanding
+      ? "대화 중 흐름을 놓치고 상대방의 말을 이해해 따라가기 어려운 경우가 있었습니다."
+      : conversationFlow
+        ? "대화 중 다른 생각이 들어 흐름을 놓치는 경우가 있었습니다."
+        : conversationUnderstanding
+          ? "상대방의 말을 이해하고 따라가기 어려운 경우가 있었습니다."
+          : "사람들과 어울리기보다 혼자 있고 싶게 느껴졌습니다.";
+    return { text, evidenceIds: socialEvidence.map((item) => item.id) };
+  }
   const unfinished = evidence.find((item) => item.canonicalId === "unfinished");
   if (unfinished) {
     return {
@@ -322,7 +354,7 @@ function buildLocalPreviewClinicPhrase(input: MoodAnalysisInput): EvidencedText 
   const medication = input.evidence
     .filter((item) => item.category === "medication_effect")
     .map(medicationClinicObservation)
-    .filter((item): item is ClinicObservation => Boolean(item));
+    .find((item): item is ClinicObservation => Boolean(item)) ?? null;
   const directInput = directInputClinicObservation(input.evidence);
   const concentration = concentrationClinicObservation(input.evidence);
   const emotion = emotionClinicObservation(input.evidence);
@@ -331,7 +363,7 @@ function buildLocalPreviewClinicPhrase(input: MoodAnalysisInput): EvidencedText 
     ? combineClinicObservations(concentration, emotion)
     : concentration ?? emotion;
   const observations = [
-    ...medication,
+    medication,
     directInput,
     context,
     relationship,

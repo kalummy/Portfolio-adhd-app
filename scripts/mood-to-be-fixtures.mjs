@@ -213,6 +213,9 @@ const reportSource = await readFile(new URL("../components/mood-monthly-report.t
 const sheetMotionSource = await readFile(new URL("../components/use-mood-bottom-sheet.ts", import.meta.url), "utf8");
 
 assert.match(flowSource, /type="checkbox"/);
+assert.match(flowSource, /대화에 집중이 안되고 다른 생각을 했어요/);
+assert.match(flowSource, /집중하려 해도 이해가 잘 되지 않았어요/);
+assert.match(flowSource, /가장 가까운 것에 선택해주세요\./);
 assert.doesNotMatch(flowSource, /name=\{step === 2 \? "relationship"/);
 assert.match(flowSource, /item\.selected\.filter\(\(value\) => value !== "none"\)/);
 assert.match(flowSource, /stepOneKind === "medication_effect" \? MEDICATION_STEP : CONCENTRATION_STEP/);
