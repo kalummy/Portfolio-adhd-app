@@ -118,7 +118,7 @@ type HomeScreenProps = {
   maximumDateKey?: string;
   initialToast?: string;
   initialToastId?: string;
-  initialToastQueryKey?: "medicationToast" | "moodToast" | "visitToast";
+  initialToastQueryKey?: "medicationToast" | "moodToast" | "visitToast" | "feedbackToast";
   enableLaunchSplash?: boolean;
 };
 
@@ -495,9 +495,14 @@ export function HomeScreen({
         <div className="home-header-brand">
           <Image src="/brand/addi-wordmark.svg" alt="ADDI" width={70} height={28} priority />
         </div>
-        <Link href="/auth/login" className="home-account-link">
-          {isAuthenticated ? "계정" : "로그인"}
-        </Link>
+        <nav className="home-header-actions" aria-label="계정 및 의견">
+          <Link href="/auth/login" className="home-header-action">
+            {isAuthenticated ? "계정" : "로그인"}
+          </Link>
+          <Link href="/feedback" className="home-header-action">
+            의견 보내기
+          </Link>
+        </nav>
       </header>
 
       <div className="home-month-select-row">

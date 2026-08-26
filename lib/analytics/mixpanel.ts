@@ -94,6 +94,7 @@ export function initAnalytics(): boolean {
       persistence: "localStorage",
       property_blacklist: [...URL_PROPERTY_BLACKLIST],
       record_console: false,
+      record_block_selector: ".feedback-private-input",
       record_network: false,
       record_sessions_percent: 0,
       save_referrer: false,
