@@ -4700,6 +4700,10 @@ html[data-addi-splash="skip"] .splash-screen {
   background: var(--color-bg-base-01);
 }
 
+.mood-records-screen {
+  padding-top: calc(56px + env(safe-area-inset-top));
+}
+
 .mood-records-header,
 .mood-record-detail-header {
   position: relative;
@@ -4724,8 +4728,11 @@ html[data-addi-splash="skip"] .splash-screen {
 }
 
 .mood-records-header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 50%;
+  width: min(100%, 430px);
+  transform: translateX(-50%);
 }
 
 .mood-record-tabs {
@@ -5257,6 +5264,72 @@ html[data-addi-splash="skip"] .splash-screen {
 .mood-record-list-item:focus-visible {
   outline: 2px solid var(--color-border-focus-default);
   outline-offset: -3px;
+}
+
+/* Scoped pressed feedback for the Home and Mood surfaces changed in this PR. */
+.appointment-row,
+.home-card,
+.mood-question-option,
+.mood-timing-options button,
+.mood-question-screen .icon-button,
+.mood-result-screen button:not(.primary-button),
+.mood-records-screen button,
+.mood-records-screen a,
+.mood-record-detail-screen button,
+.mood-record-detail-screen a {
+  transition: transform 100ms ease-out;
+}
+
+.appointment-row:active,
+.home-card:has(.home-card-title:active),
+.home-card:has(.inline-add-button:active),
+.home-card:has(.mood-record-link:active),
+.mood-question-option:has(.mood-question-option-toggle:active),
+.mood-timing-options button:active,
+.mood-question-screen .icon-button:active,
+.mood-result-screen button:not(.primary-button):active,
+.mood-records-screen button:active:not(:disabled),
+.mood-records-screen a:active,
+.mood-record-detail-screen button:active:not(:disabled),
+.mood-record-detail-screen a:active {
+  transform: scale(0.98);
+}
+
+.mood-question-screen .primary-button,
+.mood-result-screen .primary-button {
+  transition-timing-function: ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .appointment-row,
+  .home-card,
+  .mood-question-option,
+  .mood-timing-options button,
+  .mood-question-screen .icon-button,
+  .mood-question-screen .primary-button,
+  .mood-result-screen button,
+  .mood-records-screen button,
+  .mood-records-screen a,
+  .mood-record-detail-screen button,
+  .mood-record-detail-screen a {
+    transition: none;
+  }
+
+  .appointment-row:active,
+  .home-card:has(.home-card-title:active),
+  .home-card:has(.inline-add-button:active),
+  .home-card:has(.mood-record-link:active),
+  .mood-question-option:has(.mood-question-option-toggle:active),
+  .mood-timing-options button:active,
+  .mood-question-screen .icon-button:active,
+  .mood-question-screen .primary-button:active:not(:disabled),
+  .mood-result-screen button:active:not(:disabled),
+  .mood-records-screen button:active:not(:disabled),
+  .mood-records-screen a:active,
+  .mood-record-detail-screen button:active:not(:disabled),
+  .mood-record-detail-screen a:active {
+    transform: none;
+  }
 }
 
 .mood-record-list-cat,

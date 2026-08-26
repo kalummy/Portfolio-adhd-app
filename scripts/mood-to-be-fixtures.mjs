@@ -412,8 +412,14 @@ for (const removedOption of ["수면 문제", "식욕 감소", "두근 거림", 
 assert.match(flowSource, /selected: answer\.selected\.filter\(\(id\) => CURRENT_EMOTION_OPTION_IDS\.has\(id\)\)/u);
 assert.match(cssSource, /\.mood-question-options\.two-column \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*column-gap: 16px;[^}]*row-gap: 16px;/u);
 assert.match(cssSource, /\.mood-question-options\.two-column \.mood-question-option\.custom \{ grid-column: 1 \/ -1; \}/u);
-assert.match(cssSource, /\.mood-records-header \{[^}]*position: sticky;[^}]*top: 0;/u);
+assert.match(cssSource, /\.mood-records-screen \{[^}]*padding-top: calc\(56px \+ env\(safe-area-inset-top\)\);/u);
+assert.match(cssSource, /\.mood-records-header \{[^}]*position: fixed;[^}]*top: 0;[^}]*width: min\(100%, 430px\);/u);
 assert.doesNotMatch(cssSource, /\.mood-record-tabs \{[^}]*position: sticky;/u);
+assert.match(cssSource, /\.mood-question-option:has\(\.mood-question-option-toggle:active\)/u);
+assert.match(cssSource, /\.home-card:has\(\.home-card-title:active\)/u);
+assert.match(cssSource, /\.mood-record-detail-screen button:active:not\(:disabled\)/u);
+assert.match(cssSource, /transition: transform 100ms ease-out;/u);
+assert.match(cssSource, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.mood-question-screen \.primary-button:active:not\(:disabled\)[\s\S]*transform: none;/u);
 assert.match(flowSource, /\/icons\/timing-check-selected\.svg/);
 assert.match(flowSource, /\/icons\/timing-check-unselected\.svg/);
 assert.match(timingCheckSelected, /stroke="#43A047"/u);
