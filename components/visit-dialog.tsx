@@ -4,6 +4,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 
 type VisitDialogProps = {
   title: ReactNode;
+  description?: ReactNode;
   cancelLabel: string;
   confirmLabel: string;
   onCancel: () => void;
@@ -13,6 +14,7 @@ type VisitDialogProps = {
 
 export function VisitDialog({
   title,
+  description,
   cancelLabel,
   confirmLabel,
   onCancel,
@@ -69,8 +71,10 @@ export function VisitDialog({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="visit-dialog-title"
+        aria-describedby={description ? "visit-dialog-description" : undefined}
       >
         <h2 id="visit-dialog-title">{title}</h2>
+        {description ? <p id="visit-dialog-description">{description}</p> : null}
         <div className="visit-dialog-actions">
           <button ref={cancelButtonRef} type="button" className="cancel" onClick={onCancel} disabled={busy}>
             {cancelLabel}

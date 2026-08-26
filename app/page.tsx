@@ -18,6 +18,10 @@ const MEDICATION_TOAST_MESSAGES: Record<string, string> = {
   "schedule-updated": "복용 일정을 수정했어요.",
 };
 
+const FEEDBACK_TOAST_MESSAGES: Record<string, string> = {
+  sent: "소중한 의견을 남겨주셔서 감사드려요  🙌",
+};
+
 export default async function Page({
   searchParams,
 }: {
@@ -26,10 +30,11 @@ export default async function Page({
     toastId?: string;
     moodToast?: string;
     visitToast?: string;
+    feedbackToast?: string;
     date?: string;
   }>;
 }) {
-  const { medicationToast, toastId, moodToast, visitToast, date } = await searchParams;
+  const { medicationToast, toastId, moodToast, visitToast, feedbackToast, date } = await searchParams;
   const initialToast = medicationToast
     ? medicationToast === "added" && !toastId
       ? undefined
@@ -38,23 +43,29 @@ export default async function Page({
       ? MOOD_TOAST_MESSAGES[moodToast]
       : visitToast
         ? TOAST_MESSAGES[visitToast]
-        : undefined;
+        : feedbackToast
+          ? FEEDBACK_TOAST_MESSAGES[feedbackToast]
+          : undefined;
   const initialToastQueryKey = medicationToast
     ? "medicationToast" as const
     : moodToast
       ? "moodToast" as const
       : visitToast
         ? "visitToast" as const
-        : undefined;
+        : feedbackToast
+          ? "feedbackToast" as const
+          : undefined;
   return (
     <>
       <Script id="addi-splash-prepaint">{SPLASH_PREPAINT_SCRIPT}</Script>
       <HomeScreen
-        enableLaunchSplash={!medicationToast && !moodToast}
+        enableLaunchSplash={!medicationToast && !moodToast && !feedbackToast}
         initialDateKey={isValidDateKey(date) ? date : undefined}
         initialToast={initialToast}
         initialToastId={
-          medicationToast === "added" || moodToast === "saved" ? toastId : undefined
+          medicationToast === "added" || moodToast === "saved" || feedbackToast === "sent"
+            ? toastId
+            : undefined
         }
         initialToastQueryKey={initialToastQueryKey}
       />
