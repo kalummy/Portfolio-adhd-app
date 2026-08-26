@@ -164,7 +164,7 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
   }
 
   return (
-    <MobileShell className="mood-records-screen">
+    <>
       <header className="mood-records-header">
         <strong>감정기록 상세</strong>
         <Link href="/" className="icon-button" aria-label="닫기">
@@ -172,6 +172,7 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
         </Link>
       </header>
 
+      <MobileShell className="mood-records-screen">
       <nav className="mood-record-tabs" aria-label="감정기록 상세" role="tablist">
         {TABS.map((tab) => {
           const selected = tab.id === activeTab;
@@ -312,6 +313,7 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
           </section>
         </div>
       ) : null}
-    </MobileShell>
+      </MobileShell>
+    </>
   );
 }

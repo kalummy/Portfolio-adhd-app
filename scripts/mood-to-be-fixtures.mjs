@@ -415,6 +415,7 @@ assert.match(cssSource, /\.mood-question-options\.two-column \.mood-question-opt
 assert.match(cssSource, /\.mood-records-screen \{[^}]*padding-top: calc\(56px \+ env\(safe-area-inset-top\)\);/u);
 assert.match(cssSource, /\.mood-records-header \{[^}]*position: fixed;[^}]*top: 0;[^}]*width: min\(100%, 430px\);/u);
 assert.doesNotMatch(cssSource, /\.mood-record-tabs \{[^}]*position: sticky;/u);
+assert.match(historySource, /return \(\s*<>\s*<header className="mood-records-header">[\s\S]*?<\/header>\s*<MobileShell className="mood-records-screen">/u);
 assert.match(cssSource, /\.mood-question-option:has\(\.mood-question-option-toggle:active\)/u);
 assert.match(cssSource, /\.home-card:has\(\.home-card-title:active\)/u);
 assert.match(cssSource, /\.mood-record-detail-screen button:active:not\(:disabled\)/u);
