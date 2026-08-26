@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MobileShell } from "@/components/mobile-shell";
+import { CatRewardImage } from "@/components/cat-reward-image";
 import { MOOD_DELETED_TOAST_STORAGE_KEY } from "@/components/mood-history";
 import { formatMoodRecordDate, formatMoodRecordDateTime } from "@/lib/mood-history";
 import { getMoodRecordDisplayCat } from "@/lib/mood-record-cat";
+import { normalizeClinicPhraseForDisplay } from "@/lib/clinic-phrase";
 import { getMoodRepository } from "@/lib/repositories";
 import type { MoodRecord } from "@/lib/types";
 
@@ -27,10 +29,10 @@ function getStoredEmotionItems(record: MoodRecord) {
 }
 
 function getStoredClinicPhrase(record: MoodRecord) {
-  return record.analysisResult?.clinicPhrase.text.trim()
-    || record.clinicPhrase?.trim()
-    || record.memberSummary?.trim()
-    || record.diaryEntries?.[0]?.trim()
+  return normalizeClinicPhraseForDisplay(record.analysisResult?.clinicPhrase.text ?? "")
+    || normalizeClinicPhraseForDisplay(record.clinicPhrase ?? "")
+    || normalizeClinicPhraseForDisplay(record.memberSummary ?? "")
+    || normalizeClinicPhraseForDisplay(record.diaryEntries?.[0] ?? "")
     || "";
 }
 
@@ -122,7 +124,7 @@ export function MoodRecordDetail({ dateKey }: { dateKey: string }) {
           <strong>{record.moodLabel || record.memberSummary}</strong>
         </div>
         <span className={`mood-record-detail-cat cat-${cat.id}`}>
-          <Image src={cat.imagePath} alt={cat.displayName} fill sizes="160px" priority />
+          <CatRewardImage catId={cat.id} alt={cat.displayName} fill sizes="160px" priority />
         </span>
       </section>
 

@@ -27,6 +27,7 @@ import {
   type AnalyticsScreenName,
 } from "./screens";
 import type {
+  AnalyticsCatId,
   AnalyticsEventName,
   AnalyticsEventProperties,
   AnalyticsMedicationScheduleType,
@@ -348,7 +349,7 @@ export function trackMoodResultViewed() {
 }
 
 export function trackMoodCompleted() { return queueResolvedEvent("mood_completed", {}); }
-export function trackMoodCatRewardRevealed(catId: import("../cats").CatId) { return queueResolvedEvent("cat_reward_revealed", { cat_id: catId }); }
+export function trackMoodCatRewardRevealed(catId: import("../cats").CatId) { return queueResolvedEvent("cat_reward_revealed", { cat_id: catId as AnalyticsCatId }); }
 export function trackCatCollectionViewed() { return queueResolvedEvent("cat_collection_viewed", {}); }
 export function trackMoodReportViewed() { return queueResolvedEvent("mood_report_viewed", {}); }
 export function trackMoodAnalysisRetried() { return queueResolvedEvent("mood_analysis_retried", {}); }

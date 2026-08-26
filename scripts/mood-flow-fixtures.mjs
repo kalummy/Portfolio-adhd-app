@@ -66,11 +66,11 @@ writeMoodDraft(storage, "2026-08-25", {
   step: 2,
   answers: draftAnswers,
   stepOneKind: "medication_effect",
-  catId: "white",
+  catId: "winter",
   recordedAt: "2026-08-25T03:00:00.000Z",
   analysisFailed: true,
 });
-assert.equal(readMoodDraft(storage, "2026-08-25")?.catId, "white");
+assert.equal(readMoodDraft(storage, "2026-08-25")?.catId, "winter");
 clearMoodDraft(storage, "2026-08-25");
 assert.equal(readMoodDraft(storage, "2026-08-25"), null);
 console.log("PASS To-Be reward drafts are date-scoped, restorable, and clearable");

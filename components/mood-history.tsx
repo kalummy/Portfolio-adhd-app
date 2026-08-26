@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { MobileShell } from "@/components/mobile-shell";
+import { CatRewardImage } from "@/components/cat-reward-image";
 import { MoodCatCollection } from "@/components/mood-cat-collection";
 import { MoodMonthlyReport } from "@/components/mood-monthly-report";
 import { useMoodBottomSheet } from "@/components/use-mood-bottom-sheet";
@@ -216,7 +217,7 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
                   key={record.id}
                 >
                   <span className={`mood-record-list-cat cat-${cat.id}`}>
-                    <Image src={cat.imagePath} alt={cat.displayName} fill sizes="64px" />
+                    <CatRewardImage catId={cat.id} alt={cat.displayName} fill sizes="64px" />
                   </span>
                   <span className="mood-record-list-info">
                     <span>{formatMoodRecordDateTime(record)}</span>

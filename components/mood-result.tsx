@@ -1,9 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import { CatRewardImage } from "@/components/cat-reward-image";
 import { BottomActions, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
 import { getCat, type CatId } from "@/lib/cats";
+import { normalizeClinicPhraseForDisplay } from "@/lib/clinic-phrase";
 import type { MoodResultData } from "@/lib/mood-summary";
 
 type MoodResultProps = {
@@ -14,12 +16,13 @@ type MoodResultProps = {
 };
 
 function getShareText(result: MoodResultData) {
+  const clinicPhrase = normalizeClinicPhraseForDisplay(result.clinicPhrase);
   return [
     "오늘 내 감정",
     ...result.checkItems.map((item) => `• ${item}`),
     "",
     "병원에서 이렇게 이야기 해보세요",
-    `“${result.clinicPhrase}”`,
+    `“${clinicPhrase}”`,
   ].join("\n");
 }
 
@@ -39,6 +42,7 @@ export function MoodResult({
   onSave,
 }: MoodResultProps) {
   const cat = getCat(catId);
+  const clinicPhrase = normalizeClinicPhraseForDisplay(result.clinicPhrase);
   return (
     <MobileShell className="flow-screen mood-result-screen">
       <header className="mood-result-header">
@@ -58,8 +62,8 @@ export function MoodResult({
           <p>오늘의 감정기록을 확인해주세요.</p>
         </div>
         <div className={`mood-result-cat-frame mood-result-cat-${catId}`}>
-          <Image
-            src={cat.imagePath}
+          <CatRewardImage
+            catId={catId}
             alt={cat.displayName}
             width={160}
             height={160}
@@ -82,7 +86,7 @@ export function MoodResult({
             <Image src="/icons/mood-summary-sparkle.svg" alt="" width={20} height={20} />
             병원에서 이렇게 이야기 해보세요
           </h2>
-          <p>“{result.clinicPhrase}”</p>
+          <p>“{clinicPhrase}”</p>
         </section>
       </section>
       <BottomActions>

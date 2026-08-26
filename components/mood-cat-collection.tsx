@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { CatRewardImage } from "@/components/cat-reward-image";
 import { deriveCatCollection } from "@/lib/cat-collection";
 import type { MoodRecord } from "@/lib/types";
 
@@ -27,13 +28,23 @@ export function MoodCatCollection({ records }: { records: MoodRecord[] }) {
             <span
               className={`mood-cat-collection-image ${cat.acquired ? `cat-${cat.catalogId}` : "cat-unknown"}`}
             >
-              <Image
-                src={cat.imagePath}
-                alt=""
-                fill
-                sizes="64px"
-                loading={index < 3 ? "eager" : "lazy"}
-              />
+              {cat.acquired ? (
+                <CatRewardImage
+                  catId={cat.catalogId}
+                  alt=""
+                  fill
+                  sizes="64px"
+                  loading={index < 3 ? "eager" : "lazy"}
+                />
+              ) : (
+                <Image
+                  src={cat.imagePath}
+                  alt=""
+                  fill
+                  sizes="64px"
+                  loading={index < 3 ? "eager" : "lazy"}
+                />
+              )}
             </span>
             <strong>{cat.displayName}</strong>
           </li>

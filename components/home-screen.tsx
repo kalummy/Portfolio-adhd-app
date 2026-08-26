@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { CatRewardImage } from "@/components/cat-reward-image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -40,7 +41,8 @@ import {
   medicationScheduleLabel,
 } from "@/lib/medication-utils";
 import { getMoodDiarySummary, getMoodPresentation } from "@/lib/mood-summary";
-import { UNKNOWN_CAT } from "@/lib/cats";
+import { UNKNOWN_CAT, type CatId } from "@/lib/cats";
+import { normalizeClinicPhraseForDisplay } from "@/lib/clinic-phrase";
 import { getMoodRecordDisplayCat } from "@/lib/mood-record-cat";
 import { formatVisitDday, fromDateKey as fromVisitDateKey } from "@/lib/visit-date";
 import type {
@@ -67,9 +69,9 @@ function getHomeMoodSummary(record: MoodRecord) {
 }
 
 function getHomeClinicPhrase(record: MoodRecord) {
-  return record.analysisResult?.clinicPhrase.text.trim()
-    || record.clinicPhrase?.trim()
-    || record.memberSummary?.trim()
+  return normalizeClinicPhraseForDisplay(record.analysisResult?.clinicPhrase.text ?? "")
+    || normalizeClinicPhraseForDisplay(record.clinicPhrase ?? "")
+    || normalizeClinicPhraseForDisplay(record.memberSummary ?? "")
     || (record.diaryEntries?.length ? getMoodDiarySummary(record.diaryEntries) : DEFAULT_DIARY_SUMMARY);
 }
 
@@ -363,7 +365,7 @@ export function HomeScreen({
   const moodCat = moodRecord
     ? getMoodRecordDisplayCat(moodRecord.catId)
     : UNKNOWN_CAT;
-  const moodCatId = moodCat.id;
+  const moodCatId = moodCat.id as CatId | typeof UNKNOWN_CAT.id;
 
   const week = useMemo(() => {
     return getWeekDateKeys(selectedDateKey).map((dateKey) => {
@@ -703,8 +705,8 @@ export function HomeScreen({
               </div>
               <div className="recorded-mood-item">
                 <span className={`recorded-mood-cat-frame mood-result-cat-${moodCatId}`}>
-                  <Image
-                    src={moodCat.imagePath}
+                  <CatRewardImage
+                    catId={moodCatId as CatId}
                     alt={moodCat.displayName}
                     width={160}
                     height={160}
