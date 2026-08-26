@@ -1,10 +1,19 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { normalizeClinicPhraseForDisplay } from "../lib/clinic-phrase.ts";
 import {
   buildMoodMonthlyReport,
   filterMoodRecordsByMonth,
   formatMoodReportMonth,
   listMoodReportMonths,
 } from "../lib/mood-report.ts";
+
+function analysisResult(evidenceId, text) {
+  return {
+    todayEmotion: [{ text, evidenceIds: [evidenceId] }],
+    clinicPhrase: { text, evidenceIds: [evidenceId] },
+  };
+}
 
 function moodRecord({
   id,
@@ -14,6 +23,10 @@ function moodRecord({
   timings = {},
   moods = [],
   relationships = [],
+  customMedication = "",
+  customMood = "",
+  customRelationship = "",
+  savedAnalysis,
   legacy = false,
 }) {
   return {
@@ -22,6 +35,7 @@ function moodRecord({
     mood: "good",
     moodLabel: "기분이 좋아요",
     recordedAt: `${date}T03:00:00.000Z`,
+    ...(savedAnalysis ? { analysisResult: savedAnalysis } : {}),
     ...(legacy ? {} : {
       details: {
         stepOneKind: concentrationStates.length > 0 ? "concentration" : "medication_effect",
@@ -31,128 +45,133 @@ function moodRecord({
         moods,
         relationships,
         customText: {
-          medicationEffect: "",
-          mood: "",
-          relationship: "",
+          medicationEffect: customMedication,
+          mood: customMood,
+          relationship: customRelationship,
         },
       },
     }),
   };
 }
 
-const augustRecords = [
-  moodRecord({ id: "legacy", date: "2026-08-01", legacy: true }),
-  moodRecord({
-    id: "effective-lunch",
-    date: "2026-08-02",
-    medicationEffects: ["effective", "weak"],
-    timings: { weak: ["점심"] },
-    moods: ["irritable"],
-    relationships: ["task"],
-  }),
-  moodRecord({
-    id: "negative-morning",
-    date: "2026-08-03",
-    medicationEffects: ["strong", "weak"],
-    timings: { weak: ["아침"] },
-    moods: ["sleep"],
-    relationships: ["none"],
-  }),
-  moodRecord({
-    id: "lunch-evening-once",
-    date: "2026-08-04",
-    medicationEffects: ["weak"],
-    concentrationStates: ["concentration_difficult"],
-    timings: { weak: ["점심", "저녁"] },
-    relationships: ["unfinished"],
-  }),
-  moodRecord({
-    id: "no-medication-concentration",
-    date: "2026-08-05",
-    concentrationStates: ["concentration_unstable"],
-    relationships: ["conversation"],
-  }),
-];
-
-const records = [
-  moodRecord({ id: "june", date: "2026-06-30", medicationEffects: ["effective"] }),
-  moodRecord({ id: "july", date: "2026-07-15", moods: ["irritable"] }),
-  ...augustRecords,
+const monthRecords = [
+  moodRecord({ id: "aug", date: "2026-08-01" }),
+  moodRecord({ id: "july", date: "2026-07-15" }),
   moodRecord({ id: "invalid", date: "2026-13-01", legacy: true }),
 ];
-
 assert.deepEqual(listMoodReportMonths([]), []);
-assert.deepEqual(listMoodReportMonths(records.filter(({ date }) => date.startsWith("2026-08"))), ["2026-08"]);
-assert.deepEqual(listMoodReportMonths(records.filter(({ date }) => date >= "2026-07" && date <= "2026-08-31")), ["2026-08", "2026-07"]);
-assert.deepEqual(listMoodReportMonths(records), ["2026-08", "2026-07", "2026-06"]);
+assert.deepEqual(listMoodReportMonths(monthRecords), ["2026-08", "2026-07"]);
 assert.equal(formatMoodReportMonth("2026-08"), "2026년 8월 리포트");
-assert.deepEqual(filterMoodRecordsByMonth(records, "2026-05"), []);
-console.log("PASS selectable months include only calendar months with records, newest first");
+assert.deepEqual(filterMoodRecordsByMonth(monthRecords, "2026-05"), []);
+console.log("PASS report month policy and invalid date filtering");
 
-const report = buildMoodMonthlyReport(records, "2026-08");
-assert.equal(report.totalDays, 5, "legacy record must remain in the total day count");
-assert.equal(report.effectiveMedicationDays, 1, "only canonical effective is positive");
-assert.equal(report.relationshipDifficultyDays, 3, "canonical non-none relationship days count once");
+const positiveFocus = buildMoodMonthlyReport([
+  moodRecord({ id: "selected", date: "2026-09-01", medicationEffects: ["medication-focus-good"] }),
+  moodRecord({ id: "custom", date: "2026-09-02", customMedication: "오늘은 집중이 잘 됐어요" }),
+  moodRecord({
+    id: "evidence",
+    date: "2026-09-03",
+    customMedication: "업무 흐름이 좋았어요",
+    savedAnalysis: analysisResult("step1:custom", "업무에 오래 집중할 수 있었어요."),
+  }),
+  moodRecord({ id: "negative", date: "2026-09-04", customMedication: "집중하려 했지만 잘 안 됐어요" }),
+  moodRecord({ id: "mixed", date: "2026-09-05", customMedication: "오전에는 잘 됐지만 오후엔 전혀 집중이 안 됐어요" }),
+  moodRecord({ id: "conflicting-selection", date: "2026-09-06", medicationEffects: ["medication-focus-good", "work-focus-difficulty"] }),
+], "2026-09");
+assert.equal(positiveFocus.totalDays, 6);
+assert.equal(positiveFocus.effectiveMedicationDays, 3);
+console.log("PASS positive focus selection, evidence-backed direct input, and conservative mixed exclusion");
+
+const relationships = buildMoodMonthlyReport([
+  moodRecord({ id: "none", date: "2026-10-01", relationships: ["none"] }),
+  moodRecord({ id: "selected", date: "2026-10-02", relationships: ["conversation-flow"] }),
+  moodRecord({ id: "no-problem", date: "2026-10-03", customRelationship: "사람들과 잘 지냈어요" }),
+  moodRecord({ id: "difficult", date: "2026-10-04", customRelationship: "대화하는 게 어려웠어요" }),
+  moodRecord({
+    id: "conflict",
+    date: "2026-10-05",
+    relationships: ["conversation-understanding"],
+    customRelationship: "대화하는 데 별다른 문제는 없었어요",
+  }),
+  moodRecord({
+    id: "evidence",
+    date: "2026-10-06",
+    customRelationship: "사람들과 있는 게 버거웠어요",
+    savedAnalysis: analysisResult("step3:custom", "사람들과 함께 있는 게 부담스러웠어요."),
+  }),
+], "2026-10");
+assert.equal(relationships.relationshipDifficultyDays, 3);
+console.log("PASS relationship none, difficulty, direct-input meaning, and conflict override");
+
+const patterns = buildMoodMonthlyReport([
+  moodRecord({
+    id: "all",
+    date: "2026-11-01",
+    medicationEffects: ["work-focus-difficulty"],
+    moods: ["irritable", "depressed", "lethargic"],
+  }),
+  moodRecord({
+    id: "custom-decline",
+    date: "2026-11-02",
+    customMedication: "약효가 떨어지는 느낌이었어요",
+    customMood: "예민하고 우울했어요",
+  }),
+  moodRecord({ id: "duplicate-a", date: "2026-11-03", medicationEffects: ["task-completion-difficulty"] }),
+  moodRecord({ id: "duplicate-b", date: "2026-11-03", concentrationStates: ["concentration_unstable"] }),
+], "2026-11");
+assert.equal(patterns.totalDays, 3);
 assert.deepEqual(
-  Object.fromEntries(report.patterns.map(({ id, count }) => [id, count])),
+  Object.fromEntries(patterns.patterns.map(({ id, count }) => [id, count])),
   {
-    afternoonMedicationDecline: 2,
+    medicationDecline: 3,
     concentrationDifficulty: 3,
     irritability: 1,
-    sleepDifficulty: 1,
-    deadlineDifficulty: 1,
+    depression: 1,
+    lethargy: 1,
   },
 );
+assert.equal(patterns.patterns.find(({ id }) => id === "medicationDecline")?.ratio, 1);
+assert.equal(patterns.patterns.find(({ id }) => id === "irritability")?.ratio, 1 / 3);
+console.log("PASS five Figma patterns, direct focus decline, explicit-only moods, and same-day deduplication");
+
+const empty = buildMoodMonthlyReport([], "2026-12");
+assert.equal(empty.totalDays, 0);
+assert.equal(empty.effectiveMedicationDays, 0);
+assert.equal(empty.relationshipDifficultyDays, 0);
+assert.ok(empty.patterns.every(({ count, ratio }) => count === 0 && ratio === 0));
+console.log("PASS empty report avoids division by zero");
+
+const legacy = buildMoodMonthlyReport([
+  moodRecord({ id: "no-details", date: "2027-01-01", legacy: true }),
+  moodRecord({
+    id: "legacy-canonical",
+    date: "2027-01-02",
+    medicationEffects: ["effective"],
+    moods: ["irritable", "depressed", "lethargic"],
+    relationships: ["task"],
+  }),
+  moodRecord({ id: "legacy-concentration", date: "2027-01-03", concentrationStates: ["concentration_difficult"] }),
+  moodRecord({ id: "legacy-weak", date: "2027-01-04", medicationEffects: ["weak"] }),
+], "2027-01");
+assert.equal(legacy.totalDays, 4);
+assert.equal(legacy.effectiveMedicationDays, 1);
+assert.equal(legacy.relationshipDifficultyDays, 1);
+assert.equal(legacy.patterns.find(({ id }) => id === "medicationDecline")?.count, 2);
+assert.equal(legacy.patterns.find(({ id }) => id === "concentrationDifficulty")?.count, 2);
+console.log("PASS legacy records and canonical meanings remain readable without backfill");
+
+assert.match(patterns.clinicPhrase, /^저는 이번 달/u);
+assert.ok(patterns.clinicPhrase.split(/[.!?](?:\s|$)/u).filter(Boolean).length <= 2);
+assert.doesNotMatch(patterns.clinicPhrase, /용량|리바운드|진단|처방|원인|부작용/u);
 assert.equal(
-  report.patterns.find(({ id }) => id === "afternoonMedicationDecline")?.ratio,
-  2 / 5,
+  normalizeClinicPhraseForDisplay("약효가 줄었고,\r\n집중이   어려웠어요.\u2028진료에서 말하고 싶어요."),
+  "약효가 줄었고, 집중이 어려웠어요. 진료에서 말하고 싶어요.",
 );
-assert.equal(
-  report.patterns.find(({ id }) => id === "concentrationDifficulty")?.ratio,
-  3 / 5,
-);
-console.log("PASS canonical monthly summary and five pattern counts");
+const reportSource = await readFile(new URL("../components/mood-monthly-report.tsx", import.meta.url), "utf8");
+const cssSource = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+assert.match(reportSource, /normalizeClinicPhraseForDisplay\(report\.clinicPhrase\)/u);
+assert.match(cssSource, /\.mood-report-clinic p \{[^}]*white-space: normal;/u);
+assert.doesNotMatch(cssSource, /\.mood-report-clinic p \{[^}]*text-wrap: pretty;/u);
+console.log("PASS first-person grounded clinic phrase and iOS-safe single-paragraph display");
 
-assert.match(report.clinicPhrase, /집중하기 어려웠던 날이 3일/u);
-assert.match(report.clinicPhrase, /오후가 되면서 약 효과가 줄어드는 느낌을 기록한 날이 2일/u);
-assert.match(report.clinicPhrase, /평소보다 예민하게 느껴진 날이 한 차례/u);
-assert.doesNotMatch(report.clinicPhrase, /용량|리바운드|진단|불면증|약이 맞지/u);
-assert.doesNotMatch(report.clinicPhrase, /두통|식욕/u);
-assert.ok(report.clinicPhrase.split(/[.!?](?:\s|$)/u).filter(Boolean).length <= 3);
-assert.doesNotMatch(report.clinicPhrase, /있었어요\..*있었어요\.|어려웠던 날이[^.]+어려웠던 날이[^.]+어려웠던 날이/u);
-console.log("PASS deterministic grounded clinic phrase and medical-safety wording");
-
-const singleDayReport = buildMoodMonthlyReport([
-  moodRecord({ id: "single", date: "2026-09-01", moods: ["sleep"] }),
-], "2026-09");
-assert.equal(singleDayReport.totalDays, 1);
-assert.match(singleDayReport.clinicPhrase, /한 차례/u);
-assert.doesNotMatch(singleDayReport.clinicPhrase, /반복/u);
-
-const legacyOnlyReport = buildMoodMonthlyReport([
-  moodRecord({ id: "legacy-only", date: "2026-10-01", legacy: true }),
-], "2026-10");
-assert.equal(legacyOnlyReport.totalDays, 1);
-assert.ok(legacyOnlyReport.patterns.every(({ count }) => count === 0));
-assert.match(legacyOnlyReport.clinicPhrase, /총 1일 감정 기록/u);
-console.log("PASS one-day frequency and legacy no-inference behavior");
-
-const fuzzyTextOnly = moodRecord({ id: "custom-only", date: "2026-11-01" });
-fuzzyTextOnly.details.customText.mood = "예민하고 잠들기 어려웠어요";
-const fuzzyReport = buildMoodMonthlyReport([fuzzyTextOnly], "2026-11");
-assert.equal(fuzzyReport.patterns.find(({ id }) => id === "irritability")?.count, 0);
-assert.equal(fuzzyReport.patterns.find(({ id }) => id === "sleepDifficulty")?.count, 0);
-console.log("PASS labels and custom text are not fuzzy-matched into canonical counts");
-
-const latestReport = buildMoodMonthlyReport([
-  moodRecord({ id: "latest-1", date: "2026-12-01", medicationEffects: ["medication-focus-good", "work-focus-difficulty"], timings: { "work-focus-difficulty": ["점심"] }, moods: ["appetite-decrease"], relationships: ["conversation-flow"] }),
-  moodRecord({ id: "latest-2", date: "2026-12-02", medicationEffects: ["task-completion-difficulty"], timings: { "task-completion-difficulty": [] }, relationships: ["conversation-understanding"] }),
-], "2026-12");
-assert.equal(latestReport.effectiveMedicationDays, 1);
-assert.equal(latestReport.relationshipDifficultyDays, 2);
-assert.equal(latestReport.patterns.find(({ id }) => id === "concentrationDifficulty")?.count, 1);
-assert.equal(latestReport.patterns.find(({ id }) => id === "deadlineDifficulty")?.count, 1);
-assert.equal(latestReport.patterns.find(({ id }) => id === "afternoonMedicationDecline")?.count, 0);
-console.log("PASS latest work-focus, task-completion, social, and optional timing meanings remain separate");
-
-console.log("Mood report fixtures passed (6 groups)");
+console.log("Mood report fixtures passed (7 groups)");

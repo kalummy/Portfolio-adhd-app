@@ -4936,7 +4936,7 @@ html[data-addi-splash="skip"] .splash-screen {
   line-height: 24px;
   font-weight: 400;
   letter-spacing: -0.4px;
-  text-wrap: pretty;
+  white-space: normal;
 }
 
 .mood-report-sheet-layer {
