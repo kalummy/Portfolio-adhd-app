@@ -98,7 +98,7 @@ export function MoodRecordDetail({ dateKey }: { dateKey: string }) {
       } catch {
         // Navigation and deletion do not depend on transient toast storage.
       }
-      router.replace("/moods?deleted=1");
+      router.replace("/moods?tab=moods&deleted=1");
     } finally {
       setDeleting(false);
     }
@@ -113,7 +113,7 @@ export function MoodRecordDetail({ dateKey }: { dateKey: string }) {
   return (
     <MobileShell className="mood-record-detail-screen">
       <header className="mood-record-detail-header">
-        <Link href="/moods" className="icon-button" aria-label="기록순으로 돌아가기">
+        <Link href="/moods?tab=moods" className="icon-button" aria-label="기록으로 돌아가기">
           <Image src="/icons/back.svg" alt="" width={18} height={14} />
         </Link>
       </header>

@@ -83,7 +83,11 @@ function MedicationListImage({ medication }: { medication: SavedMedication }) {
 function MedicationListContent() {
   const searchParams = useSearchParams();
   const requestedDate = searchParams.get("date") ?? undefined;
+  const origin = searchParams.get("origin");
   const targetDate = isValidDateKey(requestedDate) ? requestedDate : getKstDateKey();
+  const fallbackHref = origin === "records"
+    ? "/moods?tab=medications"
+    : `/?date=${encodeURIComponent(targetDate)}`;
   const [medications, setMedications] = useState<SavedMedication[]>([]);
   const [targetDateIntakes, setTargetDateIntakes] = useState<MedicationIntakeRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,7 +157,7 @@ function MedicationListContent() {
     <MobileShell className="flow-screen medication-list-screen">
       <FlowHeader
         title="복용약 목록"
-        fallbackHref={`/?date=${encodeURIComponent(targetDate)}`}
+        fallbackHref={fallbackHref}
       />
       <section className="medication-list-content">
         {!loading ? medications.map((medication) => {
@@ -188,7 +192,7 @@ function MedicationListContent() {
                 <div className="medication-list-edit-container">
                   <Link
                     className="medication-list-edit-link"
-                    href={`/medications/${encodeURIComponent(medication.id)}/schedule?date=${encodeURIComponent(targetDate)}`}
+                    href={`/medications/${encodeURIComponent(medication.id)}/schedule?date=${encodeURIComponent(targetDate)}${origin === "records" ? "&origin=records-manage" : ""}`}
                     onNavigate={() => trackMedicationScheduleEditOpened(
                       medication.schedule,
                       Boolean(medication.scheduledTime),
