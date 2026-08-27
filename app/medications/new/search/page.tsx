@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useLayoutEffect, useState } from "react";
 import { FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
-import { FREQUENT_MEDICATIONS } from "@/lib/frequent-medications";
+import { FREQUENT_MEDICATION_GROUPS } from "@/lib/frequent-medications";
 import { enrichOfficialMedication } from "@/lib/medication-enrichment";
 import { medicationLabel } from "@/lib/medication-utils";
 import {
@@ -167,6 +167,27 @@ export default function MedicationSearchPage() {
     setSubmitted(true);
   }
 
+  function openFrequentGroup(groupId: string) {
+    if (activatingMedicationKey) return;
+    setSelectedMedicationKey(groupId);
+    setActivatingMedicationKey(groupId);
+
+    const shouldReduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const href = registrationHref(`/medications/new/search/strength?group=${encodeURIComponent(groupId)}`);
+    if (shouldReduceMotion) {
+      setSelectedMedicationKey(undefined);
+      setActivatingMedicationKey(undefined);
+      router.push(href);
+      return;
+    }
+
+    window.setTimeout(() => {
+      setSelectedMedicationKey(undefined);
+      setActivatingMedicationKey(undefined);
+      router.push(href);
+    }, SELECTION_FEEDBACK_MS);
+  }
+
   async function selectMedication(medication: MedicationCandidate) {
     if (activatingMedicationKey) return;
     const selectionKey = medicationSelectionKey(medication);
@@ -226,16 +247,15 @@ export default function MedicationSearchPage() {
         <section className="frequent-medications" aria-labelledby="frequent-medications-title">
           <h1 id="frequent-medications-title">자주 찾는 약</h1>
           <div className="search-results frequent-medication-list">
-            {FREQUENT_MEDICATIONS.map((medication) => {
-              const selectionKey = medicationSelectionKey(medication);
-              const isSelected = selectedMedicationKey === selectionKey;
-              const isActivating = activatingMedicationKey === selectionKey;
+            {FREQUENT_MEDICATION_GROUPS.map((group) => {
+              const isSelected = selectedMedicationKey === group.id;
+              const isActivating = activatingMedicationKey === group.id;
               return (
                 <button
                   type="button"
                   className={`search-result-row ${isSelected ? "selected" : ""} ${isActivating ? "activating" : ""}`}
-                  key={selectionKey}
-                  onClick={() => void selectMedication(medication)}
+                  key={group.id}
+                  onClick={() => openFrequentGroup(group.id)}
                   aria-pressed={isSelected}
                   aria-busy={isActivating}
                 >
@@ -244,8 +264,8 @@ export default function MedicationSearchPage() {
                       <Image src="/icons/pill.svg" alt="" width={16} height={20} />
                     </span>
                     <span className="search-result-copy">
-                      <span className="search-result-name">{medicationLabel(medication)}</span>
-                      <small>{medication.manufacturer}</small>
+                      <span className="search-result-name">{group.label}</span>
+                      <small>{group.manufacturer}</small>
                     </span>
                   </span>
                 </button>
