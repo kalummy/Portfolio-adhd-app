@@ -4,7 +4,7 @@ import Image from "next/image";
 import { CatRewardImage } from "@/components/cat-reward-image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { HomeDatePickerSheet } from "@/components/home-date-picker-sheet";
 import { getAuthState } from "@/lib/auth/client";
 import {
@@ -53,6 +53,7 @@ import type {
   VisitSchedule,
 } from "@/lib/types";
 import { resetDraft } from "@/lib/registration-session";
+import { AppTabBar } from "./app-tab-bar";
 import { MobileShell } from "./mobile-shell";
 import { SplashScreen } from "./splash-screen";
 import { Toast } from "./toast";
@@ -154,9 +155,15 @@ export function HomeScreen({
     startOfMonthDateKey(selectedDateKey),
   );
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const monthSelectRef = useRef<HTMLButtonElement>(null);
   const calendarConfirmHandledRef = useRef(false);
   const intakeMutationGenerationRef = useRef(0);
+  const weekGestureRef = useRef({
+    pointerId: -1,
+    startX: 0,
+    startY: 0,
+    axis: null as "x" | "y" | null,
+    swiped: false,
+  });
   const [medications, setMedications] = useState<SavedMedication[]>(previewData?.medications ?? []);
   const [intakeRecords, setIntakeRecords] = useState<MedicationIntakeRecord[]>(
     previewData?.intakeRecords ?? [],
@@ -178,8 +185,8 @@ export function HomeScreen({
     () => new Set(),
   );
 
+  const selectedMonth = parseDateKey(selectedDateKey)?.month;
   const selectedRelation = dateKeyDayDifference(selectedDateKey, todayDateKey);
-  const selectedDateParts = parseDateKey(selectedDateKey)!;
 
   useLayoutEffect(() => {
     if (!enableLaunchSplash) return;
@@ -230,7 +237,6 @@ export function HomeScreen({
       return;
     }
 
-    setLoading(true);
     try {
       const repositories = await getDataRepositories();
       setSyncError(repositories.guestDatasetSync.status === "failed"
@@ -439,9 +445,67 @@ export function HomeScreen({
     return true;
   }, [maximumDateKey, minimumDateKey, previewData]);
 
-  const handleMoveDate = (amount: number) => {
-    commitSelectedDate(addDaysToDateKey(selectedDateKey, amount));
+  const handleMoveWeek = (amount: number) => {
+    const nextDateKey = addDaysToDateKey(selectedDateKey, amount * 7);
+    const clampedDateKey = minimumDateKey && nextDateKey < minimumDateKey
+      ? minimumDateKey
+      : maximumDateKey && nextDateKey > maximumDateKey
+        ? maximumDateKey
+        : nextDateKey;
+    commitSelectedDate(clampedDateKey);
   };
+
+  const canMovePrevWeek = !minimumDateKey || selectedDateKey > minimumDateKey;
+  const canMoveNextWeek = !maximumDateKey || selectedDateKey < maximumDateKey;
+
+  function resetWeekGesture() {
+    weekGestureRef.current = {
+      pointerId: -1,
+      startX: 0,
+      startY: 0,
+      axis: null,
+      swiped: weekGestureRef.current.swiped,
+    };
+  }
+
+  function handleWeekPointerDown(event: PointerEvent<HTMLElement>) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    weekGestureRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      axis: null,
+      swiped: false,
+    };
+  }
+
+  function handleWeekPointerMove(event: PointerEvent<HTMLElement>) {
+    const gesture = weekGestureRef.current;
+    if (gesture.pointerId !== event.pointerId) return;
+    const dx = event.clientX - gesture.startX;
+    const dy = event.clientY - gesture.startY;
+    if (!gesture.axis && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+      gesture.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    }
+    if (gesture.axis === "x" && Math.abs(dx) >= 40) gesture.swiped = true;
+  }
+
+  function handleWeekPointerUp(event: PointerEvent<HTMLElement>) {
+    const gesture = weekGestureRef.current;
+    if (gesture.pointerId !== event.pointerId) return;
+    const dx = event.clientX - gesture.startX;
+    const shouldMoveWeek = gesture.swiped && gesture.axis === "x";
+    resetWeekGesture();
+    if (!shouldMoveWeek) {
+      weekGestureRef.current.swiped = false;
+      return;
+    }
+    weekGestureRef.current.swiped = true;
+    handleMoveWeek(dx < 0 ? 1 : -1);
+    window.requestAnimationFrame(() => {
+      weekGestureRef.current.swiped = false;
+    });
+  }
 
   const handleOpenCalendar = () => {
     trackHomeDatePickerOpened(selectedDateKey);
@@ -497,40 +561,96 @@ export function HomeScreen({
         <div className="home-header-brand">
           <Image src="/brand/addi-wordmark.svg" alt="ADDI" width={70} height={28} priority />
         </div>
-        <nav className="home-header-actions" aria-label="계정 및 의견">
-          <Link href="/auth/login" className="home-header-action">
+        <div className="home-header-actions">
+          <button
+            type="button"
+            className="home-header-calendar"
+            aria-label={`${selectedMonth ?? ""}월 날짜 선택`}
+            aria-haspopup="dialog"
+            aria-expanded={calendarOpen}
+            onClick={handleOpenCalendar}
+          >
+            {selectedMonth ? <span>{selectedMonth}월</span> : null}
+            <Image src="/icons/calendar.svg" alt="" width={21} height={23} />
+          </button>
+          <Link href="/auth/login" className="home-header-login">
             {isAuthenticated ? "계정" : "로그인"}
           </Link>
-          <Link href="/feedback" className="home-header-action">
-            의견 보내기
-          </Link>
-        </nav>
+        </div>
       </header>
 
-      <div className="home-month-select-row">
+      <div
+        className="week-strip-row"
+        onPointerDown={handleWeekPointerDown}
+        onPointerMove={handleWeekPointerMove}
+        onPointerUp={handleWeekPointerUp}
+        onPointerCancel={() => {
+          weekGestureRef.current = {
+            pointerId: -1,
+            startX: 0,
+            startY: 0,
+            axis: null,
+            swiped: false,
+          };
+        }}
+      >
         <button
-          ref={monthSelectRef}
           type="button"
-          className="home-month-select"
-          aria-haspopup="dialog"
-          aria-expanded={calendarOpen}
-          onClick={handleOpenCalendar}
+          className="week-strip-week-nav"
+          aria-label="이전 주"
+          disabled={!canMovePrevWeek}
+          onClick={() => {
+            if (weekGestureRef.current.swiped) return;
+            handleMoveWeek(-1);
+          }}
         >
-          <span>{selectedDateParts.month}월</span>
-          <span className="home-month-select-icon" aria-hidden="true">
-            <Image src="/icons/chevron-down.svg" alt="" width={10} height={5} />
+          <span className="date-chevron date-chevron-left" aria-hidden="true">
+            <Image src="/icons/date-chevron-left.svg" alt="" width={12} height={6} />
+          </span>
+        </button>
+        <section className="week-strip" aria-label={`${selectedMonth ?? ""}월 이번 주`}>
+          {week.map(({ day, date, dateKey, isToday, isSelected, progress }) => {
+            const month = parseDateKey(dateKey)?.month;
+            const outOfRange = Boolean(
+              (minimumDateKey && dateKey < minimumDateKey)
+              || (maximumDateKey && dateKey > maximumDateKey),
+            );
+            return (
+              <button
+                type="button"
+                key={dateKey}
+                className={`week-strip-day ${isToday ? "today" : ""} ${isSelected ? "selected" : ""}`}
+                aria-label={`${formatDateKey(dateKey, true)}${isToday ? ", 오늘" : ""}`}
+                aria-pressed={isSelected}
+                disabled={outOfRange}
+                onClick={() => {
+                  if (weekGestureRef.current.swiped) return;
+                  commitSelectedDate(dateKey);
+                }}
+              >
+                <span className={isToday || date === 1 ? "week-month-start" : undefined}>
+                  {isToday ? "오늘" : date === 1 && month ? `${month}월` : day}
+                </span>
+                <strong className={`week-date ${progress}`}>{date}</strong>
+              </button>
+            );
+          })}
+        </section>
+        <button
+          type="button"
+          className="week-strip-week-nav"
+          aria-label="다음 주"
+          disabled={!canMoveNextWeek}
+          onClick={() => {
+            if (weekGestureRef.current.swiped) return;
+            handleMoveWeek(1);
+          }}
+        >
+          <span className="date-chevron date-chevron-right" aria-hidden="true">
+            <Image src="/icons/date-chevron-right.svg" alt="" width={12} height={6} />
           </span>
         </button>
       </div>
-
-      <section className="week-strip" aria-label="이번 주">
-        {week.map(({ day, date, dateKey, isToday, isSelected, progress }) => (
-          <div key={dateKey} className={`${isToday ? "today" : ""} ${isSelected ? "selected" : ""}`}>
-            <span>{day}</span>
-            <strong className={`week-date ${progress}`}>{date}</strong>
-          </div>
-        ))}
-      </section>
 
       <Link
         className="appointment-row"
@@ -567,25 +687,9 @@ export function HomeScreen({
       ) : null}
 
       <section className="home-content">
-        <div className="date-heading">
-          <button type="button" aria-label="이전 날" onClick={() => handleMoveDate(-1)}>
-            <span className="date-chevron date-chevron-left" aria-hidden="true">
-              <Image src="/icons/date-chevron-left.svg" alt="" width={12} height={6} />
-            </span>
-          </button>
-          <strong>{selectedRelation === 0 ? "오늘" : formatDateKey(selectedDateKey)}</strong>
-          <button type="button" aria-label="다음 날" onClick={() => handleMoveDate(1)}>
-            <span className="date-chevron date-chevron-right" aria-hidden="true">
-              <Image src="/icons/date-chevron-right.svg" alt="" width={12} height={6} />
-            </span>
-          </button>
-        </div>
-
         <section className="home-section">
-          {loading ? (
-            <div className="home-card loading-card" aria-label="복용약 불러오는 중" />
-          ) : displayedMedications.length === 0 ? (
-            <div className="home-card empty-medication-card">
+          {displayedMedications.length === 0 ? (
+            <div className="home-card empty-medication-card" aria-busy={loading}>
               <div className="home-card-copy">
                 <strong>복용중인 약을 등록해주세요</strong>
                 <p>약을 등록하면<br />오늘의 복용 여부를 간단히 기록할 수 있어요.</p>
@@ -698,7 +802,7 @@ export function HomeScreen({
             <div className="home-card recorded-mood-card">
               <div className={`home-card-heading ${showDateEyebrow ? "with-date" : ""}`}>
                 {showDateEyebrow && <span className="card-date-eyebrow">{formatDateKey(selectedDateKey)}</span>}
-                <Link href="/moods" className="home-card-title mood-history-link">
+                <Link href="/moods?tab=moods" className="home-card-title mood-history-link">
                   <strong>{selectedRelation === 0 ? "오늘의 감정" : "감정 기록"}</strong>
                   <ChevronRight />
                 </Link>
@@ -724,13 +828,23 @@ export function HomeScreen({
               </div>
             </div>
           ) : (
-            <div className={`home-card mood-card date-aware-mood-card ${showDateEyebrow ? "with-date" : ""}`}>
+            <div
+              className={`home-card mood-card date-aware-mood-card ${showDateEyebrow ? "with-date" : ""}`}
+              aria-busy={loading}
+            >
               <div className="home-card-copy">
                 {showDateEyebrow && <span className="card-date-eyebrow">{formatDateKey(selectedDateKey)}</span>}
                 <strong>{moodEmptyTitle}</strong>
                 <p>감정을 기록하고 귀여운 고양이를 모아보세요!</p>
               </div>
-              <Image className="home-mood-placeholder-cat" src={UNKNOWN_CAT.imagePath} alt="" width={160} height={160} />
+              <Image
+                className="home-mood-placeholder-cat"
+                src={UNKNOWN_CAT.imagePath}
+                alt=""
+                width={160}
+                height={160}
+                priority
+              />
               <Link
                 href={`/moods/new?date=${selectedDateKey}`}
                 className="mood-record-link"
@@ -757,9 +871,12 @@ export function HomeScreen({
         <Toast
           message={toast}
           onDismiss={() => setToast("")}
+          aboveNavigation
           showIcon
         />
       ) : null}
+
+      <AppTabBar active="home" />
 
       {calendarOpen ? (
         <HomeDatePickerSheet

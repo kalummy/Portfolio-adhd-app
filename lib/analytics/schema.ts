@@ -48,6 +48,8 @@ export type AnalyticsRoute =
   | "visit_add"
   | "visit_management"
   | "legal"
+  | "settings"
+  | "focus"
   | "other_safe";
 export type MedicationAddSource = "home" | "medication_list" | "medication_management";
 export type MedicationManagementSource = "medication_management";
@@ -164,6 +166,8 @@ export function sanitizeAnalyticsRoute(input: string): AnalyticsRoute {
   if (pathname === "/visits/new") return "visit_add";
   if (pathname === "/visits" || pathname === "/visits/edit") return "visit_management";
   if (pathname === "/terms" || pathname === "/privacy") return "legal";
+  if (pathname === "/settings") return "settings";
+  if (pathname === "/focus") return "focus";
   return "other_safe";
 }
 

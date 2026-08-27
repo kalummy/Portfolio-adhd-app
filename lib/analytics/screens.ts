@@ -7,6 +7,8 @@ export const ANALYTICS_SCREEN_NAMES = [
   "mood_create",
   "mood_history",
   "visit",
+  "settings",
+  "focus",
   "legal",
 ] as const;
 
@@ -37,6 +39,8 @@ export function screenNameForPath(input: string): AnalyticsScreenName | null {
     return "visit";
   }
   if (pathname === "/terms" || pathname === "/privacy") return "legal";
+  if (pathname === "/settings") return "settings";
+  if (pathname === "/focus") return "focus";
   return null;
 }
 
