@@ -23,7 +23,7 @@ try {
     "lib/analytics/path-policy.ts",
     "lib/analytics/screens.ts",
   ], { cwd: projectRootPath, stdio: "pipe" });
-  for (const name of ["analytics/schema", "analytics/screens", "analytics/mood-contract", "analytics/medication-contract", "cats"]) {
+  for (const name of ["analytics/schema", "analytics/screens", "analytics/mood-contract", "analytics/medication-contract", "analytics/medication-taking-contract", "cats"]) {
     await copyFile(join(fixtureDirectory, `${name}.js`), join(fixtureDirectory, name));
   }
   await writeFile(join(fixtureDirectory, "package.json"), '{"type":"module"}');
@@ -73,7 +73,7 @@ try {
   }
   console.log(`PASS route sanitizer ${routeCases.length}/${routeCases.length}`);
 
-  assert.equal(schema.ANALYTICS_EVENT_NAMES.length, 34);
+  assert.equal(schema.ANALYTICS_EVENT_NAMES.length, 37);
   assert.deepEqual(schema.ANALYTICS_EVENT_NAMES, [
     "app_opened",
     "screen_viewed",
@@ -85,6 +85,9 @@ try {
     "medication_save_clicked",
     "medication_registration_failed",
     "medication_taken",
+    "medication_take_clicked",
+    "medication_take_succeeded",
+    "medication_take_failed",
     "medication_management_opened",
     "medication_schedule_edit_opened",
     "medication_schedule_updated",

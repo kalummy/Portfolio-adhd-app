@@ -1,6 +1,11 @@
 "use client";
 
 import { getAuthState } from "@/lib/auth/client";
+import type { MedicationIntakeRecord } from "../types";
+import {
+  MEDICATION_TAKING_FLOW_VERSION, classifyMedicationTakeFailure,
+  type MedicationTakeFailureType, type MedicationTakeStorageBackend,
+} from "./medication-taking-contract";
 import { createClientId } from "../client-id";
 import { readMoodDraft } from "../mood-draft";
 import { MOOD_FLOW_VERSION, isMoodAttemptId, type MoodAnalysisFailureType, type MoodSaveFailureType, type MoodStorageBackend } from "./mood-contract";
@@ -392,6 +397,67 @@ export function trackMedicationDeleteConfirmed(hasIntakeHistory: boolean) {
     source: "medication_management",
     has_intake_history: hasIntakeHistory,
   });
+}
+
+// A handle lives only in one click handler. No storage, global attempt map,
+// medication identity or registration attempt is attached to these events.
+export type MedicationTakeAttempt = {
+  id: string;
+  startedAt: number;
+  pathname: string;
+  backend: MedicationTakeStorageBackend;
+  finished: boolean;
+} | null;
+
+function takingProperties(attempt: NonNullable<MedicationTakeAttempt>) {
+  return { medication_take_attempt_id: attempt.id, flow_version: MEDICATION_TAKING_FLOW_VERSION };
+}
+
+export function startMedicationTakeAttempt(): MedicationTakeAttempt {
+  try {
+    const attempt = { id: createClientId(), startedAt: performance.now(), pathname: window.location.pathname,
+      backend: "unknown" as MedicationTakeStorageBackend, finished: false };
+    queueResolvedEvent("medication_take_clicked", takingProperties(attempt), attempt.pathname);
+    return attempt;
+  } catch { return null; }
+}
+
+export function setMedicationTakeBackend(attempt: MedicationTakeAttempt, repositories: {
+  medications: { readonly storageBackend?: unknown };
+}) {
+  try {
+    if (!attempt) return;
+    // getDataRepositories selects medications and intakes together. Reuse its
+    // existing metadata; no new auth lookup or repository behavior is needed.
+    const backend = repositories.medications.storageBackend;
+    attempt.backend = backend === "indexeddb" || backend === "supabase" ? backend : "unknown";
+  } catch { /* Optional telemetry metadata must not prevent setTaken. */ }
+}
+
+function finishMedicationTake(attempt: MedicationTakeAttempt, failure?: MedicationTakeFailureType) {
+  try {
+    if (!attempt || attempt.finished) return;
+    attempt.finished = true;
+    const properties = { ...takingProperties(attempt), duration_ms: Math.max(0, performance.now() - attempt.startedAt) };
+    if (failure) {
+      queueResolvedEvent("medication_take_failed", { ...properties, failure_type: failure, storage_backend: attempt.backend }, attempt.pathname);
+    } else {
+      queueResolvedEvent("medication_take_succeeded", properties, attempt.pathname);
+    }
+  } catch { /* Analytics cannot alter the persisted state or UI. */ }
+}
+
+export function trackMedicationTakeResult(attempt: MedicationTakeAttempt, record: MedicationIntakeRecord | null, medicationId: string, date: string) {
+  try {
+    if (!attempt) return;
+    const valid = record?.medicationId === medicationId && record?.date === date && record?.taken === true;
+    finishMedicationTake(attempt, valid ? undefined : "validation_error");
+  } catch { finishMedicationTake(attempt, "validation_error"); }
+}
+
+export function trackMedicationTakeFailed(attempt: MedicationTakeAttempt, error: unknown) {
+  if (!attempt) return;
+  finishMedicationTake(attempt, classifyMedicationTakeFailure(error, attempt.backend));
 }
 
 async function createIntakeDeduplicationKey(medicationId: string, date: string) {
