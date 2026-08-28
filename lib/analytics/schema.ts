@@ -1,5 +1,10 @@
 import { isCatId, type CatId } from "../cats";
 import {
+  MEDICATION_REGISTRATION_FLOW_VERSION, MEDICATION_REGISTRATION_STEPS, MEDICATION_SAVE_FAILURE_TYPES,
+  isMedicationAttemptId, type MedicationAnalyticsContext, type MedicationRegistrationStep,
+  type MedicationSaveFailureType, type MedicationStorageBackend,
+} from "./medication-contract";
+import {
   MOOD_FLOW_VERSION, MOOD_SAVE_FAILURE_TYPES, isMoodAttemptId, isMoodAnalysisFailure,
   type MoodAnalyticsContext, type MoodAnalysisFailureType, type MoodSaveFailureType, type MoodStorageBackend,
 } from "./mood-contract";
@@ -16,6 +21,9 @@ export const ANALYTICS_EVENT_NAMES = [
   "login_completed",
   "medication_add_started",
   "medication_added",
+  "medication_registration_step_viewed",
+  "medication_save_clicked",
+  "medication_registration_failed",
   "medication_taken",
   "medication_management_opened",
   "medication_schedule_edit_opened",
@@ -86,6 +94,9 @@ type EventSpecificProperties = {
   login_completed: Record<never, never>;
   medication_add_started: { source: MedicationAddSource };
   medication_added: Record<never, never>;
+  medication_registration_step_viewed: { step: MedicationRegistrationStep };
+  medication_save_clicked: { medication_count: number };
+  medication_registration_failed: { stage: "save"; failure_type: MedicationSaveFailureType; storage_backend: MedicationStorageBackend };
   medication_taken: Record<never, never>;
   medication_management_opened: { source: "home"; medication_count: number };
   medication_schedule_edit_opened: {
@@ -128,7 +139,16 @@ type EventSpecificProperties = {
 };
 
 export type AnalyticsEventProperties<T extends AnalyticsEventName> =
-  EventSpecificProperties[T] & (T extends InstrumentedMoodEvent ? MoodAnalyticsContext : Record<never, never>);
+  EventSpecificProperties[T] & (T extends InstrumentedMoodEvent ? MoodAnalyticsContext
+    : T extends InstrumentedMedicationEvent ? MedicationAnalyticsContext : Record<never, never>);
+
+export type InstrumentedMedicationEvent =
+  | "medication_add_started" | "medication_added" | "medication_registration_step_viewed"
+  | "medication_save_clicked" | "medication_registration_failed";
+const INSTRUMENTED_MEDICATION_EVENTS: readonly string[] = [
+  "medication_add_started", "medication_added", "medication_registration_step_viewed",
+  "medication_save_clicked", "medication_registration_failed",
+];
 
 export type InstrumentedMoodEvent =
   | "mood_started" | "mood_step_completed" | "mood_completed" | "mood_result_viewed"
@@ -143,7 +163,9 @@ const INSTRUMENTED_MOOD_EVENTS: readonly string[] = [
 
 export type AnalyticsPayload = {
   mood_attempt_id?: string;
-  flow_version?: typeof MOOD_FLOW_VERSION;
+  medication_attempt_id?: string;
+  flow_version?: typeof MOOD_FLOW_VERSION | typeof MEDICATION_REGISTRATION_FLOW_VERSION;
+  stage?: "save";
   duration_ms?: number;
   failure_type?: MoodAnalysisFailureType | MoodSaveFailureType;
   storage_backend?: MoodStorageBackend;
@@ -161,7 +183,7 @@ export type AnalyticsPayload = {
   had_scheduled_time_before?: boolean;
   has_scheduled_time_after?: boolean;
   has_intake_history?: boolean;
-  step?: MoodStep;
+  step?: MoodStep | MedicationRegistrationStep;
   current_date?: string;
   previous_date?: string;
   selected_date?: string;
@@ -265,6 +287,28 @@ export function buildAnalyticsPayload<T extends AnalyticsEventName>({
     route: sanitizeAnalyticsRoute(pathname),
     auth_state: authState,
   };
+
+  if (INSTRUMENTED_MEDICATION_EVENTS.includes(eventName)) {
+    const props = properties as Partial<MedicationAnalyticsContext>;
+    if (!isMedicationAttemptId(props.medication_attempt_id)
+      || props.flow_version !== MEDICATION_REGISTRATION_FLOW_VERSION) return null;
+    base.medication_attempt_id = props.medication_attempt_id;
+    base.flow_version = props.flow_version;
+  }
+  if (eventName === "medication_registration_step_viewed") {
+    const { step } = properties as { step: MedicationRegistrationStep };
+    return MEDICATION_REGISTRATION_STEPS.includes(step) ? { ...base, step } : null;
+  }
+  if (eventName === "medication_save_clicked") {
+    const { medication_count: count } = properties as { medication_count: number };
+    return Number.isInteger(count) && count > 0 ? { ...base, medication_count: count } : null;
+  }
+  if (eventName === "medication_registration_failed") {
+    const props = properties as EventSpecificProperties["medication_registration_failed"];
+    if (props.stage !== "save" || !MEDICATION_SAVE_FAILURE_TYPES.includes(props.failure_type)
+      || !["indexeddb", "supabase", "unknown"].includes(props.storage_backend)) return null;
+    return { ...base, stage: "save", failure_type: props.failure_type, storage_backend: props.storage_backend };
+  }
 
   if (INSTRUMENTED_MOOD_EVENTS.includes(eventName)) {
     const props = properties as Partial<MoodAnalyticsContext>;

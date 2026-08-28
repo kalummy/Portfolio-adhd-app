@@ -595,7 +595,7 @@ export function HomeScreen({
                 className="inline-add-button"
                 onClick={() => {
                   resetDraft();
-                  startMedicationAddAttempt("home");
+                  startMedicationAddAttempt("home", selectedDateKey);
                 }}
               >
                 약 등록하기

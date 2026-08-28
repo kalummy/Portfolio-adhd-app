@@ -4,7 +4,11 @@ import { getAuthState } from "@/lib/auth/client";
 import { createClientId } from "../client-id";
 import { readMoodDraft } from "../mood-draft";
 import { MOOD_FLOW_VERSION, isMoodAttemptId, type MoodAnalysisFailureType, type MoodSaveFailureType, type MoodStorageBackend } from "./mood-contract";
-import { dateKeyDayDifference, getKstDateKey } from "@/lib/kst-date";
+import { dateKeyDayDifference, getKstDateKey, isValidDateKey } from "@/lib/kst-date";
+import {
+  MEDICATION_REGISTRATION_FLOW_VERSION, MEDICATION_REGISTRATION_STEPS, isMedicationAttemptId,
+  classifyMedicationSaveFailure, type MedicationRegistrationStep, type MedicationStorageBackend,
+} from "./medication-contract";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
   addDeduplicationKey,
@@ -42,7 +46,7 @@ import type {
 } from "./schema";
 
 const LOGIN_COMPLETED_STORAGE_KEY = "addi:analytics:login-completed:v1";
-const MEDICATION_ATTEMPT_STORAGE_KEY = "addi:analytics:medication-attempt:v1";
+const MEDICATION_ATTEMPT_STORAGE_KEY = "addi:analytics:medication-attempt:v2";
 const MOOD_ATTEMPT_STORAGE_KEY = "addi:analytics:mood-attempt:v2:";
 const VISIT_ATTEMPT_STORAGE_KEY = "addi:analytics:visit-attempt:v1";
 const INTAKE_DEDUPLICATION_STORAGE_KEY = "addi:analytics:intake-dedupe:v1";
@@ -50,8 +54,9 @@ const START_THROTTLE_MS = 1_000;
 const MOOD_SAVE_ANALYTICS_WAIT_MS = 500;
 
 let analyticsQueue: Promise<unknown> = Promise.resolve();
-let lastMedicationStartAt = 0;
 let lastMedicationManagementOpenAt = 0;
+let medicationAttempt: MedicationAttemptState | null = null;
+export type MedicationAttemptHandle = Pick<MedicationAttemptState, "id" | "dateKey"> | null;
 // Memory is the fallback for blocked sessionStorage, not a second attempt lifecycle.
 const moodAttempts = new Map<string, MoodAttemptState>();
 export type MoodAttemptHandle = Pick<MoodAttemptState, "id" | "dateKey"> | null;
@@ -105,18 +110,24 @@ function removeSessionValue(key: string) {
 }
 
 function readMedicationAttempt(): MedicationAttemptState | null {
+  if (medicationAttempt) return medicationAttempt;
   try {
     const parsed = JSON.parse(readSessionValue(MEDICATION_ATTEMPT_STORAGE_KEY) ?? "null") as Partial<MedicationAttemptState> | null;
-    if (!parsed || typeof parsed.active !== "boolean" || typeof parsed.added !== "boolean" || typeof parsed.started !== "boolean") {
+    if (!parsed || !isMedicationAttemptId(parsed.id) || !isValidDateKey(parsed.dateKey)
+      || !["home", "medication_list", "medication_management"].includes(parsed.source ?? "")
+      || !Array.isArray(parsed.viewedSteps) || !parsed.viewedSteps.every((step) => MEDICATION_REGISTRATION_STEPS.includes(step))
+      || typeof parsed.active !== "boolean" || typeof parsed.added !== "boolean" || typeof parsed.started !== "boolean") {
       return null;
     }
-    return parsed as MedicationAttemptState;
+    medicationAttempt = parsed as MedicationAttemptState;
+    return medicationAttempt;
   } catch {
     return null;
   }
 }
 
 function writeMedicationAttempt(state: MedicationAttemptState) {
+  medicationAttempt = state;
   writeSessionValue(MEDICATION_ATTEMPT_STORAGE_KEY, JSON.stringify(state));
 }
 
@@ -245,32 +256,85 @@ export function trackLoginCompleted() {
   return tracked;
 }
 
-function emitMedicationAttemptStarted(source: MedicationAddSource, state: MedicationAttemptState) {
+function medicationProperties(state: NonNullable<MedicationAttemptHandle>) {
+  return { medication_attempt_id: state.id, flow_version: MEDICATION_REGISTRATION_FLOW_VERSION };
+}
+
+function emitMedicationAttemptStarted(state: MedicationAttemptState) {
   const result = markMedicationAttemptStarted(state);
   writeMedicationAttempt(result.state);
   if (result.shouldTrack) {
-    queueResolvedEvent("medication_add_started", { source });
+    queueResolvedEvent("medication_add_started", { ...medicationProperties(state), source: state.source }, window.location.pathname);
   }
+  return { id: state.id, dateKey: state.dateKey };
 }
 
-export function startMedicationAddAttempt(source: MedicationAddSource) {
-  const now = Date.now();
-  if (now - lastMedicationStartAt < START_THROTTLE_MS) return;
-  lastMedicationStartAt = now;
-  emitMedicationAttemptStarted(source, createMedicationAttempt());
+function medicationDateKey(dateKey?: string, current?: MedicationAttemptState | null) {
+  if (isValidDateKey(dateKey)) return dateKey;
+  const queryDate = new URLSearchParams(window.location.search).get("date") ?? undefined;
+  if (isValidDateKey(queryDate)) return queryDate;
+  // A date-less URL must not split the same in-progress registration at midnight.
+  return current?.active ? current.dateKey : getKstDateKey();
 }
 
-export function ensureMedicationAddAttempt(source: MedicationAddSource) {
-  const current = readMedicationAttempt();
-  if (current?.active && current.started) return;
-  emitMedicationAttemptStarted(source, createMedicationAttempt());
+export function startMedicationAddAttempt(source: MedicationAddSource, dateKey?: string): MedicationAttemptHandle {
+  try {
+    const targetDate = medicationDateKey(dateKey);
+    // Explicit entry CTAs reset the product draft: even a quick new start needs
+    // a new ID. Page effects use ensureMedicationAddAttempt for deduplication.
+    return emitMedicationAttemptStarted(createMedicationAttempt(source, createClientId(), targetDate));
+  } catch { return null; }
 }
 
-export function trackMedicationAdded() {
-  const current = readMedicationAttempt() ?? createMedicationAttempt();
-  const result = markMedicationAdded(current);
-  writeMedicationAttempt(result.state);
-  if (result.shouldTrack) queueResolvedEvent("medication_added", {});
+export function ensureMedicationAddAttempt(source?: MedicationAddSource, dateKey?: string): MedicationAttemptHandle {
+  try {
+    const current = readMedicationAttempt();
+    const targetDate = medicationDateKey(dateKey, current);
+    const resolvedSource = source ?? (new URLSearchParams(window.location.search).get("origin") === "medications"
+      ? "medication_management" : "home");
+    const state = current?.active && current.dateKey === targetDate
+      ? current : createMedicationAttempt(resolvedSource, createClientId(), targetDate);
+    return emitMedicationAttemptStarted(state);
+  } catch { return null; }
+}
+
+function withMedicationAttempt(handle: MedicationAttemptHandle, action: (state: MedicationAttemptState) => void) {
+  try {
+    const current = readMedicationAttempt();
+    if (handle && current?.active && current.id === handle.id && current.dateKey === handle.dateKey) action(current);
+  } catch { /* Analytics must not block registration, persistence or navigation. */ }
+}
+
+export function trackMedicationRegistrationStepViewed(step: MedicationRegistrationStep, handle: MedicationAttemptHandle) {
+  withMedicationAttempt(handle, (state) => {
+    // First usable arrival per step/attempt, including reloads and intentional returns.
+    if (state.viewedSteps.includes(step)) return;
+    writeMedicationAttempt({ ...state, viewedSteps: [...state.viewedSteps, step] });
+    queueResolvedEvent("medication_registration_step_viewed", { ...medicationProperties(state), step }, window.location.pathname);
+  });
+}
+
+export function trackMedicationSaveClicked(handle: MedicationAttemptHandle, medicationCount: number) {
+  withMedicationAttempt(handle, (state) => {
+    queueResolvedEvent("medication_save_clicked", { ...medicationProperties(state), medication_count: medicationCount }, window.location.pathname);
+  });
+}
+
+export function trackMedicationRegistrationFailed(handle: MedicationAttemptHandle, error: unknown, backend: MedicationStorageBackend) {
+  withMedicationAttempt(handle, (state) => {
+    queueResolvedEvent("medication_registration_failed", {
+      ...medicationProperties(state), stage: "save",
+      failure_type: classifyMedicationSaveFailure(error, backend), storage_backend: backend,
+    }, window.location.pathname);
+  });
+}
+
+export function trackMedicationAdded(handle: MedicationAttemptHandle) {
+  withMedicationAttempt(handle, (state) => {
+    const result = markMedicationAdded(state);
+    writeMedicationAttempt(result.state);
+    if (result.shouldTrack) queueResolvedEvent("medication_added", medicationProperties(state), window.location.pathname);
+  });
 }
 
 function toAnalyticsMedicationScheduleType(

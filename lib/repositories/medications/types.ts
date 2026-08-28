@@ -6,6 +6,7 @@ export type MedicationSchedulePatch = {
 };
 
 export interface MedicationRepository {
+  readonly storageBackend: "indexeddb" | "supabase";
   listActive(): Promise<SavedMedication[]>;
   listAll(): Promise<SavedMedication[]>;
   createMany(medications: SavedMedication[]): Promise<SavedMedication[]>;

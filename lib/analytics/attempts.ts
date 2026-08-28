@@ -1,4 +1,5 @@
-import type { MoodSource, MoodStep } from "./schema";
+import type { MedicationAddSource, MoodSource, MoodStep } from "./schema";
+import type { MedicationRegistrationStep } from "./medication-contract";
 
 export type MoodAttemptState = {
   id: string;
@@ -55,13 +56,17 @@ export function markMoodSaved(state: MoodAttemptState) {
 }
 
 export type MedicationAttemptState = {
+  id: string;
+  dateKey: string;
+  source: MedicationAddSource;
+  viewedSteps: MedicationRegistrationStep[];
   active: boolean;
   added: boolean;
   started: boolean;
 };
 
-export function createMedicationAttempt(): MedicationAttemptState {
-  return { active: true, added: false, started: false };
+export function createMedicationAttempt(source: MedicationAddSource = "home", id = "", dateKey = ""): MedicationAttemptState {
+  return { id, dateKey, source, viewedSteps: [], active: true, added: false, started: false };
 }
 
 export function markMedicationAttemptStarted(state: MedicationAttemptState) {

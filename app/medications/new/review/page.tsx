@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MedicationSummaryCard } from "@/components/medication-card";
 import { MobileShell } from "@/components/mobile-shell";
+import { useMedicationRegistrationStep } from "@/lib/analytics/use-medication-registration-step";
 import {
   commitProvisionalMedications,
   getDraft,
@@ -22,6 +23,8 @@ export default function MedicationReviewPage() {
   const router = useRouter();
   const [draft, setDraft] = useState<MedicationDraft | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DraftMedication | null>(null);
+  useMedicationRegistrationStep("review", Boolean(draft?.draftMedications.length),
+    Boolean(draft?.draftMedications.some((medication) => medication.source !== "photo")));
 
   useEffect(() => {
     const current = getDraft();

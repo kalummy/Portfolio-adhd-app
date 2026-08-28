@@ -39,6 +39,7 @@ export function createSupabaseMedicationRepository(userId: string): ServerMedica
   }
 
   return {
+    storageBackend: "supabase",
     listActive: () => list(true),
     listAll: () => list(false),
     async createMany(medications) {
