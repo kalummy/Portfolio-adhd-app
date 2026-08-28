@@ -5,6 +5,7 @@ export type NewMoodRecord = Omit<MoodRecord, "id"> & {
 };
 
 export interface MoodRepository {
+  readonly storageBackend: "indexeddb" | "supabase";
   listAll(): Promise<MoodRecord[]>;
   listRecent(startDate: string, endDate: string): Promise<MoodRecord[]>;
   findByDate(date: string): Promise<MoodRecord | null>;

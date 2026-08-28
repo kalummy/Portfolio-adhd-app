@@ -1,3 +1,8 @@
+import { isCatId, type CatId } from "../cats";
+import {
+  MOOD_FLOW_VERSION, MOOD_SAVE_FAILURE_TYPES, isMoodAttemptId, isMoodAnalysisFailure,
+  type MoodAnalyticsContext, type MoodAnalysisFailureType, type MoodSaveFailureType, type MoodStorageBackend,
+} from "./mood-contract";
 import {
   ANALYTICS_SCREEN_NAMES,
   type AnalyticsNavigationType,
@@ -25,6 +30,11 @@ export const ANALYTICS_EVENT_NAMES = [
   "mood_report_viewed",
   "mood_analysis_retried",
   "mood_saved",
+  "mood_analysis_started",
+  "mood_analysis_succeeded",
+  "mood_analysis_failed",
+  "mood_save_clicked",
+  "mood_save_failed",
   "visit_add_started",
   "visit_added",
   "home_date_picker_opened",
@@ -55,7 +65,7 @@ export type AnalyticsMedicationScheduleType = "daily" | "as_needed" | "bedtime";
 export type MedicationScheduleChangedFields = "schedule" | "time" | "schedule_and_time";
 export type MoodSource = "home" | "mood_history";
 export type MoodStep = 1 | 2 | 3 | 4;
-export type AnalyticsCatId = "white" | "calico" | "tuxedo" | "rainbow" | "sunglasses";
+export type AnalyticsCatId = CatId;
 export type DateDirection = "past" | "today" | "future";
 
 type HomeDateSelectionProperties = {
@@ -104,6 +114,11 @@ type EventSpecificProperties = {
   mood_report_viewed: Record<never, never>;
   mood_analysis_retried: Record<never, never>;
   mood_saved: Record<never, never>;
+  mood_analysis_started: Record<never, never>;
+  mood_analysis_succeeded: { duration_ms: number };
+  mood_analysis_failed: { duration_ms: number; failure_type: MoodAnalysisFailureType };
+  mood_save_clicked: Record<never, never>;
+  mood_save_failed: { failure_type: MoodSaveFailureType; storage_backend: MoodStorageBackend };
   visit_add_started: Record<never, never>;
   visit_added: Record<never, never>;
   home_date_picker_opened: { source: "home"; current_date: string };
@@ -113,9 +128,25 @@ type EventSpecificProperties = {
 };
 
 export type AnalyticsEventProperties<T extends AnalyticsEventName> =
-  EventSpecificProperties[T];
+  EventSpecificProperties[T] & (T extends InstrumentedMoodEvent ? MoodAnalyticsContext : Record<never, never>);
+
+export type InstrumentedMoodEvent =
+  | "mood_started" | "mood_step_completed" | "mood_completed" | "mood_result_viewed"
+  | "mood_saved" | "cat_reward_revealed" | "mood_analysis_started"
+  | "mood_analysis_succeeded" | "mood_analysis_failed" | "mood_save_clicked" | "mood_save_failed";
+
+const INSTRUMENTED_MOOD_EVENTS: readonly string[] = [
+  "mood_started", "mood_step_completed", "mood_completed", "mood_result_viewed",
+  "mood_saved", "cat_reward_revealed", "mood_analysis_started", "mood_analysis_succeeded",
+  "mood_analysis_failed", "mood_save_clicked", "mood_save_failed",
+];
 
 export type AnalyticsPayload = {
+  mood_attempt_id?: string;
+  flow_version?: typeof MOOD_FLOW_VERSION;
+  duration_ms?: number;
+  failure_type?: MoodAnalysisFailureType | MoodSaveFailureType;
+  storage_backend?: MoodStorageBackend;
   environment: AnalyticsEnvironment;
   route: AnalyticsRoute;
   auth_state: AnalyticsAuthState;
@@ -235,6 +266,31 @@ export function buildAnalyticsPayload<T extends AnalyticsEventName>({
     auth_state: authState,
   };
 
+  if (INSTRUMENTED_MOOD_EVENTS.includes(eventName)) {
+    const props = properties as Partial<MoodAnalyticsContext>;
+    if (!isMoodAttemptId(props.mood_attempt_id) || props.flow_version !== MOOD_FLOW_VERSION) return null;
+    base.mood_attempt_id = props.mood_attempt_id;
+    base.flow_version = props.flow_version;
+  }
+
+  if (eventName === "mood_analysis_succeeded" || eventName === "mood_analysis_failed") {
+    const props = properties as { duration_ms?: unknown; failure_type?: unknown };
+    if (typeof props.duration_ms !== "number" || !Number.isFinite(props.duration_ms) || props.duration_ms < 0) return null;
+    base.duration_ms = props.duration_ms;
+    if (eventName === "mood_analysis_failed") {
+      if (!isMoodAnalysisFailure(props.failure_type)) return null;
+      base.failure_type = props.failure_type;
+    }
+  }
+
+  if (eventName === "mood_save_failed") {
+    const props = properties as { failure_type: MoodSaveFailureType; storage_backend: MoodStorageBackend };
+    if (!MOOD_SAVE_FAILURE_TYPES.includes(props.failure_type)
+      || !["indexeddb", "supabase", "unknown"].includes(props.storage_backend)) return null;
+    base.failure_type = props.failure_type;
+    base.storage_backend = props.storage_backend;
+  }
+
   if (eventName === "screen_viewed") {
     const {
       screen_name: screenName,
@@ -353,8 +409,8 @@ export function buildAnalyticsPayload<T extends AnalyticsEventName>({
 
   if (eventName === "cat_reward_revealed") {
     const catId = (properties as { cat_id?: unknown }).cat_id;
-    return typeof catId === "string" && ["white", "calico", "tuxedo", "rainbow", "sunglasses"].includes(catId)
-      ? { ...base, cat_id: catId as AnalyticsCatId }
+    return isCatId(catId)
+      ? { ...base, cat_id: catId }
       : null;
   }
 

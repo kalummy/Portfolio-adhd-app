@@ -9,12 +9,21 @@ import { MoodSummaryLoading } from "@/components/mood-summary-loading";
 import { VisitDialog } from "@/components/visit-dialog";
 import {
   ensureMoodAttempt,
+  endMoodAttempt,
+  trackMoodAnalysisStarted,
+  trackMoodAnalysisSucceeded,
+  trackMoodAnalysisFailed,
+  trackMoodSaveClicked,
+  trackMoodSaveFailed,
+  type MoodAttemptHandle,
   trackMoodCatRewardRevealed,
   trackMoodCompleted,
   trackMoodResultViewed,
   trackMoodSaved,
   trackMoodStepCompleted,
 } from "@/lib/analytics/events";
+import { readMoodAnalysisFailure, type MoodAnalysisFailureType, type MoodStorageBackend } from "@/lib/analytics/mood-contract";
+import { classifyMoodSaveFailure } from "@/lib/analytics/mood-save-failure";
 import { selectRandomRewardCatId, type CatId } from "@/lib/cats";
 import { createClientId } from "@/lib/client-id";
 import {
@@ -128,6 +137,7 @@ export function MoodQuestionFlow({
 }) {
   const restoredRequestStarted = useRef(false);
   const completionHandled = useRef(false);
+  const moodAttempt = useRef<MoodAttemptHandle>(null);
   const [ready, setReady] = useState(false);
   const [phase, setPhase] = useState<MoodDraftPhase>("questions");
   const [step, setStep] = useState(0);
@@ -155,6 +165,7 @@ export function MoodQuestionFlow({
 
   const persistDraft = useCallback((next: DraftUpdate = {}) => {
     writeMoodDraft(window.sessionStorage, targetDateKey, {
+      moodAttemptId: moodAttempt.current?.id,
       phase: next.phase ?? phase,
       step: next.step ?? step,
       answers: next.answers ?? answers,
@@ -223,7 +234,7 @@ export function MoodQuestionFlow({
         moodPhase: draft?.phase ?? "questions",
       }, "");
       setReady(true);
-      ensureMoodAttempt("home");
+      moodAttempt.current = ensureMoodAttempt("home", targetDateKey, draft?.moodAttemptId, repositories.moods.storageBackend);
     })().catch(() => window.location.replace(homeHref));
   }, [homeHref, targetDateKey]);
 
@@ -274,18 +285,29 @@ export function MoodQuestionFlow({
       intakeMedicationIds,
     });
 
+    const attempt = moodAttempt.current;
+    const analysisStartedAt = performance.now();
+    let failureType: MoodAnalysisFailureType = "network";
     try {
+      trackMoodAnalysisStarted(attempt);
       const response = await fetch("/api/moods/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ input }),
       });
-      if (!response.ok) throw new Error("analysis_failed");
+      if (!response.ok) {
+        failureType = await readMoodAnalysisFailure(response);
+        throw new Error("analysis_failed");
+      }
+      failureType = "response_error";
       const payload = await response.json() as MoodAnalysisMetadata;
+      failureType = "validation_error";
       const metadata: MoodAnalysisMetadata = {
         ...payload,
         result: validateMoodAnalysisResult(payload.result, input),
       };
+      trackMoodAnalysisSucceeded(attempt, Math.max(0, performance.now() - analysisStartedAt));
+      failureType = "unknown";
       setAnalysis(metadata);
       persistDraft({
         phase: "summarizing",
@@ -294,7 +316,9 @@ export function MoodQuestionFlow({
         analysis: metadata,
         analysisFailed: false,
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "TimeoutError") failureType = "timeout";
+      trackMoodAnalysisFailed(attempt, Math.max(0, performance.now() - analysisStartedAt), failureType);
       setAnalysisFailed(true);
       persistDraft({
         phase: "summarizing",
@@ -320,16 +344,9 @@ export function MoodQuestionFlow({
 
   useEffect(() => {
     if (phase !== "result") return;
-    trackMoodResultViewed();
+    trackMoodResultViewed(moodAttempt.current);
     if (!catId) return;
-    const rewardKey = `addi:analytics:mood-reward-revealed:v1:${targetDateKey}:${catId}`;
-    try {
-      if (window.sessionStorage.getItem(rewardKey) === "1") return;
-      window.sessionStorage.setItem(rewardKey, "1");
-    } catch {
-      // Analytics state must never block the product flow.
-    }
-    trackMoodCatRewardRevealed(catId);
+    trackMoodCatRewardRevealed(catId, moodAttempt.current);
   }, [catId, phase, targetDateKey]);
 
   function updateAnswer(update: (current: MoodAnswerDraft) => MoodAnswerDraft) {
@@ -386,12 +403,13 @@ export function MoodQuestionFlow({
 
   function discardDraftAndGoHome() {
     clearMoodDraft(window.sessionStorage, targetDateKey);
+    endMoodAttempt(moodAttempt.current);
     window.location.assign(homeHref);
   }
 
   function goToNextStep() {
     if (!canContinue || completionHandled.current) return;
-    trackMoodStepCompleted((step + 1) as 1 | 2 | 3);
+    trackMoodStepCompleted((step + 1) as 1 | 2 | 3, moodAttempt.current);
     if (step < 2) {
       const nextStep = step + 1;
       window.history.pushState({
@@ -419,15 +437,19 @@ export function MoodQuestionFlow({
       recordedAt: timestamp,
       analysisFailed: false,
     });
-    trackMoodCompleted();
+    trackMoodCompleted(moodAttempt.current);
     void requestAnalysis(timestamp, reward);
   }
 
   async function save() {
     if (!result || !catId || saving) return;
     setSaving(true);
+    const attempt = moodAttempt.current;
+    let storageBackend: MoodStorageBackend = "unknown";
+    let repositorySaved = false;
     try {
       const repository = await getMoodRepository();
+      storageBackend = repository.storageBackend;
       await repository.save({
         date: targetDateKey,
         mood: result.moodType,
@@ -444,13 +466,16 @@ export function MoodQuestionFlow({
         analysisModel: result.analysis.model,
         analysisCreatedAt: result.analysis.createdAt,
       });
+      repositorySaved = true;
+      const savedEvent = trackMoodSaved(attempt, storageBackend);
       clearMoodDraft(window.sessionStorage, targetDateKey);
-      await trackMoodSaved();
+      await savedEvent;
       const destination = new URL(homeHref, window.location.origin);
       destination.searchParams.set("moodToast", "saved");
       destination.searchParams.set("toastId", createClientId());
       window.location.assign(`${destination.pathname}${destination.search}`);
     } catch (error) {
+      if (!repositorySaved) trackMoodSaveFailed(attempt, classifyMoodSaveFailure(error, storageBackend), storageBackend);
       if (error instanceof DuplicateMoodRecordError) {
         window.location.replace(homeHref);
       } else {
@@ -482,7 +507,10 @@ export function MoodQuestionFlow({
         catId={catId}
         result={result}
         saving={saving}
-        onSave={() => void save()}
+        onSave={() => {
+          trackMoodSaveClicked(moodAttempt.current);
+          void save();
+        }}
       />
     );
   }

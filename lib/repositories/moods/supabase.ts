@@ -68,6 +68,7 @@ export function createSupabaseMoodRepository(userId: string): MoodRepository {
   }
 
   return {
+    storageBackend: "supabase",
     listAll,
     listRecent,
     findByDate,

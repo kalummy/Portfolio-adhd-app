@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { classifyMoodAnalysisDiagnostic } from "@/lib/analytics/mood-contract";
 import {
   createLocalPreviewMoodAnalysis,
   validateMoodAnalysisInput,
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
     const body = await request.json() as { input?: MoodAnalysisInput };
     input = validateMoodAnalysisInput(body.input);
   } catch {
-    return NextResponse.json({ code: "INVALID_REQUEST" }, { status: 400, headers: NO_STORE_HEADERS });
+    return NextResponse.json({ code: "INVALID_REQUEST", failure_type: "validation_error" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
     if (process.env.VERCEL_ENV !== "production") {
       return NextResponse.json(createLocalPreviewMoodAnalysis(input), { headers: NO_STORE_HEADERS });
     }
-    return NextResponse.json({ code: "AI_NOT_CONFIGURED" }, { status: 503, headers: NO_STORE_HEADERS });
+    return NextResponse.json({ code: "AI_NOT_CONFIGURED", failure_type: "configuration_error" }, { status: 503, headers: NO_STORE_HEADERS });
   }
 
   try {
@@ -38,6 +39,6 @@ export async function POST(request: Request) {
     return NextResponse.json(result, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.error("mood_analysis_failed", getMoodAnalysisFailureDiagnostic(error));
-    return NextResponse.json({ code: "ANALYSIS_FAILED" }, { status: 422, headers: NO_STORE_HEADERS });
+    return NextResponse.json({ code: "ANALYSIS_FAILED", failure_type: classifyMoodAnalysisDiagnostic(getMoodAnalysisFailureDiagnostic(error)) }, { status: 422, headers: NO_STORE_HEADERS });
   }
 }

@@ -1,6 +1,9 @@
 "use client";
 
 import { getAuthState } from "@/lib/auth/client";
+import { createClientId } from "../client-id";
+import { readMoodDraft } from "../mood-draft";
+import { MOOD_FLOW_VERSION, isMoodAttemptId, type MoodAnalysisFailureType, type MoodSaveFailureType, type MoodStorageBackend } from "./mood-contract";
 import { dateKeyDayDifference, getKstDateKey } from "@/lib/kst-date";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
@@ -40,15 +43,34 @@ import type {
 
 const LOGIN_COMPLETED_STORAGE_KEY = "addi:analytics:login-completed:v1";
 const MEDICATION_ATTEMPT_STORAGE_KEY = "addi:analytics:medication-attempt:v1";
-const MOOD_ATTEMPT_STORAGE_KEY = "addi:analytics:mood-attempt:v1";
+const MOOD_ATTEMPT_STORAGE_KEY = "addi:analytics:mood-attempt:v2:";
 const VISIT_ATTEMPT_STORAGE_KEY = "addi:analytics:visit-attempt:v1";
 const INTAKE_DEDUPLICATION_STORAGE_KEY = "addi:analytics:intake-dedupe:v1";
 const START_THROTTLE_MS = 1_000;
+const MOOD_SAVE_ANALYTICS_WAIT_MS = 500;
 
 let analyticsQueue: Promise<unknown> = Promise.resolve();
 let lastMedicationStartAt = 0;
 let lastMedicationManagementOpenAt = 0;
-let lastMoodStartAt = 0;
+// Memory is the fallback for blocked sessionStorage, not a second attempt lifecycle.
+const moodAttempts = new Map<string, MoodAttemptState>();
+export type MoodAttemptHandle = Pick<MoodAttemptState, "id" | "dateKey"> | null;
+type MoodAuthState = "guest" | "member";
+// Attempt-scoped, memory-only repository context; never an auth/authorization cache.
+const moodAuthStates = new Map<string, MoodAuthState>();
+// Handles for entries already in analyticsQueue. SDK is attempted once only:
+// no persistence, ACK waiting, retry, or separate outbox.
+const pendingMoodEvents = new Set<{ attemptId: string; dispatch: (auth: MoodAuthState) => void }>();
+
+function reuseMoodRepositoryAuth(attemptId: string, backend: MoodStorageBackend) {
+  if (backend !== "indexeddb" && backend !== "supabase") return;
+  const auth = backend === "supabase" ? "member" : "guest";
+  moodAuthStates.set(attemptId, auth);
+  // Preserve order within this attempt even when the shared queue is blocked.
+  for (const entry of pendingMoodEvents) {
+    if (entry.attemptId === attemptId) entry.dispatch(auth);
+  }
+}
 
 const screenTrackingGlobal = globalThis as typeof globalThis & {
   __addiScreenTrackingState?: { previousScreen: AnalyticsScreenName | null };
@@ -102,11 +124,17 @@ function isMoodSource(value: unknown): value is MoodSource {
   return value === "home" || value === "mood_history";
 }
 
-function readMoodAttempt(): MoodAttemptState | null {
+function readMoodAttempt(dateKey: string): MoodAttemptState | null {
+  const memory = moodAttempts.get(dateKey);
+  if (memory) return memory;
   try {
-    const parsed = JSON.parse(readSessionValue(MOOD_ATTEMPT_STORAGE_KEY) ?? "null") as Partial<MoodAttemptState> | null;
+    const parsed = JSON.parse(readSessionValue(MOOD_ATTEMPT_STORAGE_KEY + dateKey) ?? "null") as Partial<MoodAttemptState> | null;
     if (
       !parsed
+      || !isMoodAttemptId(parsed.id)
+      || parsed.dateKey !== dateKey
+      || typeof parsed.completed !== "boolean"
+      || typeof parsed.rewardRevealed !== "boolean"
       || typeof parsed.active !== "boolean"
       || typeof parsed.resultViewed !== "boolean"
       || typeof parsed.saved !== "boolean"
@@ -117,6 +145,7 @@ function readMoodAttempt(): MoodAttemptState | null {
     ) {
       return null;
     }
+    moodAttempts.set(dateKey, parsed as MoodAttemptState);
     return parsed as MoodAttemptState;
   } catch {
     return null;
@@ -124,7 +153,8 @@ function readMoodAttempt(): MoodAttemptState | null {
 }
 
 function writeMoodAttempt(state: MoodAttemptState) {
-  writeSessionValue(MOOD_ATTEMPT_STORAGE_KEY, JSON.stringify(state));
+  moodAttempts.set(state.dateKey, state);
+  writeSessionValue(MOOD_ATTEMPT_STORAGE_KEY + state.dateKey, JSON.stringify(state));
 }
 
 function readVisitAttempt(): VisitAttemptState | null {
@@ -160,6 +190,31 @@ function queueResolvedEvent<T extends AnalyticsEventName>(
 ) {
   if (typeof window === "undefined" || isAnalyticsPathBlocked(window.location.pathname)) {
     return Promise.resolve();
+  }
+  const attemptId = (properties as { mood_attempt_id?: string }).mood_attempt_id;
+  if (attemptId) {
+    const pathname = pathnameOverride ?? window.location.pathname;
+    let dispatched = false;
+    let complete!: () => void;
+    const delivered = new Promise<void>((resolve) => { complete = resolve; });
+    const entry = { attemptId, dispatch(auth: MoodAuthState) {
+      if (dispatched) return;
+      dispatched = true;
+      pendingMoodEvents.delete(entry);
+      try { trackAnalyticsEvent(eventName, auth, properties, pathname); }
+      catch { /* SDK failure must never affect the product. */ }
+      finally { complete(); }
+    } };
+    pendingMoodEvents.add(entry);
+    const knownAuth = moodAuthStates.get(attemptId);
+    if (knownAuth) {
+      entry.dispatch(knownAuth);
+    } else {
+      analyticsQueue = analyticsQueue.then(async () => {
+        if (!dispatched) entry.dispatch(await resolveAnalyticsAuthState());
+      }).catch(() => { entry.dispatch("guest"); });
+    }
+    return delivered;
   }
   analyticsQueue = analyticsQueue
     .then(async () => {
@@ -310,56 +365,116 @@ function emitMoodAttemptStarted(state: MoodAttemptState) {
   const result = markMoodAttemptStarted(state);
   writeMoodAttempt(result.state);
   if (result.shouldTrack) {
-    queueResolvedEvent("mood_started", { source: result.state.source });
+    queueResolvedEvent("mood_started", { ...moodProperties(state), source: result.state.source });
   }
 }
 
-export function startMoodAttempt(source: MoodSource) {
-  const now = Date.now();
-  if (now - lastMoodStartAt < START_THROTTLE_MS) return;
-  lastMoodStartAt = now;
-  emitMoodAttemptStarted(createMoodAttempt(source));
+export function startMoodAttempt(source: MoodSource, dateKey: string) {
+  let draftId: string | undefined;
+  try { draftId = readMoodDraft(window.sessionStorage, dateKey)?.moodAttemptId; } catch { /* optional storage */ }
+  return ensureMoodAttempt(source, dateKey, draftId);
 }
 
-export function ensureMoodAttempt(source: MoodSource) {
-  const current = readMoodAttempt();
-  if (current?.active && current.started) return;
-  emitMoodAttemptStarted(createMoodAttempt(source));
+export function ensureMoodAttempt(source: MoodSource, dateKey: string, draftId?: string, backend: MoodStorageBackend = "unknown"): MoodAttemptHandle {
+  try {
+    const current = readMoodAttempt(dateKey);
+    const reusable = current?.active && (!draftId || current.id === draftId);
+    const state = reusable ? current : createMoodAttempt(source,
+      isMoodAttemptId(draftId) && current?.id !== draftId ? draftId : createClientId(), dateKey);
+    reuseMoodRepositoryAuth(state.id, backend);
+    emitMoodAttemptStarted(state);
+    return { id: state.id, dateKey };
+  } catch {
+    // Analytics failure must not redirect or prevent entry into the mood flow.
+    return null;
+  }
 }
 
-export function restartMoodAttempt() {
-  const source = readMoodAttempt()?.source ?? "home";
-  emitMoodAttemptStarted(createMoodAttempt(source));
+export function endMoodAttempt(handle: MoodAttemptHandle) {
+  withMoodAttempt(handle, (state) => {
+    writeMoodAttempt({ ...state, active: false });
+    moodAuthStates.delete(state.id);
+  });
 }
 
-export function trackMoodStepCompleted(step: MoodStep) {
-  const current = readMoodAttempt() ?? createMoodAttempt("home");
-  if (!current.started) emitMoodAttemptStarted(current);
-  const started = readMoodAttempt() ?? current;
-  const result = markMoodStepCompleted(started, step);
-  writeMoodAttempt(result.state);
-  if (result.shouldTrack) queueResolvedEvent("mood_step_completed", { step });
+function moodProperties(state: NonNullable<MoodAttemptHandle>) {
+  return { mood_attempt_id: state.id, flow_version: MOOD_FLOW_VERSION };
 }
 
-export function trackMoodResultViewed() {
-  const current = readMoodAttempt() ?? createMoodAttempt("home");
-  const result = markMoodResultViewed(current);
-  writeMoodAttempt(result.state);
-  if (result.shouldTrack) queueResolvedEvent("mood_result_viewed", {});
+function withMoodAttempt(handle: MoodAttemptHandle, action: (state: MoodAttemptState) => unknown) {
+  try {
+    if (!handle) return;
+    const state = readMoodAttempt(handle.dateKey);
+    if (state?.id === handle.id && state.active) action(state);
+  } catch { /* Analytics must never block the product flow. */ }
 }
 
-export function trackMoodCompleted() { return queueResolvedEvent("mood_completed", {}); }
-export function trackMoodCatRewardRevealed(catId: import("../cats").CatId) { return queueResolvedEvent("cat_reward_revealed", { cat_id: catId as AnalyticsCatId }); }
+export function trackMoodStepCompleted(step: MoodStep, handle: MoodAttemptHandle) {
+  withMoodAttempt(handle, (state) => {
+    const result = markMoodStepCompleted(state, step);
+    writeMoodAttempt(result.state);
+    if (result.shouldTrack) queueResolvedEvent("mood_step_completed", { ...moodProperties(state), step });
+  });
+}
+
+export function trackMoodResultViewed(handle: MoodAttemptHandle) {
+  withMoodAttempt(handle, (state) => {
+    const result = markMoodResultViewed(state);
+    writeMoodAttempt(result.state);
+    if (result.shouldTrack) queueResolvedEvent("mood_result_viewed", moodProperties(state));
+  });
+}
+
+export function trackMoodCompleted(handle: MoodAttemptHandle) {
+  withMoodAttempt(handle, (state) => {
+    if (state.completed) return;
+    writeMoodAttempt({ ...state, completed: true });
+    queueResolvedEvent("mood_completed", moodProperties(state));
+  });
+}
+export function trackMoodCatRewardRevealed(catId: AnalyticsCatId, handle: MoodAttemptHandle) {
+  withMoodAttempt(handle, (state) => {
+    if (state.rewardRevealed) return;
+    writeMoodAttempt({ ...state, rewardRevealed: true });
+    queueResolvedEvent("cat_reward_revealed", { ...moodProperties(state), cat_id: catId });
+  });
+}
+export function trackMoodAnalysisStarted(handle: MoodAttemptHandle) {
+  withMoodAttempt(handle, (state) => queueResolvedEvent("mood_analysis_started", moodProperties(state)));
+}
+export function trackMoodAnalysisSucceeded(handle: MoodAttemptHandle, durationMs: number) {
+  withMoodAttempt(handle, (state) => queueResolvedEvent("mood_analysis_succeeded", { ...moodProperties(state), duration_ms: durationMs }));
+}
+export function trackMoodAnalysisFailed(handle: MoodAttemptHandle, durationMs: number, failureType: MoodAnalysisFailureType) {
+  withMoodAttempt(handle, (state) => queueResolvedEvent("mood_analysis_failed", { ...moodProperties(state), duration_ms: durationMs, failure_type: failureType }));
+}
+export function trackMoodSaveClicked(handle: MoodAttemptHandle) {
+  withMoodAttempt(handle, (state) => queueResolvedEvent("mood_save_clicked", moodProperties(state)));
+}
+export function trackMoodSaveFailed(handle: MoodAttemptHandle, failureType: MoodSaveFailureType, storageBackend: MoodStorageBackend) {
+  withMoodAttempt(handle, (state) => queueResolvedEvent("mood_save_failed", { ...moodProperties(state), failure_type: failureType, storage_backend: storageBackend }));
+}
 export function trackCatCollectionViewed() { return queueResolvedEvent("cat_collection_viewed", {}); }
 export function trackMoodReportViewed() { return queueResolvedEvent("mood_report_viewed", {}); }
 export function trackMoodAnalysisRetried() { return queueResolvedEvent("mood_analysis_retried", {}); }
 
-export function trackMoodSaved() {
-  const current = readMoodAttempt() ?? createMoodAttempt("home");
-  const result = markMoodSaved(current);
-  writeMoodAttempt(result.state);
-  if (result.shouldTrack) return queueResolvedEvent("mood_saved", {});
-  return Promise.resolve();
+export function trackMoodSaved(handle: MoodAttemptHandle, backend: MoodStorageBackend = "unknown") {
+  let queued = Promise.resolve<unknown>(undefined);
+  withMoodAttempt(handle, (state) => {
+    // The successful repository is the current source of truth. No extra auth
+    // request is needed before handing this attempt's events to the SDK.
+    reuseMoodRepositoryAuth(state.id, backend);
+    const result = markMoodSaved(state);
+    writeMoodAttempt(result.state);
+    if (result.shouldTrack) queued = queueResolvedEvent("mood_saved", moodProperties(state));
+    moodAuthStates.delete(state.id);
+  });
+  // Preserve the pre-navigation queue drain, but a stalled auth/analytics call
+  // must never leave a successfully saved mood stuck on the result screen.
+  return new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, MOOD_SAVE_ANALYTICS_WAIT_MS);
+    void queued.finally(() => { clearTimeout(timer); resolve(); });
+  });
 }
 
 function emitVisitAttemptStarted(state: VisitAttemptState) {

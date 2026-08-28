@@ -17,19 +17,22 @@ try {
     "--moduleResolution", "bundler",
     "--skipLibCheck",
     "--outDir", fixtureDirectory,
+    "--rootDir", "lib",
     "lib/analytics/schema.ts",
     "lib/analytics/attempts.ts",
     "lib/analytics/path-policy.ts",
     "lib/analytics/screens.ts",
   ], { cwd: projectRootPath, stdio: "pipe" });
-  await copyFile(join(fixtureDirectory, "schema.js"), join(fixtureDirectory, "schema"));
-  await copyFile(join(fixtureDirectory, "screens.js"), join(fixtureDirectory, "screens"));
+  for (const name of ["analytics/schema", "analytics/screens", "analytics/mood-contract", "cats"]) {
+    await copyFile(join(fixtureDirectory, `${name}.js`), join(fixtureDirectory, name));
+  }
   await writeFile(join(fixtureDirectory, "package.json"), '{"type":"module"}');
 
-  const schema = await import(pathToFileURL(join(fixtureDirectory, "schema.js")));
-  const attempts = await import(pathToFileURL(join(fixtureDirectory, "attempts.js")));
-  const pathPolicy = await import(pathToFileURL(join(fixtureDirectory, "path-policy.js")));
-  const screens = await import(pathToFileURL(join(fixtureDirectory, "screens.js")));
+  const schema = await import(pathToFileURL(join(fixtureDirectory, "analytics/schema.js")));
+  const attempts = await import(pathToFileURL(join(fixtureDirectory, "analytics/attempts.js")));
+  const pathPolicy = await import(pathToFileURL(join(fixtureDirectory, "analytics/path-policy.js")));
+  const screens = await import(pathToFileURL(join(fixtureDirectory, "analytics/screens.js")));
+  const moodContext = { mood_attempt_id: "23c0c37b-4871-46a7-b44c-f7d39045fe0b", flow_version: "mood_v2_instrumented" };
 
   for (const pathname of ["/preview", "/preview/", "/preview/home", "/preview/home/empty"]) {
     assert.equal(pathPolicy.isAnalyticsPathBlocked(pathname), true, `${pathname} must be blocked`);
@@ -69,7 +72,7 @@ try {
   }
   console.log(`PASS route sanitizer ${routeCases.length}/${routeCases.length}`);
 
-  assert.equal(schema.ANALYTICS_EVENT_NAMES.length, 26);
+  assert.equal(schema.ANALYTICS_EVENT_NAMES.length, 31);
   assert.deepEqual(schema.ANALYTICS_EVENT_NAMES, [
     "app_opened",
     "screen_viewed",
@@ -91,6 +94,11 @@ try {
     "mood_report_viewed",
     "mood_analysis_retried",
     "mood_saved",
+    "mood_analysis_started",
+    "mood_analysis_succeeded",
+    "mood_analysis_failed",
+    "mood_save_clicked",
+    "mood_save_failed",
     "visit_add_started",
     "visit_added",
     "home_date_picker_opened",
@@ -177,6 +185,7 @@ try {
     eventName: "mood_step_completed",
     properties: {
       step: 2,
+      ...moodContext,
       email: "blocked@example.com",
       result: "blocked",
       medicationId: "blocked",
@@ -187,6 +196,7 @@ try {
     route: "mood_entry",
     auth_state: "guest",
     step: 2,
+    ...moodContext,
   });
   assert.deepEqual(schema.buildAnalyticsPayload({
     environment: "production",
@@ -257,7 +267,7 @@ try {
     ...common,
     authState: "guest",
     eventName: "mood_step_completed",
-    properties: { step: 5 },
+    properties: { ...moodContext, step: 5 },
   }), null);
   assert.deepEqual(schema.buildAnalyticsPayload({
     environment: "development",
@@ -266,6 +276,7 @@ try {
     eventName: "cat_reward_revealed",
     properties: {
       cat_id: "white",
+      ...moodContext,
       mood_answer: "blocked",
       direct_input: "blocked",
       ai_result: "blocked",
@@ -278,12 +289,13 @@ try {
     route: "mood_entry",
     auth_state: "guest",
     cat_id: "white",
+    ...moodContext,
   });
   assert.equal(schema.buildAnalyticsPayload({
     ...common,
     authState: "guest",
     eventName: "cat_reward_revealed",
-    properties: { cat_id: "unknown" },
+    properties: { ...moodContext, cat_id: "unknown" },
   }), null);
   assert.deepEqual(schema.buildAnalyticsPayload({
     environment: "development",
