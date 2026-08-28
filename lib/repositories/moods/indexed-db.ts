@@ -8,6 +8,7 @@ import { sortMoodRecordsNewestFirst } from "@/lib/mood-history";
 import type { MoodRepository } from "./types";
 
 export const indexedDbMoodRepository: MoodRepository = {
+  storageBackend: "indexeddb",
   listAll: getMoodRecords,
   async listRecent(startDate, endDate) {
     return sortMoodRecordsNewestFirst(

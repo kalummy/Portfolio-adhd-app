@@ -734,7 +734,7 @@ export function HomeScreen({
               <Link
                 href={`/moods/new?date=${selectedDateKey}`}
                 className="mood-record-link"
-                onClick={() => startMoodAttempt("home")}
+                  onClick={() => startMoodAttempt("home", selectedDateKey)}
               >
                 감정 기록하기
               </Link>

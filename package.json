@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "analytics:fixtures": "node scripts/analytics-fixtures.mjs",
+    "mood:analytics-fixtures": "node scripts/mood-analytics-fixtures.mjs",
     "feedback:fixtures": "node scripts/feedback-fixtures.mjs",
     "ai:fixtures": "node --experimental-strip-types --experimental-loader=./scripts/ts-test-loader.mjs scripts/ai-provider-fixtures.mjs",
     "mood:fixtures": "node --experimental-strip-types --experimental-loader=./scripts/ts-test-loader.mjs scripts/mood-to-be-fixtures.mjs",

@@ -1,6 +1,10 @@
 import type { MoodSource, MoodStep } from "./schema";
 
 export type MoodAttemptState = {
+  id: string;
+  dateKey: string;
+  completed: boolean;
+  rewardRevealed: boolean;
   active: boolean;
   completedSteps: MoodStep[];
   resultViewed: boolean;
@@ -9,8 +13,12 @@ export type MoodAttemptState = {
   started: boolean;
 };
 
-export function createMoodAttempt(source: MoodSource): MoodAttemptState {
+export function createMoodAttempt(source: MoodSource, id = "", dateKey = ""): MoodAttemptState {
   return {
+    id,
+    dateKey,
+    completed: false,
+    rewardRevealed: false,
     active: true,
     completedSteps: [],
     resultViewed: false,

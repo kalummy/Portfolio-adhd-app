@@ -45,6 +45,7 @@ function getRecordSummary(record: MoodRecord) {
 }
 
 export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: boolean }) {
+  const entryDateKey = getKstDateKey();
   const [activeTab, setActiveTab] = useState<MoodTab>("records");
   const [records, setRecords] = useState<MoodRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -238,8 +239,8 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
           </span>
           <h1>아직 감정 기록이 없어요</h1>
           <Link
-            href={`/moods/new?date=${getKstDateKey()}`}
-            onClick={() => startMoodAttempt("mood_history")}
+            href={`/moods/new?date=${entryDateKey}`}
+            onClick={() => startMoodAttempt("mood_history", entryDateKey)}
           >
             감정기록 입력
           </Link>
@@ -261,8 +262,8 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
           </span>
           <h1>아직 감정 기록이 없어요</h1>
           <Link
-            href={`/moods/new?date=${getKstDateKey()}`}
-            onClick={() => startMoodAttempt("mood_history")}
+            href={`/moods/new?date=${entryDateKey}`}
+            onClick={() => startMoodAttempt("mood_history", entryDateKey)}
           >
             감정기록 입력
           </Link>

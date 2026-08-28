@@ -1,4 +1,5 @@
 import { isCatId, type CatId } from "./cats";
+import { isMoodAttemptId } from "./analytics/mood-contract";
 import type { MoodAnalysisMetadata } from "./mood-analysis";
 import {
   CUSTOM_MOOD_OPTION_ID,
@@ -10,6 +11,7 @@ export type MoodDraftPhase = "questions" | "summarizing" | "result";
 
 export type MoodSessionDraft = {
   version: 2;
+  moodAttemptId?: string;
   phase: MoodDraftPhase;
   step: number;
   answers: MoodAnswerDraft[];
@@ -85,6 +87,7 @@ function normalize(value: unknown): MoodSessionDraft | null {
 
   return {
     version: 2,
+    moodAttemptId: isMoodAttemptId(value.moodAttemptId) ? value.moodAttemptId : undefined,
     phase,
     step,
     answers,
