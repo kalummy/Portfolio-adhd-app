@@ -9,6 +9,7 @@ import {
 import type { MedicationRepository } from "./types";
 
 export const indexedDbMedicationRepository: MedicationRepository = {
+  storageBackend: "indexeddb",
   listActive: getSavedMedications,
   listAll: getAllSavedMedications,
   async createMany(medications) {

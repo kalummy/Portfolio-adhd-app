@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MedicationSummaryCard } from "@/components/medication-card";
 import { MobileShell } from "@/components/mobile-shell";
-import { trackMedicationAdded } from "@/lib/analytics/events";
+import { trackMedicationAdded, trackMedicationSaveClicked, trackMedicationRegistrationFailed } from "@/lib/analytics/events";
+import { useMedicationRegistrationStep } from "@/lib/analytics/use-medication-registration-step";
+import type { MedicationStorageBackend } from "@/lib/analytics/medication-contract";
 import { createClientId } from "@/lib/client-id";
 import {
   createSavedMedicationsFromDraft,
@@ -59,6 +61,10 @@ export default function MedicationSchedulePage() {
     );
   }, [draft]);
 
+  // Photo-only registration keeps its existing completion event, without new steps.
+  const instrumentRegistration = Boolean(draft?.draftMedications.some((medication) => medication.source !== "photo"));
+  const analyticsAttempt = useMedicationRegistrationStep("schedule", Boolean(draft && activeMedication), instrumentRegistration);
+
   if (!draft || !activeMedication) return <MobileShell className="flow-screen">{null}</MobileShell>;
 
   const queueIndex = draft.scheduleQueueDraftIds.indexOf(activeMedication.draftId);
@@ -95,6 +101,10 @@ export default function MedicationSchedulePage() {
     savingRef.current = true;
     setSaving(true);
     setError("");
+    const attempt = analyticsAttempt.current;
+    if (instrumentRegistration) trackMedicationSaveClicked(attempt, draft!.draftMedications.length);
+    let repositorySaved = false;
+    let storageBackend: MedicationStorageBackend = "unknown";
     try {
       const completedDraft = updateDraft({
         activeScheduleDraftId: undefined,
@@ -102,15 +112,18 @@ export default function MedicationSchedulePage() {
       });
       const medications = createSavedMedicationsFromDraft(completedDraft);
       const repository = await getMedicationRepository();
+      storageBackend = repository.storageBackend ?? "unknown";
       const saved = await repository.createMany(medications);
+      repositorySaved = true;
+      trackMedicationAdded(attempt);
       setLastSavedMedicationIds(saved.map((medication) => medication.id));
-      trackMedicationAdded();
       clearDraft();
       const toastId = createClientId();
       router.replace(dateContextHref(
         `/?medicationToast=added&toastId=${encodeURIComponent(toastId)}`,
       ));
-    } catch {
+    } catch (saveError) {
+      if (!repositorySaved && instrumentRegistration) trackMedicationRegistrationFailed(attempt, saveError, storageBackend);
       savingRef.current = false;
       setSaving(false);
       setError("저장하지 못했어요. 잠시 후 다시 시도해주세요.");

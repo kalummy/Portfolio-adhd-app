@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useLayoutEffect, useState } from "react";
 import { FlowHeader, PrimaryButton } from "@/components/flow-ui";
 import { MobileShell } from "@/components/mobile-shell";
+import { useMedicationRegistrationStep } from "@/lib/analytics/use-medication-registration-step";
 import { FREQUENT_MEDICATIONS } from "@/lib/frequent-medications";
 import { enrichOfficialMedication } from "@/lib/medication-enrichment";
 import { medicationLabel } from "@/lib/medication-utils";
@@ -74,6 +75,8 @@ export default function MedicationSearchPage() {
   const [results, setResults] = useState<MedicationCandidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [resolvedQuery, setResolvedQuery] = useState("");
+  const [analyticsReady, setAnalyticsReady] = useState(false);
+  useMedicationRegistrationStep("search", analyticsReady);
 
   useEffect(() => {
     const searchParameters = new URLSearchParams(window.location.search);
@@ -90,6 +93,7 @@ export default function MedicationSearchPage() {
     setSelectedMedicationKey(
       pendingMedication ? medicationSelectionKey(pendingMedication) : undefined,
     );
+    setAnalyticsReady(true);
   }, []);
 
   useLayoutEffect(() => {

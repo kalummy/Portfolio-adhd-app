@@ -211,7 +211,7 @@ function MedicationListContent() {
               className="primary-button soft medication-add-link"
               onClick={() => {
                 resetDraft();
-                startMedicationAddAttempt("medication_management");
+                startMedicationAddAttempt("medication_management", targetDate);
               }}
             >
               다른 약 추가

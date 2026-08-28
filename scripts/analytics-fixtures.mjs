@@ -23,7 +23,7 @@ try {
     "lib/analytics/path-policy.ts",
     "lib/analytics/screens.ts",
   ], { cwd: projectRootPath, stdio: "pipe" });
-  for (const name of ["analytics/schema", "analytics/screens", "analytics/mood-contract", "cats"]) {
+  for (const name of ["analytics/schema", "analytics/screens", "analytics/mood-contract", "analytics/medication-contract", "cats"]) {
     await copyFile(join(fixtureDirectory, `${name}.js`), join(fixtureDirectory, name));
   }
   await writeFile(join(fixtureDirectory, "package.json"), '{"type":"module"}');
@@ -33,6 +33,7 @@ try {
   const pathPolicy = await import(pathToFileURL(join(fixtureDirectory, "analytics/path-policy.js")));
   const screens = await import(pathToFileURL(join(fixtureDirectory, "analytics/screens.js")));
   const moodContext = { mood_attempt_id: "23c0c37b-4871-46a7-b44c-f7d39045fe0b", flow_version: "mood_v2_instrumented" };
+  const medicationContext = { medication_attempt_id: "23c0c37b-4871-46a7-b44c-f7d39045fe0b", flow_version: "medication_registration_v2_instrumented" };
 
   for (const pathname of ["/preview", "/preview/", "/preview/home", "/preview/home/empty"]) {
     assert.equal(pathPolicy.isAnalyticsPathBlocked(pathname), true, `${pathname} must be blocked`);
@@ -72,7 +73,7 @@ try {
   }
   console.log(`PASS route sanitizer ${routeCases.length}/${routeCases.length}`);
 
-  assert.equal(schema.ANALYTICS_EVENT_NAMES.length, 31);
+  assert.equal(schema.ANALYTICS_EVENT_NAMES.length, 34);
   assert.deepEqual(schema.ANALYTICS_EVENT_NAMES, [
     "app_opened",
     "screen_viewed",
@@ -80,6 +81,9 @@ try {
     "login_completed",
     "medication_add_started",
     "medication_added",
+    "medication_registration_step_viewed",
+    "medication_save_clicked",
+    "medication_registration_failed",
     "medication_taken",
     "medication_management_opened",
     "medication_schedule_edit_opened",
@@ -542,8 +546,9 @@ try {
     pathname: "/medications",
     authState: "guest",
     eventName: "medication_add_started",
-    properties: { source: "medication_management", medication_name: "blocked" },
+    properties: { ...medicationContext, source: "medication_management", medication_name: "blocked" },
   }), {
+    ...medicationContext,
     environment: "development",
     route: "medication_list",
     auth_state: "guest",
@@ -671,7 +676,7 @@ try {
   assert.match(homeSource, /onNavigate=\{\(\) => trackMedicationManagementOpened\(activeMedicationCount\)\}/);
   assert.match(analyticsEventsSource, /now - lastMedicationManagementOpenAt < START_THROTTLE_MS/);
   assert.match(medicationListSource, /onNavigate=\{\(\) => trackMedicationScheduleEditOpened\([\s\S]*?medication\.schedule,[\s\S]*?Boolean\(medication\.scheduledTime\)/);
-  assert.match(medicationListSource, /startMedicationAddAttempt\("medication_management"\)/);
+  assert.match(medicationListSource, /startMedicationAddAttempt\("medication_management", targetDate\)/);
   assert.ok(
     medicationListSource.indexOf("await repositories.medications.deactivate")
       < medicationListSource.indexOf("trackMedicationDeleteConfirmed(deleteTarget.hasIntakeHistory)"),
