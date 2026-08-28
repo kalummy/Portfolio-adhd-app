@@ -5,6 +5,7 @@
   "scripts": {
     "analytics:fixtures": "node scripts/analytics-fixtures.mjs",
     "medication:analytics-fixtures": "node scripts/medication-analytics-fixtures.mjs",
+    "medication:taking-analytics-fixtures": "node scripts/medication-taking-analytics-fixtures.mjs",
     "mood:analytics-fixtures": "node scripts/mood-analytics-fixtures.mjs",
     "feedback:fixtures": "node scripts/feedback-fixtures.mjs",
     "ai:fixtures": "node --experimental-strip-types --experimental-loader=./scripts/ts-test-loader.mjs scripts/ai-provider-fixtures.mjs",

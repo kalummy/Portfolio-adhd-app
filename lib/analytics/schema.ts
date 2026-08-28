@@ -1,5 +1,9 @@
 import { isCatId, type CatId } from "../cats";
 import {
+  MEDICATION_TAKING_FLOW_VERSION, MEDICATION_TAKE_FAILURE_TYPES,
+  type MedicationTakingContext, type MedicationTakeFailureType, type MedicationTakeStorageBackend,
+} from "./medication-taking-contract";
+import {
   MEDICATION_REGISTRATION_FLOW_VERSION, MEDICATION_REGISTRATION_STEPS, MEDICATION_SAVE_FAILURE_TYPES,
   isMedicationAttemptId, type MedicationAnalyticsContext, type MedicationRegistrationStep,
   type MedicationSaveFailureType, type MedicationStorageBackend,
@@ -25,6 +29,9 @@ export const ANALYTICS_EVENT_NAMES = [
   "medication_save_clicked",
   "medication_registration_failed",
   "medication_taken",
+  "medication_take_clicked",
+  "medication_take_succeeded",
+  "medication_take_failed",
   "medication_management_opened",
   "medication_schedule_edit_opened",
   "medication_schedule_updated",
@@ -98,6 +105,9 @@ type EventSpecificProperties = {
   medication_save_clicked: { medication_count: number };
   medication_registration_failed: { stage: "save"; failure_type: MedicationSaveFailureType; storage_backend: MedicationStorageBackend };
   medication_taken: Record<never, never>;
+  medication_take_clicked: Record<never, never>;
+  medication_take_succeeded: { duration_ms: number };
+  medication_take_failed: { duration_ms: number; failure_type: MedicationTakeFailureType; storage_backend: MedicationTakeStorageBackend };
   medication_management_opened: { source: "home"; medication_count: number };
   medication_schedule_edit_opened: {
     source: MedicationManagementSource;
@@ -140,7 +150,11 @@ type EventSpecificProperties = {
 
 export type AnalyticsEventProperties<T extends AnalyticsEventName> =
   EventSpecificProperties[T] & (T extends InstrumentedMoodEvent ? MoodAnalyticsContext
+    : T extends InstrumentedMedicationTakingEvent ? MedicationTakingContext
     : T extends InstrumentedMedicationEvent ? MedicationAnalyticsContext : Record<never, never>);
+
+type InstrumentedMedicationTakingEvent = "medication_take_clicked" | "medication_take_succeeded" | "medication_take_failed";
+const MEDICATION_TAKING_EVENTS: readonly string[] = ["medication_take_clicked", "medication_take_succeeded", "medication_take_failed"];
 
 export type InstrumentedMedicationEvent =
   | "medication_add_started" | "medication_added" | "medication_registration_step_viewed"
@@ -164,7 +178,8 @@ const INSTRUMENTED_MOOD_EVENTS: readonly string[] = [
 export type AnalyticsPayload = {
   mood_attempt_id?: string;
   medication_attempt_id?: string;
-  flow_version?: typeof MOOD_FLOW_VERSION | typeof MEDICATION_REGISTRATION_FLOW_VERSION;
+  medication_take_attempt_id?: string;
+  flow_version?: typeof MOOD_FLOW_VERSION | typeof MEDICATION_REGISTRATION_FLOW_VERSION | typeof MEDICATION_TAKING_FLOW_VERSION;
   stage?: "save";
   duration_ms?: number;
   failure_type?: MoodAnalysisFailureType | MoodSaveFailureType;
@@ -287,6 +302,28 @@ export function buildAnalyticsPayload<T extends AnalyticsEventName>({
     route: sanitizeAnalyticsRoute(pathname),
     auth_state: authState,
   };
+
+  if (MEDICATION_TAKING_EVENTS.includes(eventName)) {
+    const props = properties as Partial<MedicationTakingContext> & {
+      duration_ms?: number; failure_type?: MedicationTakeFailureType; storage_backend?: MedicationTakeStorageBackend;
+    };
+    // Shared ID format validation does not link the taking and registration flows.
+    if (!isMedicationAttemptId(props.medication_take_attempt_id)
+      || props.flow_version !== MEDICATION_TAKING_FLOW_VERSION) return null;
+    base.medication_take_attempt_id = props.medication_take_attempt_id;
+    base.flow_version = props.flow_version;
+    if (eventName !== "medication_take_clicked") {
+      if (typeof props.duration_ms !== "number" || !Number.isFinite(props.duration_ms) || props.duration_ms < 0) return null;
+      base.duration_ms = props.duration_ms;
+    }
+    if (eventName === "medication_take_failed") {
+      if (!props.failure_type || !MEDICATION_TAKE_FAILURE_TYPES.includes(props.failure_type)
+        || !props.storage_backend || !["indexeddb", "supabase", "unknown"].includes(props.storage_backend)) return null;
+      base.failure_type = props.failure_type;
+      base.storage_backend = props.storage_backend;
+    }
+    return base;
+  }
 
   if (INSTRUMENTED_MEDICATION_EVENTS.includes(eventName)) {
     const props = properties as Partial<MedicationAnalyticsContext>;

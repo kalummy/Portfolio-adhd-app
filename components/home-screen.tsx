@@ -17,6 +17,10 @@ import {
   trackHomeDateTodayClicked,
   trackMedicationManagementOpened,
   trackMedicationTakenOnce,
+  startMedicationTakeAttempt,
+  setMedicationTakeBackend,
+  trackMedicationTakeResult,
+  trackMedicationTakeFailed,
 } from "@/lib/analytics/events";
 import { getDataRepositories, retryGuestDatasetSync } from "@/lib/repositories";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
@@ -408,12 +412,22 @@ export function HomeScreen({
     }
 
     const mutationGeneration = ++intakeMutationGenerationRef.current;
-    const repositories = await getDataRepositories();
-    const savedRecord = await repositories.medicationIntakes.setTaken(
-      medicationId,
-      selectedDateKey,
-      !isTaken,
-    );
+    const takeAttempt = !isTaken ? startMedicationTakeAttempt() : null;
+    let savedRecord: MedicationIntakeRecord | null;
+    try {
+      const repositories = await getDataRepositories();
+      setMedicationTakeBackend(takeAttempt, repositories);
+      savedRecord = await repositories.medicationIntakes.setTaken(
+        medicationId,
+        selectedDateKey,
+        !isTaken,
+      );
+    } catch (error) {
+      trackMedicationTakeFailed(takeAttempt, error);
+      throw error; // Preserve the existing rejection/interaction behavior.
+    }
+    // Diagnostic only: do not gate legacy reconciliation, medication_taken or load.
+    trackMedicationTakeResult(takeAttempt, savedRecord, medicationId, selectedDateKey);
     if (mutationGeneration === intakeMutationGenerationRef.current) {
       setIntakeRecords((currentRecords) => reconcileMedicationIntakeRecord(
         currentRecords,
