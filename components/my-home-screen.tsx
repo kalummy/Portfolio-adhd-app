@@ -1,23 +1,85 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BottomNavigation } from "@/components/bottom-navigation";
 import { MobileShell } from "@/components/mobile-shell";
 import { VisitDialog } from "@/components/visit-dialog";
-import { signOut } from "@/lib/auth/client";
+import { signOut, updateAddiProfile } from "@/lib/auth/client";
 import {
   LEGACY_HOME_SPLASH_SESSION_KEY,
   MEMBER_SPLASH_SESSION_KEY,
 } from "@/lib/auth/routes";
 import { restoreClaimedGuestDatasetVisibilityForUser } from "@/lib/indexed-db";
+import {
+  ADDI_PROFILES,
+  getAddiProfileAsset,
+  type AddiProfileId,
+} from "@/lib/profile";
 
-export function MyHomeScreen({ displayName, userId }: { displayName: string; userId: string }) {
+type MyHomeScreenProps = {
+  displayName: string;
+  userId: string;
+  initialProfileId: AddiProfileId;
+};
+
+export function MyHomeScreen({ displayName, userId, initialProfileId }: MyHomeScreenProps) {
   const router = useRouter();
+  const sheetRef = useRef<HTMLElement>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileId, setProfileId] = useState(initialProfileId);
+  const [candidateProfileId, setCandidateProfileId] = useState(initialProfileId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!profileOpen) return;
+    const previousFocus = document.activeElement;
+    sheetRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || busy) return;
+      event.preventDefault();
+      setProfileOpen(false);
+      setCandidateProfileId(profileId);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      if (previousFocus instanceof HTMLElement) previousFocus.focus();
+    };
+  }, [busy, profileId, profileOpen]);
+
+  function openProfileSheet() {
+    setCandidateProfileId(profileId);
+    setError("");
+    setProfileOpen(true);
+  }
+
+  function closeProfileSheet() {
+    if (busy) return;
+    setCandidateProfileId(profileId);
+    setProfileOpen(false);
+  }
+
+  async function saveProfile() {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await updateAddiProfile(candidateProfileId);
+      setProfileId(candidateProfileId);
+      setProfileOpen(false);
+      router.refresh();
+    } catch {
+      setError("프로필을 저장하지 못했어요. 다시 시도해주세요.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleSignOut() {
     if (busy) return;
@@ -51,31 +113,27 @@ export function MyHomeScreen({ displayName, userId }: { displayName: string; use
 
       <section className="my-home-content">
         <div className="my-home-profile">
-          <div className="my-home-profile-image-wrap">
-            <Image
-              src="/profile/random-profile-96.svg"
-              alt=""
-              width={96}
-              height={96}
-              priority
-            />
-            <button
-              type="button"
-              className="my-home-profile-edit"
-              aria-label="프로필 이미지 변경 (준비 중)"
-              disabled
-            >
-              <Image src="/profile/pencil.svg" alt="" width={12} height={12} />
-            </button>
-          </div>
+          <button
+            type="button"
+            className="my-home-profile-image-wrap"
+            aria-label="프로필 이미지 변경"
+            aria-haspopup="dialog"
+            aria-expanded={profileOpen}
+            onClick={openProfileSheet}
+          >
+            <Image src={getAddiProfileAsset(profileId)} alt="" width={96} height={96} priority />
+            <span className="my-home-profile-edit" aria-hidden="true">
+              <Image src="/profile/pencil.svg" alt="" width={16} height={16} />
+            </span>
+          </button>
           <strong className="my-home-name">{displayName}</strong>
         </div>
 
         <div className="my-home-menu">
-          <button type="button" className="my-home-menu-row primary" disabled>
+          <Link href="/my/social-login" className="my-home-menu-row primary">
             <span>간편 로그인 설정</span>
             <Image src="/profile/chevron-right.svg" alt="" width={20} height={20} />
-          </button>
+          </Link>
           <button
             type="button"
             className="my-home-menu-row"
@@ -100,7 +158,53 @@ export function MyHomeScreen({ displayName, userId }: { displayName: string; use
         {error ? <p className="my-home-error" role="alert">{error}</p> : null}
       </section>
 
-      <BottomNavigation activeTab="my" />
+      <BottomNavigation activeTab="my" profileId={profileId} />
+
+      {profileOpen ? (
+        <div className="my-home-sheet-layer" role="presentation" onMouseDown={closeProfileSheet}>
+          <section
+            ref={sheetRef}
+            className="my-home-profile-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="my-home-profile-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="my-home-sheet-handle" aria-hidden="true" />
+            <h2 id="my-home-profile-title">프로필 선택</h2>
+            <Image
+              className="my-home-profile-preview"
+              src={getAddiProfileAsset(candidateProfileId)}
+              alt=""
+              width={96}
+              height={96}
+            />
+            <div className="my-home-profile-options" role="radiogroup" aria-label="ADDI 프로필">
+              {ADDI_PROFILES.map((profile) => (
+                <button
+                  key={profile.id}
+                  type="button"
+                  className={candidateProfileId === profile.id ? "selected" : ""}
+                  role="radio"
+                  aria-checked={candidateProfileId === profile.id}
+                  aria-label={profile.label}
+                  onClick={() => setCandidateProfileId(profile.id)}
+                >
+                  <Image src={profile.asset} alt="" width={56} height={56} />
+                </button>
+              ))}
+            </div>
+            <div className="my-home-profile-actions">
+              <button type="button" className="cancel" onClick={closeProfileSheet} disabled={busy}>
+                닫기
+              </button>
+              <button type="button" className="confirm" onClick={() => void saveProfile()} disabled={busy}>
+                {busy ? "저장 중" : "선택"}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       {deleteDialogOpen ? (
         <VisitDialog

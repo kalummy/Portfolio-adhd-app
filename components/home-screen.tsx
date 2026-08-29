@@ -668,11 +668,6 @@ export function HomeScreen({
           <strong>{greeting}</strong>
           <Image src="/icons/home-profile-chevron.svg" alt="" width={20} height={20} />
         </Link>
-        <button type="button" className="home-notification-button" aria-label="알림" disabled>
-          <span className="home-notification-icon" aria-hidden="true">
-            <Image src="/icons/bell.svg" alt="" width={62} height={69} />
-          </span>
-        </button>
       </header>
 
       <div className="home-month-select-row">
