@@ -4295,6 +4295,22 @@ html[data-addi-splash="skip"] .splash-screen {
   gap: 24px;
 }
 
+.recorded-mood-card-link {
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.recorded-mood-card-link:active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recorded-mood-card-link:active {
+    transform: none;
+  }
+}
+
 .recorded-mood-item {
   display: flex;
   min-width: 0;
