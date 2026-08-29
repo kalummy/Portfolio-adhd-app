@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 type BottomNavigationProps = {
-  activeTab: "home" | "moods";
+  activeTab: "home" | "moods" | "my";
 };
 
 export function BottomNavigation({ activeTab }: BottomNavigationProps) {
@@ -45,12 +45,16 @@ export function BottomNavigation({ activeTab }: BottomNavigationProps) {
           </span>
           <span>집중</span>
         </span>
-        <span className="bottom-navigation-tab unavailable" aria-disabled="true">
+        <Link
+          href="/my"
+          className={`bottom-navigation-tab${activeTab === "my" ? " active" : ""}`}
+          aria-current={activeTab === "my" ? "page" : undefined}
+        >
           <span className="bottom-navigation-icon" aria-hidden="true">
             <Image src="/icons/random-profile-28.svg" alt="" width={28} height={28} />
           </span>
           <span>마이홈</span>
-        </span>
+        </Link>
       </div>
     </nav>
   );

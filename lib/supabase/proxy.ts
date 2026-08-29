@@ -3,7 +3,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseConfig, isSupabaseConfigured } from "./config";
 
 export async function updateSupabaseSession(request: NextRequest) {
-  if (!isSupabaseConfigured()) return NextResponse.next({ request });
+  if (!isSupabaseConfigured()) {
+    return { response: NextResponse.next({ request }), isAuthenticated: false };
+  }
 
   try {
     const { url, publishableKey } = getSupabaseConfig();
@@ -23,10 +25,12 @@ export async function updateSupabaseSession(request: NextRequest) {
       },
     });
 
-    await supabase.auth.getClaims();
-    return response;
+    const { data, error } = await supabase.auth.getClaims();
+    return {
+      response,
+      isAuthenticated: !error && Boolean(data?.claims?.sub),
+    };
   } catch {
-    // Auth is optional in this phase. A Supabase outage must not block guest routes.
-    return NextResponse.next({ request });
+    return { response: NextResponse.next({ request }), isAuthenticated: false };
   }
 }
