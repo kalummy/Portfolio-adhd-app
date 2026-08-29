@@ -615,9 +615,9 @@ export function HomeScreen({
     <MobileShell className="home-screen">
       <header className="home-header">
         <Link
-          href="/auth/login"
+          href="/my"
           className="home-profile-link"
-          aria-label={isAuthenticated ? "계정 열기" : "로그인 열기"}
+          aria-label="마이홈 열기"
         >
           <Image src="/icons/random-profile-32.svg" alt="" width={32} height={32} priority />
           <strong>{greeting}</strong>

@@ -19,18 +19,28 @@ export async function getAuthState(): Promise<AuthState> {
   return { isAuthenticated: Boolean(user), user };
 }
 
-export async function signInWithGoogle(nextPath = "/") {
+type MemberOAuthProvider = "google" | "kakao";
+
+async function signInWithProvider(provider: MemberOAuthProvider, nextPath = "/") {
   const supabase = createBrowserSupabaseClient();
   const callbackUrl = new URL("/auth/callback", window.location.origin);
   const safeNextPath = getSafeNextPath(nextPath);
   if (safeNextPath !== "/") callbackUrl.searchParams.set("next", safeNextPath);
 
   const { error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
+    provider,
     options: { redirectTo: callbackUrl.toString() },
   });
 
   if (error) throw error;
+}
+
+export function signInWithGoogle(nextPath = "/") {
+  return signInWithProvider("google", nextPath);
+}
+
+export function signInWithKakao(nextPath = "/") {
+  return signInWithProvider("kakao", nextPath);
 }
 
 export async function signOut() {

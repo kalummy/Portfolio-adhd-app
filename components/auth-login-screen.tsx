@@ -1,28 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Image from "next/image";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FlowHeader, PrimaryButton } from "@/components/flow-ui";
+import { MemberBrandLockup, MemberSplash } from "@/components/member-splash";
 import { MobileShell } from "@/components/mobile-shell";
 import { trackLoginStarted } from "@/lib/analytics/events";
-import { getAuthState, signInWithGoogle, signOut, type AuthState } from "@/lib/auth/client";
+import {
+  getAuthState,
+  signInWithGoogle,
+  signInWithKakao,
+  type AuthState,
+} from "@/lib/auth/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { restoreClaimedGuestDatasetVisibilityForUser } from "@/lib/indexed-db";
 
 const EMPTY_AUTH_STATE: AuthState = { isAuthenticated: false, user: null };
+type LoginProvider = "kakao" | "google";
 
 export function AuthLoginScreen() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [authState, setAuthState] = useState<AuthState>(EMPTY_AUTH_STATE);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [splashComplete, setSplashComplete] = useState(false);
+  const [busyProvider, setBusyProvider] = useState<LoginProvider | null>(null);
   const [error, setError] = useState("");
   const configured = isSupabaseConfigured();
+  const nextPath = "/";
 
   useEffect(() => {
     if (!configured) {
-      setLoading(false);
+      setAuthChecked(true);
       return;
     }
 
@@ -35,7 +43,7 @@ export function AuthLoginScreen() {
         if (active) setError("로그인 상태를 확인하지 못했어요.");
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) setAuthChecked(true);
       });
 
     return () => {
@@ -46,74 +54,69 @@ export function AuthLoginScreen() {
   useEffect(() => {
     const reason = searchParams.get("error");
     if (reason === "profile") setError("프로필을 준비하지 못했어요. 잠시 후 다시 시도해주세요.");
-    else if (reason) setError("Google 로그인을 완료하지 못했어요. 다시 시도해주세요.");
+    else if (reason) setError("로그인을 완료하지 못했어요. 다시 시도해주세요.");
   }, [searchParams]);
 
-  async function handleSignIn() {
-    if (busy) return;
-    setBusy(true);
+  useEffect(() => {
+    if (!splashComplete || !authChecked || !authState.isAuthenticated) return;
+    router.replace(nextPath);
+    router.refresh();
+  }, [authChecked, authState.isAuthenticated, nextPath, router, splashComplete]);
+
+  const handleSplashComplete = useCallback(() => setSplashComplete(true), []);
+
+  async function handleSignIn(provider: LoginProvider) {
+    if (busyProvider) return;
+    setBusyProvider(provider);
     setError("");
+
     try {
       trackLoginStarted();
-      await signInWithGoogle("/");
+      if (provider === "kakao") await signInWithKakao(nextPath);
+      else await signInWithGoogle(nextPath);
     } catch {
-      setError("Google 로그인을 시작하지 못했어요.");
-      setBusy(false);
+      setError(`${provider === "kakao" ? "카카오" : "Google"} 로그인을 시작하지 못했어요.`);
+      setBusyProvider(null);
     }
   }
 
-  async function handleSignOut() {
-    if (busy) return;
-    setBusy(true);
-    setError("");
-    try {
-      if (authState.user) {
-        await restoreClaimedGuestDatasetVisibilityForUser(authState.user.id);
-      }
-      await signOut();
-      setAuthState(EMPTY_AUTH_STATE);
-      router.replace("/");
-      router.refresh();
-    } catch {
-      setError("로그아웃하지 못했어요. 다시 시도해주세요.");
-      setBusy(false);
-    }
+  if (!splashComplete || !authChecked || authState.isAuthenticated) {
+    return <MemberSplash onComplete={handleSplashComplete} />;
   }
 
   return (
-    <MobileShell className="flow-screen auth-screen">
-      <FlowHeader title="계정" fallbackHref="/" />
-      <section className="flow-content auth-content">
-        <h1>{authState.isAuthenticated ? "Google 계정으로 로그인했어요" : "기록을 안전하게 보관해요"}</h1>
-        <p>
-          {authState.isAuthenticated
-            ? authState.user?.email ?? "로그인된 사용자"
-            : "로그인하지 않아도 지금처럼 모든 기본 기능을 사용할 수 있어요."}
-        </p>
+    <MobileShell className="member-login-screen">
+      <MemberBrandLockup />
 
+      <div className="member-login-actions">
         {!configured ? (
-          <p className="auth-message" role="status">Supabase 환경변수 설정이 필요해요.</p>
+          <p className="member-login-error" role="status">
+            Supabase 환경변수 설정이 필요해요.
+          </p>
         ) : null}
-        {error ? <p className="auth-message error" role="alert">{error}</p> : null}
+        {error ? <p className="member-login-error" role="alert">{error}</p> : null}
 
-        {!loading ? (
-          <PrimaryButton
-            type="button"
-            variant={authState.isAuthenticated ? "secondary" : "primary"}
-            disabled={busy || !configured}
-            aria-busy={busy}
-            onClick={() => void (authState.isAuthenticated ? handleSignOut() : handleSignIn())}
-          >
-            {busy
-              ? "처리 중..."
-              : authState.isAuthenticated
-                ? "로그아웃"
-                : "Google로 계속하기"}
-          </PrimaryButton>
-        ) : (
-          <div className="auth-loading" aria-label="로그인 상태 확인 중" />
-        )}
-      </section>
+        <button
+          type="button"
+          className="member-login-button kakao"
+          disabled={!configured || Boolean(busyProvider)}
+          aria-busy={busyProvider === "kakao"}
+          onClick={() => void handleSignIn("kakao")}
+        >
+          <Image src="/auth/kakao.svg" alt="" width={40} height={40} />
+          <span>{busyProvider === "kakao" ? "연결 중" : "카카오로 시작"}</span>
+        </button>
+        <button
+          type="button"
+          className="member-login-button google"
+          disabled={!configured || Boolean(busyProvider)}
+          aria-busy={busyProvider === "google"}
+          onClick={() => void handleSignIn("google")}
+        >
+          <Image src="/auth/google.svg" alt="" width={40} height={40} />
+          <span>{busyProvider === "google" ? "연결 중" : "구글로 시작"}</span>
+        </button>
+      </div>
     </MobileShell>
   );
 }
