@@ -4,9 +4,18 @@ import Image from "next/image";
 import { CatRewardImage } from "@/components/cat-reward-image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { HomeDatePickerSheet } from "@/components/home-date-picker-sheet";
-import { getAuthState } from "@/lib/auth/client";
+import { getAuthState, type AuthState } from "@/lib/auth/client";
 import {
   startMedicationAddAttempt,
   startMoodAttempt,
@@ -58,6 +67,7 @@ import type {
 } from "@/lib/types";
 import { resetDraft } from "@/lib/registration-session";
 import { MobileShell } from "./mobile-shell";
+import { BottomNavigation } from "./bottom-navigation";
 import { SplashScreen } from "./splash-screen";
 import { Toast } from "./toast";
 
@@ -67,6 +77,22 @@ const SPLASH_MINIMUM_MS = 800;
 
 const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 const DEFAULT_DIARY_SUMMARY = "오늘은 감정과 신체 컨디션이 평소와 비슷했어요.";
+const WEEK_SWIPE_ACTIVATION_PX = 8;
+const WEEK_SWIPE_THRESHOLD_PX = 48;
+type HomeSegment = "medication" | "mood";
+type WeekPointerGesture = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  dragging: boolean;
+};
+
+function accountGreeting(user: AuthState["user"]) {
+  const metadata = user?.user_metadata;
+  const rawName = metadata?.full_name ?? metadata?.name;
+  const name = typeof rawName === "string" ? rawName.trim() : "";
+  return name ? `${name}님 반가워요` : "반가워요";
+}
 
 function getHomeMoodSummary(record: MoodRecord) {
   return getMoodPresentation(record.mood).label;
@@ -160,6 +186,8 @@ export function HomeScreen({
   const [calendarOpen, setCalendarOpen] = useState(false);
   const monthSelectRef = useRef<HTMLButtonElement>(null);
   const calendarConfirmHandledRef = useRef(false);
+  const weekPointerGestureRef = useRef<WeekPointerGesture | null>(null);
+  const suppressWeekClickRef = useRef(false);
   const intakeMutationGenerationRef = useRef(0);
   const [medications, setMedications] = useState<SavedMedication[]>(previewData?.medications ?? []);
   const [intakeRecords, setIntakeRecords] = useState<MedicationIntakeRecord[]>(
@@ -176,6 +204,8 @@ export function HomeScreen({
   const [syncError, setSyncError] = useState("");
   const [syncRetrying, setSyncRetrying] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [greeting, setGreeting] = useState("로그인이 필요해요");
+  const [activeSegment, setActiveSegment] = useState<HomeSegment>("medication");
   const [launchSplashRequired, setLaunchSplashRequired] = useState(enableLaunchSplash);
   const [splashMinimumElapsed, setSplashMinimumElapsed] = useState(!enableLaunchSplash);
   const [failedMedicationImages, setFailedMedicationImages] = useState<Set<string>>(
@@ -240,16 +270,15 @@ export function HomeScreen({
       setSyncError(repositories.guestDatasetSync.status === "failed"
         ? "저장한 정보를 불러오지 못했어요. 다시 시도해 주세요."
         : "");
-      const [authenticated, savedMedications, savedIntakes, savedMoods, savedVisit] = await Promise.all([
-        getAuthState()
-          .then((state) => state.isAuthenticated)
-          .catch(() => false),
+      const [authState, savedMedications, savedIntakes, savedMoods, savedVisit] = await Promise.all([
+        getAuthState().catch(() => ({ isAuthenticated: false, user: null })),
         repositories.medications.listAll(),
         repositories.medicationIntakes.listAll(),
         repositories.moods.listAll(),
         repositories.visitSchedules.getUpcoming(),
       ]);
-      setIsAuthenticated(authenticated);
+      setIsAuthenticated(authState.isAuthenticated);
+      setGreeting(authState.isAuthenticated ? accountGreeting(authState.user) : "로그인이 필요해요");
       setMedications(savedMedications);
       void enrichOfficialMedications(savedMedications).then((enrichedMedications) => {
         const enrichedById = new Map(
@@ -310,6 +339,18 @@ export function HomeScreen({
     }
     setLaunchSplashRequired(false);
   }, [enableLaunchSplash, launchSplashRequired, loading, splashMinimumElapsed]);
+
+  useEffect(() => {
+    if (previewData) return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("date")) return;
+    url.searchParams.delete("date");
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+  }, [previewData]);
 
   useEffect(() => {
     if (!initialToastQueryKey) return;
@@ -453,8 +494,73 @@ export function HomeScreen({
     return true;
   }, [maximumDateKey, minimumDateKey, previewData]);
 
-  const handleMoveDate = (amount: number) => {
-    commitSelectedDate(addDaysToDateKey(selectedDateKey, amount));
+  const handleWeekPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
+    if (!event.isPrimary || (event.pointerType === "mouse" && event.button !== 0)) return;
+    suppressWeekClickRef.current = false;
+    weekPointerGestureRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      dragging: false,
+    };
+  };
+
+  const handleWeekPointerMove = (event: ReactPointerEvent<HTMLElement>) => {
+    const gesture = weekPointerGestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    const deltaX = event.clientX - gesture.startX;
+    const deltaY = event.clientY - gesture.startY;
+
+    if (!gesture.dragging) {
+      if (
+        Math.abs(deltaX) < WEEK_SWIPE_ACTIVATION_PX
+        && Math.abs(deltaY) < WEEK_SWIPE_ACTIVATION_PX
+      ) return;
+      if (Math.abs(deltaY) >= Math.abs(deltaX)) {
+        weekPointerGestureRef.current = null;
+        return;
+      }
+      gesture.dragging = true;
+      suppressWeekClickRef.current = true;
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // The gesture can still finish inside the Week container without capture.
+      }
+    }
+
+    event.preventDefault();
+  };
+
+  const handleWeekPointerUp = (event: ReactPointerEvent<HTMLElement>) => {
+    const gesture = weekPointerGestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    weekPointerGestureRef.current = null;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    if (!gesture.dragging) return;
+
+    const deltaX = event.clientX - gesture.startX;
+    if (Math.abs(deltaX) >= WEEK_SWIPE_THRESHOLD_PX) {
+      commitSelectedDate(addDaysToDateKey(selectedDateKey, deltaX > 0 ? 7 : -7));
+    }
+    window.setTimeout(() => {
+      suppressWeekClickRef.current = false;
+    }, 0);
+  };
+
+  const handleWeekPointerCancel = () => {
+    weekPointerGestureRef.current = null;
+    suppressWeekClickRef.current = false;
+  };
+
+  const handleWeekClickCapture = (event: ReactMouseEvent<HTMLElement>) => {
+    if (!suppressWeekClickRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    suppressWeekClickRef.current = false;
   };
 
   const handleOpenCalendar = () => {
@@ -493,14 +599,14 @@ export function HomeScreen({
     setVisibleMonthKey(startOfMonthDateKey(nextTodayDateKey));
   };
 
-  const medicationTitle = selectedRelation === 0 ? "오늘 복용약" : "복용약";
+  const medicationTitle = selectedRelation === 0
+    ? "오늘 복용약"
+    : `${formatDateKey(selectedDateKey)} 복용약`;
   const moodEmptyTitle = selectedRelation === 0
     ? "오늘의 감정은 어떤가요?"
     : selectedRelation < 0
       ? `${formatDateKey(selectedDateKey)} 감정은 어땠나요?`
       : `${formatDateKey(selectedDateKey)} 감정을 기록해주세요`;
-  const showDateEyebrow = selectedRelation !== 0;
-
   if (enableLaunchSplash && launchSplashRequired) {
     return <SplashScreen />;
   }
@@ -508,17 +614,20 @@ export function HomeScreen({
   return (
     <MobileShell className="home-screen">
       <header className="home-header">
-        <div className="home-header-brand">
-          <Image src="/brand/addi-wordmark.svg" alt="ADDI" width={70} height={28} priority />
-        </div>
-        <nav className="home-header-actions" aria-label="계정 및 의견">
-          <Link href="/auth/login" className="home-header-action">
-            {isAuthenticated ? "계정" : "로그인"}
-          </Link>
-          <Link href="/feedback" className="home-header-action">
-            의견 보내기
-          </Link>
-        </nav>
+        <Link
+          href="/auth/login"
+          className="home-profile-link"
+          aria-label={isAuthenticated ? "계정 열기" : "로그인 열기"}
+        >
+          <Image src="/icons/random-profile-32.svg" alt="" width={32} height={32} priority />
+          <strong>{greeting}</strong>
+          <Image src="/icons/home-profile-chevron.svg" alt="" width={20} height={20} />
+        </Link>
+        <button type="button" className="home-notification-button" aria-label="알림" disabled>
+          <span className="home-notification-icon" aria-hidden="true">
+            <Image src="/icons/bell.svg" alt="" width={62} height={69} />
+          </span>
+        </button>
       </header>
 
       <div className="home-month-select-row">
@@ -537,12 +646,27 @@ export function HomeScreen({
         </button>
       </div>
 
-      <section className="week-strip" aria-label="이번 주">
+      <section
+        className="week-strip"
+        aria-label="이번 주"
+        onPointerDown={handleWeekPointerDown}
+        onPointerMove={handleWeekPointerMove}
+        onPointerUp={handleWeekPointerUp}
+        onPointerCancel={handleWeekPointerCancel}
+        onClickCapture={handleWeekClickCapture}
+      >
         {week.map(({ day, date, dateKey, isToday, isSelected, progress }) => (
-          <div key={dateKey} className={`${isToday ? "today" : ""} ${isSelected ? "selected" : ""}`}>
+          <button
+            key={dateKey}
+            type="button"
+            className={`${isToday ? "today" : ""} ${isSelected ? "selected" : ""}`}
+            aria-label={`${dateKey} 선택`}
+            aria-pressed={isSelected}
+            onClick={() => commitSelectedDate(dateKey)}
+          >
             <span>{day}</span>
             <strong className={`week-date ${progress}`}>{date}</strong>
-          </div>
+          </button>
         ))}
       </section>
 
@@ -581,28 +705,35 @@ export function HomeScreen({
       ) : null}
 
       <section className="home-content">
-        <div className="date-heading">
-          <button type="button" aria-label="이전 날" onClick={() => handleMoveDate(-1)}>
-            <span className="date-chevron date-chevron-left" aria-hidden="true">
-              <Image src="/icons/date-chevron-left.svg" alt="" width={12} height={6} />
-            </span>
+        <div className="home-segment" role="tablist" aria-label="홈 기록">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeSegment === "medication"}
+            className={activeSegment === "medication" ? "selected" : ""}
+            onClick={() => setActiveSegment("medication")}
+          >
+            복용 기록
           </button>
-          <strong>{selectedRelation === 0 ? "오늘" : formatDateKey(selectedDateKey)}</strong>
-          <button type="button" aria-label="다음 날" onClick={() => handleMoveDate(1)}>
-            <span className="date-chevron date-chevron-right" aria-hidden="true">
-              <Image src="/icons/date-chevron-right.svg" alt="" width={12} height={6} />
-            </span>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeSegment === "mood"}
+            className={activeSegment === "mood" ? "selected" : ""}
+            onClick={() => setActiveSegment("mood")}
+          >
+            감정 기록
           </button>
         </div>
 
-        <section className="home-section">
+        <section className="home-section" role="tabpanel" hidden={activeSegment !== "medication"}>
           {loading ? (
             <div className="home-card loading-card" aria-label="복용약 불러오는 중" />
           ) : displayedMedications.length === 0 ? (
             <div className="home-card empty-medication-card">
               <div className="home-card-copy">
                 <strong>복용중인 약을 등록해주세요</strong>
-                <p>약을 등록하면<br />오늘의 복용 여부를 간단히 기록할 수 있어요.</p>
+                <p>복용 기록을 습관처럼 이어갈 수 있도록<br />아디가 도와줄게요.</p>
               </div>
               <Link
                 href={`/medications/new/search?date=${encodeURIComponent(selectedDateKey)}`}
@@ -617,8 +748,7 @@ export function HomeScreen({
             </div>
           ) : (
             <div className="home-card populated-medication-card">
-              <div className={`home-card-heading ${showDateEyebrow ? "with-date" : ""}`}>
-                {showDateEyebrow && <span className="card-date-eyebrow">{formatDateKey(selectedDateKey)}</span>}
+              <div className="home-card-heading">
                 <Link
                   href={`/medications?date=${encodeURIComponent(selectedDateKey)}`}
                   className="home-card-title"
@@ -707,11 +837,10 @@ export function HomeScreen({
           )}
         </section>
 
-        <section className="home-section">
+        <section className="home-section" role="tabpanel" hidden={activeSegment !== "mood"}>
           {moodRecord ? (
             <div className="home-card recorded-mood-card">
-              <div className={`home-card-heading ${showDateEyebrow ? "with-date" : ""}`}>
-                {showDateEyebrow && <span className="card-date-eyebrow">{formatDateKey(selectedDateKey)}</span>}
+              <div className="home-card-heading">
                 <Link href="/moods" className="home-card-title mood-history-link">
                   <strong>{selectedRelation === 0 ? "오늘의 감정" : "감정 기록"}</strong>
                   <ChevronRight />
@@ -738,13 +867,19 @@ export function HomeScreen({
               </div>
             </div>
           ) : (
-            <div className={`home-card mood-card date-aware-mood-card ${showDateEyebrow ? "with-date" : ""}`}>
+            <div className="home-card mood-card date-aware-mood-card">
               <div className="home-card-copy">
-                {showDateEyebrow && <span className="card-date-eyebrow">{formatDateKey(selectedDateKey)}</span>}
                 <strong>{moodEmptyTitle}</strong>
-                <p>감정을 기록하고 귀여운 고양이를 모아보세요!</p>
+                <p>기록만 하면 귀여운 고양이를 만날 수 있어요!</p>
               </div>
-              <Image className="home-mood-placeholder-cat" src={UNKNOWN_CAT.imagePath} alt="" width={160} height={160} />
+              <Image
+                className="home-mood-illustration"
+                src="/moods/home-empty-cat.png"
+                alt=""
+                width={160}
+                height={160}
+                loading="eager"
+              />
               <Link
                 href={`/moods/new?date=${selectedDateKey}`}
                 className="mood-record-link"
@@ -766,6 +901,8 @@ export function HomeScreen({
         <Image src="/brand/addi-footer.svg" alt="아디" width={64} height={24} />
         <p>Copyright ⓒ Kalummy ALL RIGHTS RESERVED.</p>
       </footer>
+
+      <BottomNavigation />
 
       {toast ? (
         <Toast

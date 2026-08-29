@@ -3129,6 +3129,10 @@ html[data-addi-splash="skip"] .splash-screen {
   animation: app-toast-in 180ms ease-out both;
 }
 
+.home-screen .app-toast {
+  bottom: calc(80px + env(safe-area-inset-bottom));
+}
+
 .app-toast.above-navigation {
   bottom: calc(80px + env(safe-area-inset-bottom));
 }
@@ -4131,7 +4135,7 @@ html[data-addi-splash="skip"] .splash-screen {
   gap: 4px;
 }
 
-.card-date-eyebrow {
+.home-card .card-date-eyebrow {
   color: var(--color-font-base-05);
   font-size: 12px;
   line-height: 18px;
@@ -5745,4 +5749,358 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
 .mood-record-delete-dialog button:focus-visible {
   outline: 2px solid var(--color-border-focus-default);
   outline-offset: 2px;
+}
+
+/* Home only — Figma node 83:4795. Existing repositories and routes stay unchanged. */
+.home-screen {
+  min-height: 100dvh;
+  padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  background: var(--color-bg-base-03);
+}
+
+.home-header {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+}
+
+.home-profile-link {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-font-base-03);
+  text-decoration: none;
+}
+
+.home-profile-link > img:first-child {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+}
+
+.home-profile-link > strong {
+  overflow: hidden;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 700;
+  letter-spacing: -0.45px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-profile-link > img:last-child {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+}
+
+.home-notification-button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  flex: 0 0 28px;
+  place-items: center;
+  border: 0;
+  background: transparent;
+}
+
+.home-notification-icon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+}
+
+.home-notification-icon img {
+  display: block;
+  width: 20.6667px;
+  height: 23px;
+}
+
+.home-month-select-row {
+  height: 52px;
+  margin-top: 16px;
+  padding: 4px 20px;
+}
+
+.week-strip {
+  display: flex;
+  height: 88px;
+  margin: 4px 0 0;
+  padding: 0 20px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  background: var(--color-bg-base-03);
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .week-strip {
+    cursor: grab;
+  }
+
+  .week-strip:active {
+    cursor: grabbing;
+  }
+}
+
+.week-strip button {
+  display: flex;
+  min-width: 0;
+  height: 88px;
+  padding: 8px 4px;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: flex-start;
+  flex-direction: column;
+  gap: 12px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--color-font-base-05);
+  font: inherit;
+}
+
+.week-strip button > span {
+  color: var(--color-font-base-05);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+  letter-spacing: -0.4px;
+}
+
+.week-strip button .week-date,
+.week-strip .today .week-date,
+.week-strip .selected .week-date {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+}
+
+.week-strip button.selected {
+  background: var(--color-gray-800);
+}
+
+.week-strip button.selected > span,
+.week-strip button.selected .week-date {
+  color: var(--color-font-base-01);
+}
+
+.week-strip button .week-date.complete {
+  background: var(--color-mint-600);
+}
+
+.week-strip button .week-date.partial {
+  background: linear-gradient(90deg, var(--color-orange-500) 50%, var(--color-gray-200) 50%);
+}
+
+.week-strip button .week-date.empty {
+  background: var(--color-gray-200);
+}
+
+.appointment-row {
+  min-height: 56px;
+  margin: 16px 20px 0;
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.home-content {
+  margin-top: 0;
+  padding: 32px 20px 20px;
+}
+
+.home-segment {
+  display: grid;
+  width: 100%;
+  height: 48px;
+  padding: 4px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  border-radius: 12px;
+  background: var(--color-gray-100);
+}
+
+.home-segment button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-font-base-05);
+  font: inherit;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+
+.home-segment button.selected {
+  background: var(--color-bg-base-01);
+  color: var(--color-font-base-03);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+}
+
+.home-section {
+  margin-top: 24px;
+}
+
+.home-card {
+  border-radius: 16px;
+}
+
+.empty-medication-card {
+  min-height: 228px;
+  padding: 32px 20px 20px;
+}
+
+.mood-card {
+  min-height: 388px;
+  padding: 32px 20px 20px;
+  gap: 24px;
+  background: linear-gradient(132.55deg, var(--color-bg-base-01) 0%, var(--color-mint-50) 100%);
+}
+
+.home-card .card-date-eyebrow {
+  display: none;
+}
+
+.home-mood-illustration {
+  display: block;
+  width: 160px;
+  height: 160px;
+  margin: -8px auto;
+  object-fit: contain;
+}
+
+.home-footer {
+  margin-top: 64px;
+  background: var(--color-bg-base-05);
+}
+
+.bottom-navigation {
+  position: fixed;
+  z-index: 30;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  width: min(100%, 430px);
+  padding-bottom: env(safe-area-inset-bottom);
+  margin: auto;
+  flex-direction: column;
+  background: var(--color-bg-base-01);
+  box-shadow: 0 -1px 0 var(--color-border-base-03);
+}
+
+.bottom-navigation-items {
+  display: grid;
+  height: 56px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.bottom-navigation-item {
+  display: flex;
+  min-width: 0;
+  padding: 5px 8px 8px;
+  align-items: center;
+  flex-direction: column;
+  gap: 1px;
+  border: 0;
+  background: transparent;
+  color: var(--color-font-base-06);
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+
+.bottom-navigation-icon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+}
+
+.bottom-navigation-icon img {
+  display: block;
+  width: 28px;
+  height: 28px;
+}
+
+.bottom-navigation-home-icon img {
+  width: 22.5px;
+  height: 22.5px;
+}
+
+.bottom-navigation-focus-icon img {
+  width: 20.4167px;
+  height: 20.4167px;
+}
+
+.bottom-navigation-item.active {
+  color: var(--color-font-base-03);
+  font-weight: 700;
+}
+
+.home-profile-link,
+.week-strip button,
+.appointment-row,
+.home-segment button,
+.home-card {
+  transition: transform 100ms ease-out;
+}
+
+.home-profile-link:active,
+.week-strip button:active,
+.appointment-row:active,
+.home-segment button:active,
+.home-card:has(.home-card-title:active),
+.home-card:has(.inline-add-button:active),
+.home-card:has(.mood-record-link:active) {
+  transform: scale(0.98);
+}
+
+@media (max-width: 340px) {
+  .week-strip {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .week-strip button {
+    padding-right: 2px;
+    padding-left: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-profile-link,
+  .week-strip button,
+  .appointment-row,
+  .home-segment button,
+  .home-card {
+    transition: none;
+  }
+
+  .home-profile-link:active,
+  .week-strip button:active,
+  .appointment-row:active,
+  .home-segment button:active,
+  .home-card:has(.home-card-title:active),
+  .home-card:has(.inline-add-button:active),
+  .home-card:has(.mood-record-link:active) {
+    transform: none;
+  }
 }
