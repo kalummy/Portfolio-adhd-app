@@ -7,11 +7,19 @@ import { useRouter } from "next/navigation";
 import { MobileShell } from "@/components/mobile-shell";
 import { CatRewardImage } from "@/components/cat-reward-image";
 import { MOOD_DELETED_TOAST_STORAGE_KEY } from "@/components/mood-history";
-import { formatMoodRecordDate, formatMoodRecordDateTime } from "@/lib/mood-history";
+import { KST_TIME_ZONE } from "@/lib/kst-date";
+import { formatMoodRecordDate } from "@/lib/mood-history";
 import { getMoodRecordDisplayCat } from "@/lib/mood-record-cat";
 import { normalizeClinicPhraseForDisplay } from "@/lib/clinic-phrase";
 import { getMoodRepository } from "@/lib/repositories";
 import type { MoodRecord } from "@/lib/types";
+
+const DETAIL_RECORD_TIME_FORMATTER = new Intl.DateTimeFormat("ko-KR", {
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+  timeZone: KST_TIME_ZONE,
+});
 
 function getDetailCat(record: MoodRecord) {
   return getMoodRecordDisplayCat(record.catId);
@@ -34,6 +42,12 @@ function getStoredClinicPhrase(record: MoodRecord) {
     || normalizeClinicPhraseForDisplay(record.memberSummary ?? "")
     || normalizeClinicPhraseForDisplay(record.diaryEntries?.[0] ?? "")
     || "";
+}
+
+function formatDetailRecordTime(recordedAt: string) {
+  const date = new Date(recordedAt);
+  if (Number.isNaN(date.getTime())) return "";
+  return DETAIL_RECORD_TIME_FORMATTER.format(date);
 }
 
 export function MoodRecordDetail({ dateKey }: { dateKey: string }) {
@@ -120,8 +134,12 @@ export function MoodRecordDetail({ dateKey }: { dateKey: string }) {
 
       <section className="mood-record-detail-hero">
         <div className="mood-record-detail-info">
-          <span>{formatMoodRecordDateTime(record)}</span>
           <strong>{record.moodLabel || record.memberSummary}</strong>
+          <span className="mood-record-detail-time">
+            <span>{formatMoodRecordDate(record.date)}</span>
+            <i aria-hidden="true" />
+            <span>{formatDetailRecordTime(record.recordedAt)} 기록</span>
+          </span>
         </div>
         <span className={`mood-record-detail-cat cat-${cat.id}`}>
           <CatRewardImage catId={cat.id} alt={cat.displayName} fill sizes="160px" priority />

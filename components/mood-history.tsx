@@ -17,6 +17,7 @@ import {
 import { UNKNOWN_CAT } from "@/lib/cats";
 import { getKstDateKey } from "@/lib/kst-date";
 import {
+  formatMoodRecordDate,
   formatMoodRecordDateTime,
   getMoodHistoryDateRange,
   getMoodHistoryPeriod,
@@ -189,7 +190,7 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
         })}
       </nav>
 
-      {activeTab === "records" && !loading ? (
+      {activeTab === "records" && !loading && records.length > 0 ? (
         <button
           type="button"
           className="mood-record-period"
@@ -219,7 +220,7 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
                     <CatRewardImage catId={cat.id} alt={cat.displayName} fill sizes="64px" />
                   </span>
                   <span className="mood-record-list-info">
-                    <span>{formatMoodRecordDateTime(record)}</span>
+                    <span>{formatMoodRecordDate(record.date)}</span>
                     <strong>{getRecordSummary(record)}</strong>
                   </span>
                 </Link>
