@@ -4580,6 +4580,8 @@ html[data-addi-splash="skip"] .splash-screen {
   100% { opacity: 0; }
 }
 .mood-result-screen { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+.mood-result-screen .bottom-actions-inner { display: grid; gap: 12px; }
+.mood-save-error { margin: 0; color: var(--color-font-semantic-danger); font-size: 13px; line-height: 18px; text-align: center; }
 .mood-result-header { position: sticky; top: 0; z-index: 5; display: flex; height: calc(56px + env(safe-area-inset-top)); padding: calc(16px + env(safe-area-inset-top)) 20px 16px; align-items: center; background: var(--color-bg-base-01); }
 .mood-result-header strong { font-size: 16px; line-height: 24px; font-weight: 700; letter-spacing: -0.4px; }
 .mood-result-share { margin-left: auto; }
