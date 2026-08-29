@@ -544,7 +544,7 @@ export function HomeScreen({
 
     const deltaX = event.clientX - gesture.startX;
     if (Math.abs(deltaX) >= WEEK_SWIPE_THRESHOLD_PX) {
-      commitSelectedDate(addDaysToDateKey(selectedDateKey, deltaX > 0 ? 7 : -7));
+      commitSelectedDate(addDaysToDateKey(selectedDateKey, deltaX > 0 ? -7 : 7));
     }
     window.setTimeout(() => {
       suppressWeekClickRef.current = false;
