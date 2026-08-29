@@ -180,14 +180,16 @@ const cases: Array<[string, () => Promise<void>]> = [
     assert.equal(state.claims.size, 0);
     assert.equal(state.rotations, 0);
   }],
-  ["merge failure UI exposes a readable error and retry control", async () => {
+  ["guest merge failure stays separate from the Home member-data error", async () => {
     const homeSource = await readFile(
       new URL("../components/home-screen.tsx", import.meta.url),
       "utf8",
     );
     assert.match(homeSource, /저장한 정보를 불러오지 못했어요\. 다시 시도해 주세요\./);
     assert.match(homeSource, /role="alert"/);
-    assert.match(homeSource, /retryGuestDatasetSync/);
+    assert.match(homeSource, /await runGuestDatasetSyncInBackground\(\)/);
+    assert.doesNotMatch(homeSource, /retryGuestDatasetSync/);
+    assert.doesNotMatch(homeSource, /guestDatasetSync\.status === "failed"/);
     assert.match(homeSource, /"다시 시도"/);
   }],
 ];
