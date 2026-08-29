@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BottomNavigation } from "@/components/bottom-navigation";
 import { MobileShell } from "@/components/mobile-shell";
+import { VisitDialog } from "@/components/visit-dialog";
 import { signOut } from "@/lib/auth/client";
 import {
   LEGACY_HOME_SPLASH_SESSION_KEY,
@@ -14,6 +15,7 @@ import { restoreClaimedGuestDatasetVisibilityForUser } from "@/lib/indexed-db";
 
 export function MyHomeScreen({ displayName, userId }: { displayName: string; userId: string }) {
   const router = useRouter();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -84,7 +86,12 @@ export function MyHomeScreen({ displayName, userId }: { displayName: string; use
             <span>{busy ? "로그아웃 중" : "로그아웃"}</span>
             <Image src="/profile/chevron-right.svg" alt="" width={20} height={20} />
           </button>
-          <button type="button" className="my-home-menu-row" disabled>
+          <button
+            type="button"
+            className="my-home-menu-row"
+            disabled={busy}
+            onClick={() => setDeleteDialogOpen(true)}
+          >
             <span>회원탈퇴</span>
             <Image src="/profile/chevron-right.svg" alt="" width={20} height={20} />
           </button>
@@ -94,6 +101,17 @@ export function MyHomeScreen({ displayName, userId }: { displayName: string; use
       </section>
 
       <BottomNavigation activeTab="my" />
+
+      {deleteDialogOpen ? (
+        <VisitDialog
+          title="정말 탈퇴하시겠어요?"
+          description="탈퇴하면 계정이 삭제되고 복구할 수 없습니다."
+          cancelLabel="취소"
+          confirmLabel="탈퇴"
+          onCancel={() => setDeleteDialogOpen(false)}
+          onConfirm={() => router.push("/my/delete-account")}
+        />
+      ) : null}
     </MobileShell>
   );
 }

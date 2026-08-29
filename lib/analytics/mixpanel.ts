@@ -148,3 +148,15 @@ export function trackAppOpened(): boolean {
   if (tracked) analyticsState.appOpenedTracked = true;
   return tracked;
 }
+
+export function resetAnalyticsIdentity(): boolean {
+  if (!isBrowser() || (!analyticsState.initialized && !initAnalytics())) return false;
+
+  try {
+    mixpanel.reset();
+    analyticsState.appOpenedTracked = false;
+    return true;
+  } catch {
+    return false;
+  }
+}

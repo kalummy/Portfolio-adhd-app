@@ -249,6 +249,40 @@ function openDatabase(): Promise<IDBDatabase> {
   });
 }
 
+export async function clearAddiIndexedDatabase(): Promise<void> {
+  const database = await openDatabase();
+  const storeNames = Array.from(database.objectStoreNames);
+
+  try {
+    if (storeNames.length > 0) {
+      await new Promise<void>((resolve, reject) => {
+        const transaction = database.transaction(storeNames, "readwrite");
+        storeNames.forEach((storeName) => transaction.objectStore(storeName).clear());
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(
+          transaction.error ?? new Error("IndexedDB 데이터를 삭제하지 못했어요."),
+        );
+        transaction.onabort = () => reject(
+          transaction.error ?? new Error("IndexedDB 데이터 삭제가 중단됐어요."),
+        );
+      });
+    }
+  } finally {
+    database.close();
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const request = window.indexedDB.deleteDatabase(DB_NAME);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(
+      request.error ?? new Error("IndexedDB를 삭제하지 못했어요."),
+    );
+    // All ADDI stores were already cleared above. Another open tab can block
+    // deleting the empty database shell, but cannot make the cleared rows reappear.
+    request.onblocked = () => resolve();
+  });
+}
+
 async function ensureGuestMedicationDatasetState(
   database: IDBDatabase,
 ): Promise<GuestMedicationDatasetState> {
