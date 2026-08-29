@@ -44,11 +44,12 @@ button {
 
 .mobile-shell {
   position: relative;
+  display: flow-root;
   width: 100%;
   max-width: 430px;
   min-height: 100dvh;
   margin: 0 auto;
-  overflow-x: hidden;
+  overflow-x: clip;
   background: var(--surface);
 }
 
@@ -95,6 +96,9 @@ html[data-addi-splash="skip"] .splash-screen {
 }
 
 .flow-header {
+  position: sticky;
+  z-index: 10;
+  top: 0;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -727,15 +731,17 @@ html[data-addi-splash="skip"] .splash-screen {
 }
 
 .search-form {
-  position: absolute;
+  position: fixed;
+  z-index: 11;
   top: calc(env(safe-area-inset-top) + 6px);
-  left: 60px;
-  right: 20px;
+  left: 50%;
   display: flex;
   align-items: center;
   gap: 8px;
+  width: min(calc(100% - 80px), 350px);
   height: 44px;
   padding: 0 16px;
+  transform: translateX(calc(-50% + 20px));
   border: 1px solid var(--border);
   border-radius: 8px;
   background: #fff;
@@ -2003,7 +2009,6 @@ html[data-addi-splash="skip"] .splash-screen {
 .feedback-screen {
   min-height: max(100dvh, 700px);
   padding-bottom: calc(130px + env(safe-area-inset-bottom));
-  overflow-y: auto;
   background: var(--color-bg-base-01);
 }
 
