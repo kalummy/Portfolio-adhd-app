@@ -12,6 +12,7 @@ type MoodResultProps = {
   catId: CatId;
   result: MoodResultData;
   saving: boolean;
+  saveError?: string;
   onSave: () => void;
 };
 
@@ -39,6 +40,7 @@ export function MoodResult({
   catId,
   result,
   saving,
+  saveError,
   onSave,
 }: MoodResultProps) {
   const cat = getCat(catId);
@@ -90,8 +92,16 @@ export function MoodResult({
         </section>
       </section>
       <BottomActions>
-        <PrimaryButton type="button" onClick={onSave} disabled={saving}>
-          저장
+        {saveError ? (
+          <p className="mood-save-error" role="alert">{saveError}</p>
+        ) : null}
+        <PrimaryButton
+          type="button"
+          onClick={onSave}
+          disabled={saving}
+          aria-busy={saving}
+        >
+          {saving ? "저장 중..." : saveError ? "다시 시도" : "저장"}
         </PrimaryButton>
       </BottomActions>
     </MobileShell>

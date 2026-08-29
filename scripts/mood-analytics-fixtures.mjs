@@ -142,7 +142,10 @@ for (const failure of ["network", "timeout", "configuration_error", "provider_er
 console.log("PASS analysis failures: request, timeout, API enums, malformed response, validation; no result");
 
 h = harness({ saveError: new DOMException("private storage error", "QuotaExceededError") });
-await h.answerAll(); h.find("MoodResult").onSave(); await h.settle();
+await h.answerAll();
+h.find("MoodResult").onSave();
+await new Promise((resolve) => setTimeout(resolve, 350));
+await h.settle();
 assert.deepEqual(h.names().slice(-2), ["mood_save_clicked", "mood_save_failed"]);
 assert.equal(h.names().includes("mood_saved"), false);
 assert.equal(h.saved.length, 0);

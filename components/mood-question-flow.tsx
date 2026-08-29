@@ -38,6 +38,12 @@ import {
   type MoodAnalysisMetadata,
 } from "@/lib/mood-analysis";
 import { getDataRepositories, getMoodRepository } from "@/lib/repositories";
+import {
+  saveMoodWithReconciliation,
+  settleWithin,
+  type MoodSaveOutcome,
+  type MoodSaveStage,
+} from "@/lib/repositories/moods/save-reconciliation";
 import { DuplicateMoodRecordError } from "@/lib/repositories/moods/types";
 import {
   buildMoodResult,
@@ -61,6 +67,8 @@ const CURRENT_EMOTION_OPTION_IDS = new Set<string>([
   ...CURRENT_EMOTION_OPTIONS.map((option) => option.id),
   CUSTOM_MOOD_OPTION_ID,
 ]);
+const MOOD_REPOSITORY_READY_TIMEOUT_MS = 8_000;
+const MOOD_SAVE_ERROR_MESSAGE = "기록을 저장하지 못했어요. 다시 시도해주세요.";
 
 const MEDICATION_STEP = {
   title: "오늘 약 효과는 어땠나요?",
@@ -137,6 +145,9 @@ export function MoodQuestionFlow({
 }) {
   const restoredRequestStarted = useRef(false);
   const completionHandled = useRef(false);
+  const saveInFlight = useRef(false);
+  const saveStage = useRef<MoodSaveStage | null>(null);
+  const navigationRequested = useRef(false);
   const moodAttempt = useRef<MoodAttemptHandle>(null);
   const [ready, setReady] = useState(false);
   const [phase, setPhase] = useState<MoodDraftPhase>("questions");
@@ -150,6 +161,7 @@ export function MoodQuestionFlow({
   const [loadingDone, setLoadingDone] = useState(false);
   const [showExit, setShowExit] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string>();
   const [intakeMedicationIds, setIntakeMedicationIds] = useState<string[]>([]);
 
   const questions = useMemo(() => [
@@ -441,16 +453,71 @@ export function MoodQuestionFlow({
     void requestAnalysis(timestamp, reward);
   }
 
+  function markSaveStage(stage: MoodSaveStage) {
+    saveStage.current = stage;
+  }
+
+  function navigateAfterSave(
+    outcome: Exclude<MoodSaveOutcome, "failed">,
+    attempt: MoodAttemptHandle,
+    storageBackend: MoodStorageBackend,
+    error?: unknown,
+  ) {
+    if (navigationRequested.current) return;
+    navigationRequested.current = true;
+    markSaveStage("navigation_requested");
+
+    if (outcome === "duplicate") {
+      trackMoodSaveFailed(
+        attempt,
+        classifyMoodSaveFailure(error ?? new DuplicateMoodRecordError(), storageBackend),
+        storageBackend,
+      );
+      window.location.replace(homeHref);
+      return;
+    }
+
+    clearMoodDraft(window.sessionStorage, targetDateKey);
+    void trackMoodSaved(attempt, storageBackend);
+    const destination = new URL(homeHref, window.location.origin);
+    destination.searchParams.set("moodToast", "saved");
+    destination.searchParams.set("toastId", createClientId());
+    window.location.assign(`${destination.pathname}${destination.search}`);
+  }
+
   async function save() {
-    if (!result || !catId || saving) return;
+    if (!result || !catId || saveInFlight.current) return;
+    saveInFlight.current = true;
     setSaving(true);
+    setSaveError(undefined);
     const attempt = moodAttempt.current;
+    markSaveStage("save_clicked");
+    trackMoodSaveClicked(attempt);
     let storageBackend: MoodStorageBackend = "unknown";
-    let repositorySaved = false;
-    try {
-      const repository = await getMoodRepository();
-      storageBackend = repository.storageBackend;
-      await repository.save({
+
+    const repositoryResult = await settleWithin(
+      getMoodRepository(),
+      MOOD_REPOSITORY_READY_TIMEOUT_MS,
+    );
+    if (repositoryResult.status !== "resolved") {
+      markSaveStage("save_rejected");
+      const error = repositoryResult.status === "rejected"
+        ? repositoryResult.error
+        : undefined;
+      trackMoodSaveFailed(attempt, classifyMoodSaveFailure(error, storageBackend), storageBackend);
+      saveInFlight.current = false;
+      setSaving(false);
+      setSaveError(MOOD_SAVE_ERROR_MESSAGE);
+      return;
+    }
+
+    const repository = repositoryResult.value;
+    storageBackend = repository.storageBackend;
+    markSaveStage("repository_ready");
+    const saveResult = await saveMoodWithReconciliation({
+      repository,
+      date: targetDateKey,
+      record: {
         date: targetDateKey,
         mood: result.moodType,
         moodLabel: result.label,
@@ -465,23 +532,29 @@ export function MoodQuestionFlow({
         analysisVersion: result.analysis.version,
         analysisModel: result.analysis.model,
         analysisCreatedAt: result.analysis.createdAt,
-      });
-      repositorySaved = true;
-      const savedEvent = trackMoodSaved(attempt, storageBackend);
-      clearMoodDraft(window.sessionStorage, targetDateKey);
-      await savedEvent;
-      const destination = new URL(homeHref, window.location.origin);
-      destination.searchParams.set("moodToast", "saved");
-      destination.searchParams.set("toastId", createClientId());
-      window.location.assign(`${destination.pathname}${destination.search}`);
-    } catch (error) {
-      if (!repositorySaved) trackMoodSaveFailed(attempt, classifyMoodSaveFailure(error, storageBackend), storageBackend);
-      if (error instanceof DuplicateMoodRecordError) {
-        window.location.replace(homeHref);
-      } else {
-        setSaving(false);
-      }
+      },
+      onStage: markSaveStage,
+      onLateOutcome: (outcome) => navigateAfterSave(
+        outcome,
+        attempt,
+        storageBackend,
+        outcome === "duplicate" ? new DuplicateMoodRecordError() : undefined,
+      ),
+    });
+
+    if (saveResult.outcome !== "failed") {
+      navigateAfterSave(saveResult.outcome, attempt, storageBackend, saveResult.error);
+      return;
     }
+
+    trackMoodSaveFailed(
+      attempt,
+      classifyMoodSaveFailure(saveResult.error, storageBackend),
+      storageBackend,
+    );
+    saveInFlight.current = false;
+    setSaving(false);
+    setSaveError(MOOD_SAVE_ERROR_MESSAGE);
   }
 
   if (!ready) {
@@ -507,10 +580,8 @@ export function MoodQuestionFlow({
         catId={catId}
         result={result}
         saving={saving}
-        onSave={() => {
-          trackMoodSaveClicked(moodAttempt.current);
-          void save();
-        }}
+        saveError={saveError}
+        onSave={() => void save()}
       />
     );
   }
