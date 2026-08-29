@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "account-deletion:fixtures": "node --experimental-strip-types scripts/account-deletion-fixtures.mjs",
     "analytics:fixtures": "node scripts/analytics-fixtures.mjs",
     "medication:analytics-fixtures": "node scripts/medication-analytics-fixtures.mjs",
     "medication:taking-analytics-fixtures": "node scripts/medication-taking-analytics-fixtures.mjs",
