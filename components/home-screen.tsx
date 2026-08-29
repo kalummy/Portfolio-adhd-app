@@ -839,12 +839,16 @@ export function HomeScreen({
 
         <section className="home-section" role="tabpanel" hidden={activeSegment !== "mood"}>
           {moodRecord ? (
-            <div className="home-card recorded-mood-card">
+            <Link
+              href={`/moods/${moodRecord.date}`}
+              className="home-card recorded-mood-card recorded-mood-card-link"
+              aria-label={`${formatDateKey(moodRecord.date)} 감정 기록 상세 보기`}
+            >
               <div className="home-card-heading">
-                <Link href="/moods" className="home-card-title mood-history-link">
+                <div className="home-card-title">
                   <strong>{selectedRelation === 0 ? "오늘의 감정" : "감정 기록"}</strong>
                   <ChevronRight />
-                </Link>
+                </div>
               </div>
               <div className="recorded-mood-item">
                 <span className={`recorded-mood-cat-frame mood-result-cat-${moodCatId}`}>
@@ -865,7 +869,7 @@ export function HomeScreen({
                 </div>
                 <p>“{getHomeClinicPhrase(moodRecord)}”</p>
               </div>
-            </div>
+            </Link>
           ) : (
             <div className="home-card mood-card date-aware-mood-card">
               <div className="home-card-copy">

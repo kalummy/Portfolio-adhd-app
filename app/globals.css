@@ -4295,6 +4295,22 @@ html[data-addi-splash="skip"] .splash-screen {
   gap: 24px;
 }
 
+.recorded-mood-card-link {
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.recorded-mood-card-link:active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recorded-mood-card-link:active {
+    transform: none;
+  }
+}
+
 .recorded-mood-item {
   display: flex;
   min-width: 0;
@@ -5509,8 +5525,10 @@ html[data-addi-splash="skip"] .splash-screen {
 }
 
 .mood-record-detail-screen {
+  display: flex;
   padding-top: calc(56px + env(safe-area-inset-top));
-  padding-bottom: calc(110px + env(safe-area-inset-bottom));
+  padding-bottom: 0;
+  flex-direction: column;
 }
 
 .mood-record-detail-header {
@@ -5534,23 +5552,35 @@ html[data-addi-splash="skip"] .splash-screen {
   width: 100%;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 }
 
-.mood-record-detail-info span {
+.mood-record-detail-time {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   color: var(--color-font-base-05);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 18px;
+}
+
+.mood-record-detail-time i {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: var(--color-border-base-04);
 }
 
 .mood-record-detail-info strong {
   overflow: hidden;
   width: 100%;
-  color: var(--color-font-base-04);
-  font-size: 18px;
-  line-height: 26px;
+  color: var(--color-blue-500);
+  font-size: 20px;
+  line-height: 28px;
   font-weight: 600;
-  letter-spacing: -0.45px;
+  letter-spacing: -0.5px;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -5652,16 +5682,10 @@ html[data-addi-splash="skip"] .splash-screen {
 }
 
 .mood-record-detail-footer {
-  position: fixed;
-  left: 50%;
-  bottom: 0;
-  z-index: 10;
   width: 100%;
-  max-width: 430px;
+  margin-top: auto;
   padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  backdrop-filter: blur(4px);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--color-bg-base-01);
 }
 
 img.cat-reward-image-fallback.cat-reward-image-fallback {
