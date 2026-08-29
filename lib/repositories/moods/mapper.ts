@@ -1,5 +1,6 @@
 import { getMoodPresentation, type MoodType } from "@/lib/mood-summary";
 import type { MoodRecord } from "@/lib/types";
+import { resolveMoodMigrationSummary } from "./migration-summary";
 import type { NewMoodRecord } from "./types";
 
 export type SupabaseMoodRow = {
@@ -52,18 +53,16 @@ export function toSupabaseMood(
 }
 
 export function toSupabaseMoodMigrationInput(
-  record: Pick<MoodRecord, "date" | "mood" | "recordedAt" | "memberSummary" | "details" | "clinicPhrase" | "catId" | "analysisStatus" | "analysisResult" | "analysisVersion" | "analysisModel" | "analysisCreatedAt">,
+  record: Pick<MoodRecord, "date" | "mood" | "recordedAt" | "diaryEntries" | "memberSummary" | "details" | "clinicPhrase" | "catId" | "analysisStatus" | "analysisResult" | "analysisVersion" | "analysisModel" | "analysisCreatedAt">,
 ): SupabaseMoodMigrationInput {
-  if (!record.memberSummary) {
-    throw new Error("회원용 감정 요약이 없는 기록은 이전할 수 없어요.");
-  }
+  const summary = resolveMoodMigrationSummary(record);
   return {
     mood_date: record.date,
     mood: record.mood as MoodType,
     recorded_at: record.recordedAt,
-    summary: record.memberSummary,
+    summary,
     details: record.details ?? null,
-    clinic_phrase: record.clinicPhrase ?? record.memberSummary,
+    clinic_phrase: record.clinicPhrase ?? summary,
     cat_id: record.catId ?? null,
     analysis_status: record.analysisStatus ?? null,
     analysis_result: record.analysisResult ?? null,

@@ -7,12 +7,31 @@ import {
   writeMoodDraft,
 } from "../lib/mood-draft.ts";
 import { buildMoodDetails, determineMoodType, getMoodPresentation } from "../lib/mood-summary.ts";
+import { resolveMoodMigrationSummary } from "../lib/repositories/moods/migration-summary.ts";
 
 const answer = (selected = [], customText = "", timingsByOption = {}) => ({
   selected,
   customText,
   timingsByOption,
 });
+
+assert.equal(
+  resolveMoodMigrationSummary({ memberSummary: "  현재 회원 요약  ", diaryEntries: ["예전 기록"] }),
+  "  현재 회원 요약  ",
+);
+assert.equal(
+  resolveMoodMigrationSummary({ diaryEntries: ["오전에 집중이 잘 됐어요.", "  오후에는 조금 피곤했어요.  "] }),
+  "오전에 집중이 잘 됐어요. 오후에는 조금 피곤했어요.",
+);
+assert.equal(
+  Array.from(resolveMoodMigrationSummary({ diaryEntries: ["가".repeat(301)] })).length,
+  300,
+);
+assert.throws(
+  () => resolveMoodMigrationSummary({ diaryEntries: ["  "] }),
+  /이전할 수 있는 감정 요약이 없는 기록/u,
+);
+console.log("PASS current and legacy guest Mood summaries remain migration-compatible");
 const draftAnswers = [
   answer(["similar"]),
   answer(["anxious"]),
