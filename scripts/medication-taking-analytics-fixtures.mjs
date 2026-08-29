@@ -24,7 +24,7 @@ process.on("unhandledRejection", onRejection);
 
 function harness({ backend = "indexeddb", sdkThrows = false, authStalls = false, strict = false, preview = false, baseline = false, idThrows = false } = {}) {
   const events = [], operations = [], trace = [], errors = [], records = new Map();
-  const config = { saveError: null, repositoryError: null, result: "valid", gate: null, reloadError: false, metadataThrows: false };
+  const config = { saveError: null, repositoryError: null, result: "valid", gate: null, reloadError: false, metadataThrows: false, guestSyncError: null };
   currentErrors = errors;
   const session = storage(), local = storage(), cache = new Map(), slots = [];
   let dirty = true, cursor = 0, pending = [], tree;
@@ -67,7 +67,18 @@ function harness({ backend = "indexeddb", sdkThrows = false, authStalls = false,
   const mocks = {
     react, "react/jsx-runtime": { Fragment: "Fragment", jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
     "next/image": { default: "Image" }, "next/link": { default: "Link" }, "next/navigation": { useRouter: () => router },
-    "@/lib/repositories": { getDataRepositories: async () => { trace.push("repository"); if (config.repositoryError) throw config.repositoryError; return repositories; } },
+    "@/lib/repositories": {
+      getDataRepositories: async () => {
+        trace.push("repository");
+        if (config.repositoryError) throw config.repositoryError;
+        return repositories;
+      },
+      runGuestDatasetSyncInBackground: async () => {
+        trace.push("guestSync");
+        if (config.guestSyncError) throw config.guestSyncError;
+        return { status: "no-local-data" };
+      },
+    },
     "@/lib/auth/client": { getAuthState: async () => authStalls ? new Promise(() => {}) : { isAuthenticated: backend === "supabase" } },
     "@/lib/supabase/config": { isSupabaseConfigured: () => true },
     "@/lib/medication-enrichment": { enrichOfficialMedications: async (items) => items },
@@ -223,6 +234,28 @@ try {
   console.log("PASS post-save refresh failure is not a save failure; preview interaction remains untracked/local");
 
   {
+    const h = harness({ backend: "supabase" });
+    h.config.guestSyncError = Error("indexed_db_open_blocked");
+    await h.settle();
+    const shell = h.nodes().find((node) => node.type === "MobileShell");
+    assert.equal(shell.props["data-guest-dataset-sync"], "failed");
+    assert.equal(shell.props["data-home-data-failure"], undefined);
+    assert.equal(h.nodes().some((node) => node.props?.role === "alert"), false);
+    assert.ok(h.nodes().some((node) => node.type === "strong" && node.props?.children === "반가워요"));
+  }
+  console.log("PASS guest migration failure is diagnostic-only and member Home remains rendered");
+
+  {
+    const h = harness({ backend: "supabase" });
+    h.config.reloadError = true;
+    await h.settle();
+    const shell = h.nodes().find((node) => node.type === "MobileShell");
+    assert.equal(shell.props["data-home-data-failure"], "intake_failed");
+    assert.ok(h.nodes().some((node) => node.props?.role === "alert"));
+  }
+  console.log("PASS member query failure keeps its value-free source and Home retry UI");
+
+  {
     const h = harness(); await h.settle(); await h.click();
     assert.equal([...h.session.values.keys(), ...h.local.values.keys()].some((key) => key.includes("take-attempt") || key.includes("taking")), false);
     assert.ok(h.taking().every((event) => event.medication_attempt_id === undefined));
@@ -244,7 +277,7 @@ try {
   }
   console.log("PASS no persistent/registration attempt, no sensitive properties, strict schema and one terminal event per handle");
 
-  console.log("Medication taking analytics fixtures: 9/9 groups passed");
+  console.log("Medication taking analytics fixtures: 11/11 groups passed");
 } finally {
   process.removeListener("unhandledRejection", onRejection);
 }

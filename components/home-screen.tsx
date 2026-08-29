@@ -31,7 +31,16 @@ import {
   trackMedicationTakeResult,
   trackMedicationTakeFailed,
 } from "@/lib/analytics/events";
-import { getDataRepositories, retryGuestDatasetSync } from "@/lib/repositories";
+import {
+  getDataRepositories,
+  runGuestDatasetSyncInBackground,
+} from "@/lib/repositories";
+import {
+  createSingleFlight,
+  HomeDataLoadError,
+  identifyHomeDataFailure,
+  type HomeDataFailureSource,
+} from "@/lib/home-load-orchestration";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
 import { resolveMedicationImage } from "@/lib/medication-images";
 import { reconcileMedicationIntakeRecord } from "@/lib/medication-intake-state";
@@ -189,6 +198,8 @@ export function HomeScreen({
   const weekPointerGestureRef = useRef<WeekPointerGesture | null>(null);
   const suppressWeekClickRef = useRef(false);
   const intakeMutationGenerationRef = useRef(0);
+  const homeLoadGenerationRef = useRef(0);
+  const guestDatasetSyncStartedRef = useRef(false);
   const [medications, setMedications] = useState<SavedMedication[]>(previewData?.medications ?? []);
   const [intakeRecords, setIntakeRecords] = useState<MedicationIntakeRecord[]>(
     previewData?.intakeRecords ?? [],
@@ -203,6 +214,10 @@ export function HomeScreen({
   const toastActivityGenerationRef = useRef(0);
   const [syncError, setSyncError] = useState("");
   const [syncRetrying, setSyncRetrying] = useState(false);
+  const [homeDataFailureSource, setHomeDataFailureSource] = useState<HomeDataFailureSource | null>(null);
+  const [guestDatasetSyncStatus, setGuestDatasetSyncStatus] = useState<
+    "idle" | "running" | "succeeded" | "failed"
+  >("idle");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [greeting, setGreeting] = useState("로그인이 필요해요");
   const [activeSegment, setActiveSegment] = useState<HomeSegment>("medication");
@@ -253,13 +268,18 @@ export function HomeScreen({
     return () => window.clearTimeout(timer);
   }, [enableLaunchSplash, launchSplashRequired]);
 
-  const load = useCallback(async () => {
+  const performLoad = useCallback(async () => {
+    const loadGeneration = ++homeLoadGenerationRef.current;
+    const isCurrentLoad = () => loadGeneration === homeLoadGenerationRef.current;
     const intakeMutationGeneration = intakeMutationGenerationRef.current;
     if (previewData) {
+      if (!isCurrentLoad()) return;
       setMedications(previewData.medications);
       setIntakeRecords(previewData.intakeRecords);
       setMoodRecords(previewData.moodRecords);
       setVisitSchedule(previewData.visitSchedule ?? null);
+      setSyncError("");
+      setHomeDataFailureSource(null);
       setLoading(false);
       return;
     }
@@ -267,20 +287,21 @@ export function HomeScreen({
     setLoading(true);
     try {
       const repositories = await getDataRepositories();
-      setSyncError(repositories.guestDatasetSync.status === "failed"
-        ? "저장한 정보를 불러오지 못했어요. 다시 시도해 주세요."
-        : "");
       const [authState, savedMedications, savedIntakes, savedMoods, savedVisit] = await Promise.all([
         getAuthState().catch(() => ({ isAuthenticated: false, user: null })),
-        repositories.medications.listAll(),
-        repositories.medicationIntakes.listAll(),
-        repositories.moods.listAll(),
-        repositories.visitSchedules.getUpcoming(),
+        identifyHomeDataFailure("medications_failed", repositories.medications.listAll()),
+        identifyHomeDataFailure("intake_failed", repositories.medicationIntakes.listAll()),
+        identifyHomeDataFailure("moods_failed", repositories.moods.listAll()),
+        identifyHomeDataFailure("visits_failed", repositories.visitSchedules.getUpcoming()),
       ]);
+      if (!isCurrentLoad()) return;
+      setSyncError("");
+      setHomeDataFailureSource(null);
       setIsAuthenticated(authState.isAuthenticated);
       setGreeting(authState.isAuthenticated ? accountGreeting(authState.user) : "로그인이 필요해요");
       setMedications(savedMedications);
       void enrichOfficialMedications(savedMedications).then((enrichedMedications) => {
+        if (!isCurrentLoad()) return;
         const enrichedById = new Map(
           enrichedMedications.map((medication) => [medication.id, medication]),
         );
@@ -293,36 +314,56 @@ export function HomeScreen({
       }
       setMoodRecords(savedMoods);
       setVisitSchedule(savedVisit);
-    } catch {
-      setSyncError("저장한 정보를 불러오지 못했어요. 다시 시도해 주세요.");
+    } catch (error) {
+      if (!isCurrentLoad()) return;
+      if (error instanceof HomeDataLoadError) {
+        setHomeDataFailureSource(error.source);
+        setSyncError("저장한 정보를 불러오지 못했어요. 다시 시도해 주세요.");
+      } else {
+        setHomeDataFailureSource(null);
+        setSyncError("");
+      }
     } finally {
-      setLoading(false);
+      if (isCurrentLoad()) setLoading(false);
     }
   }, [previewData]);
+
+  const load = useMemo(() => createSingleFlight(performLoad), [performLoad]);
+
+  const startGuestDatasetSync = useCallback(async () => {
+    if (previewData || guestDatasetSyncStartedRef.current) return;
+    guestDatasetSyncStartedRef.current = true;
+    setGuestDatasetSyncStatus("running");
+    try {
+      const result = await runGuestDatasetSyncInBackground();
+      setGuestDatasetSyncStatus(result.status === "failed" ? "failed" : "succeeded");
+      if (result.status === "merged") await load();
+    } catch {
+      setGuestDatasetSyncStatus("failed");
+    }
+  }, [load, previewData]);
 
   const handleSyncRetry = useCallback(async () => {
     if (syncRetrying) return;
     setSyncRetrying(true);
     try {
-      await retryGuestDatasetSync();
       await load();
-    } catch {
-      setSyncError("저장한 정보를 불러오지 못했어요. 다시 시도해 주세요.");
     } finally {
       setSyncRetrying(false);
     }
   }, [load, syncRetrying]);
 
   useEffect(() => {
-    void load();
+    void load().then(startGuestDatasetSync);
     if (previewData) return;
     window.addEventListener("pageshow", load);
     window.addEventListener("focus", load);
     return () => {
+      homeLoadGenerationRef.current += 1;
       window.removeEventListener("pageshow", load);
       window.removeEventListener("focus", load);
     };
-  }, [bfcacheId, load, previewData]);
+  }, [bfcacheId, load, previewData, startGuestDatasetSync]);
 
   useEffect(() => {
     if (
@@ -612,7 +653,11 @@ export function HomeScreen({
   }
 
   return (
-    <MobileShell className="home-screen">
+    <MobileShell
+      className="home-screen"
+      data-home-data-failure={homeDataFailureSource ?? undefined}
+      data-guest-dataset-sync={guestDatasetSyncStatus}
+    >
       <header className="home-header">
         <Link
           href="/my"
@@ -696,7 +741,11 @@ export function HomeScreen({
       </Link>
 
       {syncError ? (
-        <div className="visit-error home-sync-error" role="alert">
+        <div
+          className="visit-error home-sync-error"
+          role="alert"
+          data-failure-source={homeDataFailureSource ?? undefined}
+        >
           <span>{syncError}</span>
           <button type="button" disabled={syncRetrying} onClick={() => void handleSyncRetry()}>
             {syncRetrying ? "불러오는 중..." : "다시 시도"}

@@ -22,6 +22,7 @@ const MOOD_STORE = "moodRecords";
 const VISIT_STORE = "visitSchedules";
 const UPCOMING_VISIT_ID = "upcoming";
 const INTAKE_DATASET_STATE_ID = "active";
+const INDEXED_DB_OPEN_TIMEOUT_MS = 5_000;
 
 type MedicationIntakeDatasetClaim = {
   datasetId: string;
@@ -194,6 +195,19 @@ function normalizeGuestMedicationDatasetState(
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = window.indexedDB.open(DB_NAME, DB_VERSION);
+    let settled = false;
+    const timeout = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error("indexed_db_open_timeout"));
+    }, INDEXED_DB_OPEN_TIMEOUT_MS);
+
+    const rejectOnce = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      reject(error);
+    };
 
     request.onupgradeneeded = () => {
       const database = request.result;
@@ -217,8 +231,21 @@ function openDatabase(): Promise<IDBDatabase> {
         database.createObjectStore(VISIT_STORE, { keyPath: "id" });
       }
     };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error("IndexedDB를 열 수 없어요."));
+    request.onblocked = () => rejectOnce(new Error("indexed_db_open_blocked"));
+    request.onsuccess = () => {
+      const database = request.result;
+      if (settled) {
+        database.close();
+        return;
+      }
+      settled = true;
+      window.clearTimeout(timeout);
+      database.onversionchange = () => database.close();
+      resolve(database);
+    };
+    request.onerror = () => rejectOnce(
+      request.error ?? new Error("IndexedDB를 열 수 없어요."),
+    );
   });
 }
 
