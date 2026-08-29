@@ -902,7 +902,7 @@ export function HomeScreen({
         <p>Copyright ⓒ Kalummy ALL RIGHTS RESERVED.</p>
       </footer>
 
-      <BottomNavigation />
+      <BottomNavigation activeTab="home" />
 
       {toast ? (
         <Toast

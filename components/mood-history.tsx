@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { BottomNavigation } from "@/components/bottom-navigation";
 import { MobileShell } from "@/components/mobile-shell";
 import { CatRewardImage } from "@/components/cat-reward-image";
 import { MoodCatCollection } from "@/components/mood-cat-collection";
@@ -165,15 +166,11 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
   }
 
   return (
-    <>
+    <MobileShell className="mood-records-screen">
       <header className="mood-records-header">
         <strong>감정기록 상세</strong>
-        <Link href="/" className="icon-button" aria-label="닫기">
-          <Image src="/icons/close.svg" alt="" width={16} height={16} />
-        </Link>
       </header>
 
-      <MobileShell className="mood-records-screen">
       <nav className="mood-record-tabs" aria-label="감정기록 상세" role="tablist">
         {TABS.map((tab) => {
           const selected = tab.id === activeTab;
@@ -314,7 +311,8 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
           </section>
         </div>
       ) : null}
-      </MobileShell>
-    </>
+
+      <BottomNavigation activeTab="moods" />
+    </MobileShell>
   );
 }
