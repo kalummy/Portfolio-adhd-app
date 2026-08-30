@@ -18,6 +18,7 @@ import {
   rollbackPushPreference,
   setPushPreference,
 } from "../lib/push/preferences.ts";
+import { navigateBackOrReplace } from "../lib/navigation-history.ts";
 import { isNotificationPushTestEnvironment } from "../lib/preview-environment.ts";
 import {
   NOTIFICATION_PREVIEW_ITEMS,
@@ -72,11 +73,12 @@ const subscriptionsRoute = read("app/api/push/subscriptions/route.ts");
 const testPushRoute = read("app/api/push/test/route.ts");
 const previewPage = read("app/preview/notifications/page.tsx");
 const previewHomePage = read("app/preview/notifications/home/page.tsx");
+const navigationHistory = read("lib/navigation-history.ts");
 const proxy = read("proxy.ts");
 
 assert.match(bell, /href = "\/notifications"/);
 assert.match(bell, /notification-red-dot\.svg/);
-assert.doesNotMatch(bell, /Notification\.permission|requestPermission|PushManager|serviceWorker/);
+assert.doesNotMatch(bell, /Notification\.permission|requestPermission|PushManager/);
 assert.match(home, /<NotificationBellButton/);
 assert.match(home, /<BottomNavigation activeTab="home"/);
 assert.match(bottomNavigation, /<Link[\s\S]*href="\/moods"/);
@@ -90,13 +92,18 @@ assert.match(screen, /markAllRecentNotificationsRead/);
 assert.doesNotMatch(screen, /BottomNavigation/);
 assert.doesNotMatch(screen, /공지사항/);
 assert.match(screen, /settingsHref = "\/notifications\/settings"/);
-assert.match(screen, /<Link className="notifications-settings" href=\{settingsHref\}>/);
+assert.match(screen, /backHref = "\/"/);
+assert.match(screen, /<Link[\s\S]*className="notifications-settings"[\s\S]*href=\{settingsHref\}/);
+assert.match(screen, /onNavigate=\{\(\) => markNotificationNavigation\(settingsHref\)\}/);
 assert.match(screen, /설정[\s\S]*<\/Link>[\s\S]*모두 읽음/);
 assert.match(screen, /initialPushState/);
 assert.match(screen, /showEmptyInbox/);
 assert.match(screen, /notifications-empty-state/);
 assert.match(screen, /notifications-push-off-state/);
 assert.match(screen, /requestPushSubscription\(\)/);
+assert.match(screen, /navigator\.serviceWorker\?\.addEventListener\("message", refreshAfterPush\)/);
+assert.match(screen, /message\.type === UNREAD_NOTIFICATION_MESSAGE/);
+assert.match(screen, /setNotifications\(nextNotifications\)/);
 
 assert.match(repository, /\.from\("app_notifications"\)/);
 assert.match(repository, /\.gte\("fired_at", getNotificationCutoff\(now\)\)/);
@@ -127,12 +134,10 @@ assert.match(pushMigration, /using \(\(select auth\.uid\(\)\) = user_id\)/);
 assert.equal(isPushSubscriptionInput({
   endpoint: "https://push.example.test/device",
   keys: { p256dh: "a".repeat(65), auth: "b".repeat(22) },
-  startWithPreferencesDisabled: true,
 }), true);
 assert.equal(isPushSubscriptionInput({
   endpoint: "https://push.example.test/device",
-  keys: { p256dh: "a".repeat(65), auth: "b".repeat(22) },
-  startWithPreferencesDisabled: "yes",
+  keys: { p256dh: "short", auth: "b".repeat(22) },
 }), false);
 assert.equal(isPushSubscriptionInput({
   endpoint: "http://push.example.test/device",
@@ -162,6 +167,18 @@ assert.equal(
   medicationAndMoodOn,
   "a stale response must not roll back a newer value",
 );
+
+const navigationCalls = [];
+const mockRouter = {
+  back: () => navigationCalls.push(["back"]),
+  replace: (href) => navigationCalls.push(["replace", href]),
+};
+assert.equal(navigateBackOrReplace(mockRouter, "/notifications", true), "back");
+assert.deepEqual(navigationCalls.pop(), ["back"]);
+assert.equal(navigateBackOrReplace(mockRouter, "/notifications", false), "replace");
+assert.deepEqual(navigationCalls.pop(), ["replace", "/notifications"]);
+assert.equal(navigateBackOrReplace(mockRouter, "/", false), "replace");
+assert.deepEqual(navigationCalls.pop(), ["replace", "/"]);
 
 const originalPreviewEnvironment = {
   nodeEnv: process.env.NODE_ENV,
@@ -196,6 +213,7 @@ assert.match(styles, /font-size: 14px;[\s\S]*line-height: 20px;[\s\S]*letter-spa
 assert.match(styles, /mask: url\("\/icons\/notification-bell-solid\.svg"\)/);
 assert.match(styles, /background: var\(--color-font-base-06\)/);
 assert.match(styles, /\.notifications-actions[\s\S]*gap: 12px;/);
+assert.match(styles, /\.notifications-content[\s\S]*padding: 16px 0 calc\(34px \+ env\(safe-area-inset-bottom\)\);/);
 assert.match(styles, /\.notification-visit-icon img:first-child[\s\S]*top: 16\.15%;[\s\S]*left: 9\.38%;/);
 assert.match(styles, /\.notification-visit-icon img:last-child[\s\S]*left: 34\.79%;/);
 assert.match(styles, /\.notifications-retention-note[\s\S]*position: fixed;[\s\S]*bottom: 80px;/);
@@ -231,6 +249,7 @@ assert.equal(formatNotificationTime(NOTIFICATION_PREVIEW_ITEMS[2].firedAt, new D
 assert.equal(NOTIFICATION_PREVIEW_ITEMS.some(({ title }) => title === "공지사항"), false);
 assert.match(previewPage, /initialNotifications=\{NOTIFICATION_PREVIEW_ITEMS\}/);
 assert.match(previewPage, /settingsHref="\/preview\/notifications\/settings"/);
+assert.match(previewPage, /backHref="\/preview\/notifications\/home"/);
 assert.match(previewPage, /initialPushState="subscribed"/);
 assert.match(previewHomePage, /previewHasUnreadNotifications/);
 assert.match(previewHomePage, /previewNotificationHref="\/preview\/notifications"/);
@@ -243,6 +262,8 @@ assert.match(subscriptionsRoute, /existing\.user_id !== userId/);
 assert.doesNotMatch(home, /requestPushSubscription|Notification\.requestPermission/);
 assert.doesNotMatch(bell, /requestPushSubscription|Notification\.requestPermission/);
 assert.match(bell, /window\.addEventListener\("focus", refreshUnreadState\)/);
+assert.match(bell, /navigator\.serviceWorker\?\.addEventListener\("message", refreshAfterPush\)/);
+assert.match(bell, /message\.type === UNREAD_NOTIFICATION_MESSAGE/);
 assert.match(settingsPage, /<NotificationSettingsScreen \/>/);
 assert.match(previewSettingsPage, /isNotificationPreviewEnvironment\(\)/);
 assert.match(previewSettingsPage, /initialState="default"/);
@@ -263,7 +284,7 @@ assert.match(settingsScreen, /내원일 알림/);
 assert.match(settingsScreen, /감정기록 알림/);
 assert.match(settingsScreen, /updateCurrentPushPreference\(kind, enabled\)/);
 assert.match(settingsScreen, /getCurrentPushSnapshot\(\)/);
-assert.match(settingsScreen, /requestPushSubscription\(\{[\s\S]*startWithPreferencesDisabled: true/);
+assert.match(settingsScreen, /requestPushSubscription\(\)/);
 assert.match(settingsScreen, /pendingRef\.current\[kind\]/);
 assert.match(settingsScreen, /!Object\.values\(pendingRef\.current\)\.some\(Boolean\)/);
 assert.match(settingsScreen, /disabled=\{stateDisablesControls \|\| pending\[item\.kind\]\}/);
@@ -279,10 +300,12 @@ assert.match(pushClient, /preferences: result\.preferences \?\? null/);
 assert.match(pushClient, /method: "PATCH",[\s\S]*keepalive: true/);
 assert.match(subscriptionsRoute, /export async function PATCH/);
 assert.match(subscriptionsRoute, /isPushPreferenceKind\(body\.kind\)/);
-assert.match(subscriptionsRoute, /input\.startWithPreferencesDisabled/);
+assert.match(subscriptionsRoute, /shouldInitializePreferences = !existing \|\| existing\.revoked_at !== null/);
 assert.match(subscriptionsRoute, /medication_enabled: false/);
 assert.match(subscriptionsRoute, /visit_day_enabled: false/);
 assert.match(subscriptionsRoute, /mood_enabled: false/);
+assert.doesNotMatch(subscriptionsRoute, /startWithPreferencesDisabled/);
+assert.doesNotMatch(pushClient, /startWithPreferencesDisabled/);
 assert.match(subscriptionsRoute, /\.update\(\{ \[columnByKind\[body\.kind\]\]: body\.enabled/);
 assert.match(subscriptionsRoute, /\.eq\("user_id", userId\)[\s\S]*\.eq\("endpoint", body\.endpoint\)[\s\S]*\.is\("revoked_at", null\)/);
 assert.match(subscriptionsRoute, /\.select\("id"\)[\s\S]*\.maybeSingle\(\)/);
@@ -307,9 +330,20 @@ assert.ok(
   "server revoke must succeed before the current browser subscription is removed",
 );
 assert.match(serviceWorker, /self\.addEventListener\("push"/);
+assert.match(serviceWorker, /client\.postMessage\(\{ type: UNREAD_NOTIFICATION_MESSAGE \}\)/);
 assert.match(serviceWorker, /self\.addEventListener\("notificationclick"/);
 assert.match(serviceWorker, /\/api\/notifications\/read/);
 assert.match(serviceWorker, /await openNotificationRoute\(route\)/);
+assert.match(bell, /onNavigate=\{\(\) => markNotificationNavigation\(href\)\}/);
+assert.match(settingsScreen, /registerNotificationBackEntry\(window\.location\.href\)/);
+assert.match(screen, /registerNotificationBackEntry\(window\.location\.href\)/);
+assert.match(settingsScreen, /navigateBackOrReplace\(router, backHref, hasBackEntryRef\.current\)/);
+assert.match(screen, /navigateBackOrReplace\(router, backHref, hasBackEntryRef\.current\)/);
+assert.doesNotMatch(settingsScreen, /<Link href=\{backHref\}|router\.push\(backHref\)/);
+assert.match(navigationHistory, /PENDING_BACK_TARGET_KEY/);
+assert.match(navigationHistory, /window\.history\.replaceState/);
+assert.match(navigationHistory, /if \(hasBackEntry\)[\s\S]*router\.back\(\)/);
+assert.match(navigationHistory, /router\.replace\(fallbackHref\)/);
 assert.match(testPushRoute, /isNotificationPushTestEnvironment\(\)/);
 assert.match(testPushRoute, /isEndpointOnlyInput\(input\)/);
 assert.match(testPushRoute, /\.eq\("endpoint", input\.endpoint\)/);

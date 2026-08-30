@@ -1,4 +1,5 @@
 const SAFE_NOTIFICATION_ROUTES = new Set(["/", "/visits", "/moods?tab=report"]);
+const UNREAD_NOTIFICATION_MESSAGE = "addi:notification-unread";
 
 function safeNotificationRoute(value) {
   return typeof value === "string" && SAFE_NOTIFICATION_ROUTES.has(value) ? value : "/";
@@ -19,13 +20,18 @@ self.addEventListener("push", (event) => {
     : null;
   const route = safeNotificationRoute(payload.route);
 
-  event.waitUntil(self.registration.showNotification(title, {
-    body,
-    icon: "/icon.png",
-    badge: "/icon.png",
-    tag: notificationId ?? undefined,
-    data: { notificationId, route },
-  }));
+  event.waitUntil((async () => {
+    await self.registration.showNotification(title, {
+      body,
+      icon: "/icon.png",
+      badge: "/icon.png",
+      tag: notificationId ?? undefined,
+      data: { notificationId, route },
+    });
+
+    const windowClients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    windowClients.forEach((client) => client.postMessage({ type: UNREAD_NOTIFICATION_MESSAGE }));
+  })());
 });
 
 async function openNotificationRoute(route) {

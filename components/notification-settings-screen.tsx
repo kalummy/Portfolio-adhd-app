@@ -1,9 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { MobileShell } from "@/components/mobile-shell";
+import {
+  navigateBackOrReplace,
+  registerNotificationBackEntry,
+} from "@/lib/navigation-history";
 import {
   getCurrentPushSnapshot,
   getPushPermissionState,
@@ -55,6 +59,7 @@ export function NotificationSettingsScreen({
   backHref = "/notifications",
   initialState,
 }: NotificationSettingsScreenProps = {}) {
+  const router = useRouter();
   const isPreviewFixture = initialState !== undefined;
   const [state, setState] = useState<PushSettingsState>(initialState ?? "checking");
   const [preferences, setPreferences] = useState<PushPreferences>(
@@ -67,6 +72,7 @@ export function NotificationSettingsScreen({
     initialState === "subscribed" ? ALL_ENABLED : DISABLED_PUSH_PREFERENCES,
   );
   const pendingRef = useRef<PendingPreferences>(NO_PENDING_PREFERENCES);
+  const hasBackEntryRef = useRef(false);
   const refreshVersionRef = useRef(0);
   const activationRef = useRef<ReturnType<typeof requestPushSubscription> | null>(null);
 
@@ -85,6 +91,10 @@ export function NotificationSettingsScreen({
     pendingRef.current = nextPending;
     setPending(nextPending);
   }
+
+  useEffect(() => {
+    hasBackEntryRef.current = registerNotificationBackEntry(window.location.href);
+  }, []);
 
   useEffect(() => {
     if (isPreviewFixture) return;
@@ -143,9 +153,7 @@ export function NotificationSettingsScreen({
 
     try {
       if (enabled && stateRef.current !== "subscribed") {
-        const activation = activationRef.current ?? requestPushSubscription({
-          startWithPreferencesDisabled: true,
-        });
+        const activation = activationRef.current ?? requestPushSubscription();
         activationRef.current = activation;
         let result: Awaited<typeof activation>;
         try {
@@ -182,9 +190,13 @@ export function NotificationSettingsScreen({
   return (
     <MobileShell className="notification-settings-screen">
       <header className="notifications-header notification-settings-header">
-        <Link href={backHref} aria-label="이전 화면">
+        <button
+          type="button"
+          onClick={() => navigateBackOrReplace(router, backHref, hasBackEntryRef.current)}
+          aria-label="이전 화면"
+        >
           <Image src="/icons/back.svg" alt="" width={18} height={14} />
-        </Link>
+        </button>
         <h1>알림 설정</h1>
       </header>
 
