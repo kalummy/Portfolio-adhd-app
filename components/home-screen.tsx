@@ -66,6 +66,11 @@ import { getMoodDiarySummary, getMoodPresentation } from "@/lib/mood-summary";
 import { UNKNOWN_CAT, type CatId } from "@/lib/cats";
 import { normalizeClinicPhraseForDisplay } from "@/lib/clinic-phrase";
 import { getMoodRecordDisplayCat } from "@/lib/mood-record-cat";
+import {
+  DEFAULT_ADDI_PROFILE_ID,
+  getAddiProfileAsset,
+  getAddiProfileId,
+} from "@/lib/profile";
 import { formatVisitDday, fromDateKey as fromVisitDateKey } from "@/lib/visit-date";
 import type {
   HomeDataSet,
@@ -220,6 +225,7 @@ export function HomeScreen({
   >("idle");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [greeting, setGreeting] = useState("로그인이 필요해요");
+  const [profileId, setProfileId] = useState(DEFAULT_ADDI_PROFILE_ID);
   const [activeSegment, setActiveSegment] = useState<HomeSegment>("medication");
   const [launchSplashRequired, setLaunchSplashRequired] = useState(enableLaunchSplash);
   const [splashMinimumElapsed, setSplashMinimumElapsed] = useState(!enableLaunchSplash);
@@ -299,6 +305,7 @@ export function HomeScreen({
       setHomeDataFailureSource(null);
       setIsAuthenticated(authState.isAuthenticated);
       setGreeting(authState.isAuthenticated ? accountGreeting(authState.user) : "로그인이 필요해요");
+      setProfileId(getAddiProfileId(authState.user));
       setMedications(savedMedications);
       void enrichOfficialMedications(savedMedications).then((enrichedMedications) => {
         if (!isCurrentLoad()) return;
@@ -664,7 +671,7 @@ export function HomeScreen({
           className="home-profile-link"
           aria-label="마이홈 열기"
         >
-          <Image src="/icons/random-profile-32.svg" alt="" width={32} height={32} priority />
+          <Image src={getAddiProfileAsset(profileId)} alt="" width={32} height={32} priority />
           <strong>{greeting}</strong>
           <Image src="/icons/home-profile-chevron.svg" alt="" width={20} height={20} />
         </Link>
@@ -950,7 +957,7 @@ export function HomeScreen({
         <p>Copyright ⓒ Kalummy ALL RIGHTS RESERVED.</p>
       </footer>
 
-      <BottomNavigation activeTab="home" />
+      <BottomNavigation activeTab="home" profileId={profileId} />
 
       {toast ? (
         <Toast
