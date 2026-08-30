@@ -4,7 +4,6 @@ export type PushSubscriptionInput = {
     p256dh: string;
     auth: string;
   };
-  startWithPreferencesDisabled?: boolean;
 };
 
 export type PushNotificationPayload = {
@@ -46,9 +45,6 @@ export function isPushSubscriptionInput(value: unknown): value is PushSubscripti
   if (!candidate.keys || typeof candidate.keys !== "object") return false;
   if (!isBoundedString(candidate.keys.p256dh, 16, 512)) return false;
   if (!isBoundedString(candidate.keys.auth, 8, 256)) return false;
-  if (candidate.startWithPreferencesDisabled !== undefined
-    && typeof candidate.startWithPreferencesDisabled !== "boolean") return false;
-
   return true;
 }
 

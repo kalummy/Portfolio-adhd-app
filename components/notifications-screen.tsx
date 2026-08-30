@@ -3,8 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MobileShell } from "@/components/mobile-shell";
+import {
+  markNotificationNavigation,
+  navigateBackOrReplace,
+  registerNotificationBackEntry,
+} from "@/lib/navigation-history";
 import {
   formatNotificationTime,
   type AppNotification,
@@ -28,10 +33,13 @@ const ICON_BY_KIND: Record<VisibleNotificationKind, string> = {
   mood: "/icons/notification-mood.svg",
 };
 
+const UNREAD_NOTIFICATION_MESSAGE = "addi:notification-unread";
+
 type NotificationsScreenProps = {
   initialNotifications?: AppNotification[];
   referenceNow?: string;
   settingsHref?: string;
+  backHref?: string;
   initialPushState?: CurrentPushState;
 };
 
@@ -39,6 +47,7 @@ export function NotificationsScreen({
   initialNotifications,
   referenceNow,
   settingsHref = "/notifications/settings",
+  backHref = "/",
   initialPushState,
 }: NotificationsScreenProps = {}) {
   const router = useRouter();
@@ -53,26 +62,58 @@ export function NotificationsScreen({
   const [pushUpdating, setPushUpdating] = useState(false);
   const [pushError, setPushError] = useState("");
   const [now] = useState(() => referenceNow ? new Date(referenceNow) : new Date());
+  const hasBackEntryRef = useRef(false);
+  const refreshVersionRef = useRef(0);
+
+  useEffect(() => {
+    hasBackEntryRef.current = registerNotificationBackEntry(window.location.href);
+  }, []);
 
   useEffect(() => {
     if (isPreviewFixture) return;
     let active = true;
 
-    void listRecentNotifications(now)
-      .then((nextNotifications) => {
-        if (!active) return;
-        setNotifications(nextNotifications);
-        setLoadFailed(false);
-      })
-      .catch(() => {
-        if (active) setLoadFailed(true);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    function refreshNotifications() {
+      const refreshVersion = ++refreshVersionRef.current;
+      void listRecentNotifications(now)
+        .then((nextNotifications) => {
+          if (!active || refreshVersion !== refreshVersionRef.current) return;
+          setNotifications(nextNotifications);
+          setLoadFailed(false);
+        })
+        .catch(() => {
+          if (active && refreshVersion === refreshVersionRef.current) setLoadFailed(true);
+        })
+        .finally(() => {
+          if (active && refreshVersion === refreshVersionRef.current) setLoading(false);
+        });
+    }
+
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible") refreshNotifications();
+    }
+
+    function refreshAfterPush(event: MessageEvent<unknown>) {
+      const message = event.data;
+      if (message && typeof message === "object" && "type" in message
+        && message.type === UNREAD_NOTIFICATION_MESSAGE) {
+        refreshNotifications();
+      }
+    }
+
+    refreshNotifications();
+    window.addEventListener("focus", refreshNotifications);
+    window.addEventListener("pageshow", refreshNotifications);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    navigator.serviceWorker?.addEventListener("message", refreshAfterPush);
 
     return () => {
       active = false;
+      refreshVersionRef.current += 1;
+      window.removeEventListener("focus", refreshNotifications);
+      window.removeEventListener("pageshow", refreshNotifications);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      navigator.serviceWorker?.removeEventListener("message", refreshAfterPush);
     };
   }, [isPreviewFixture, now]);
 
@@ -180,12 +221,20 @@ export function NotificationsScreen({
   return (
     <MobileShell className="notifications-screen">
       <header className="notifications-header">
-        <button type="button" onClick={() => router.back()} aria-label="이전 화면">
+        <button
+          type="button"
+          onClick={() => navigateBackOrReplace(router, backHref, hasBackEntryRef.current)}
+          aria-label="이전 화면"
+        >
           <Image src="/icons/back.svg" alt="" width={18} height={14} />
         </button>
         <h1>알림</h1>
         <div className="notifications-actions">
-          <Link className="notifications-settings" href={settingsHref}>
+          <Link
+            className="notifications-settings"
+            href={settingsHref}
+            onNavigate={() => markNotificationNavigation(settingsHref)}
+          >
             설정
           </Link>
           <button

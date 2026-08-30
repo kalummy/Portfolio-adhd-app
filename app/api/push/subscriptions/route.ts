@@ -46,9 +46,7 @@ export async function POST(request: Request) {
       return Response.json({ ok: false }, { status: 409 });
     }
 
-    const shouldInitializePreferences = Boolean(
-      input.startWithPreferencesDisabled && (!existing || existing.revoked_at !== null),
-    );
+    const shouldInitializePreferences = !existing || existing.revoked_at !== null;
     const { error } = await admin.from("push_subscriptions").upsert({
       user_id: userId,
       endpoint: input.endpoint,

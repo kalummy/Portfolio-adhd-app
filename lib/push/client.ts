@@ -126,7 +126,7 @@ export async function updateCurrentPushPreference(kind: PushPreferenceKind, enab
   assertPushResponse(response, "push_preference_update_failed");
 }
 
-async function saveSubscription(subscription: PushSubscription, startWithPreferencesDisabled: boolean) {
+async function saveSubscription(subscription: PushSubscription) {
   const json = subscription.toJSON();
   const input: PushSubscriptionInput = {
     endpoint: subscription.endpoint,
@@ -134,7 +134,6 @@ async function saveSubscription(subscription: PushSubscription, startWithPrefere
       p256dh: json.keys?.p256dh ?? "",
       auth: json.keys?.auth ?? "",
     },
-    ...(startWithPreferencesDisabled ? { startWithPreferencesDisabled: true } : {}),
   };
 
   const response = await fetch("/api/push/subscriptions", {
@@ -147,7 +146,7 @@ async function saveSubscription(subscription: PushSubscription, startWithPrefere
   assertPushResponse(response, "push_subscription_save_failed");
 }
 
-export async function requestPushSubscription(options?: { startWithPreferencesDisabled?: boolean }) {
+export async function requestPushSubscription() {
   if (!browserSupportsPush()) return { status: "unsupported" as const };
   if (navigator.userActivation && !navigator.userActivation.isActive) {
     throw new Error("user_gesture_required");
@@ -170,7 +169,7 @@ export async function requestPushSubscription(options?: { startWithPreferencesDi
   }
 
   try {
-    await saveSubscription(subscription, options?.startWithPreferencesDisabled === true);
+    await saveSubscription(subscription);
   } catch (error) {
     if (createdSubscription) await subscription.unsubscribe().catch(() => false);
     throw error;

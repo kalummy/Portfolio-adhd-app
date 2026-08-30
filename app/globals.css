@@ -6323,7 +6323,7 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
   background: var(--color-bg-base-01);
 }
 
-.notification-settings-header > a {
+.notification-settings-header > button:first-child {
   display: grid;
   width: 24px;
   height: 24px;
@@ -6332,7 +6332,7 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
   border-radius: 4px;
 }
 
-.notification-settings-header > a img {
+.notification-settings-header > button:first-child img {
   display: block;
 }
 
@@ -6455,7 +6455,7 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
 
 .notifications-content {
   display: flex;
-  padding-bottom: calc(34px + env(safe-area-inset-bottom));
+  padding: 16px 0 calc(34px + env(safe-area-inset-bottom));
   flex-direction: column;
   gap: 32px;
 }
