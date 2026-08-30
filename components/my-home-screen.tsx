@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { BottomNavigation } from "@/components/bottom-navigation";
 import { MobileShell } from "@/components/mobile-shell";
 import { VisitDialog } from "@/components/visit-dialog";
+import { useAppVersion } from "@/components/app-version-provider";
 import { signOut, updateAddiProfile } from "@/lib/auth/client";
 import {
   LEGACY_HOME_SPLASH_SESSION_KEY,
@@ -27,6 +28,14 @@ type MyHomeScreenProps = {
 
 export function MyHomeScreen({ displayName, userId, initialProfileId }: MyHomeScreenProps) {
   const router = useRouter();
+  const {
+    currentAppVersion,
+    latestAppVersion,
+    updateStatus,
+    isTwa,
+    openingStore,
+    requestUpdate,
+  } = useAppVersion();
   const sheetRef = useRef<HTMLElement>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -130,6 +139,29 @@ export function MyHomeScreen({ displayName, userId, initialProfileId }: MyHomeSc
         </div>
 
         <div className="my-home-menu">
+          <div className={`my-home-version-row ${isTwa && updateStatus !== "current" ? "update-available" : ""}`.trim()}>
+            <div className="my-home-version-copy">
+              <div className="my-home-version-title">
+                <span>아디 버전</span>
+                <strong>{currentAppVersion}</strong>
+              </div>
+              {isTwa && updateStatus !== "current" ? (
+                <p>최신 버전 업데이트가 필요합니다.</p>
+              ) : null}
+            </div>
+            {isTwa && updateStatus !== "current" ? (
+              <button
+                type="button"
+                className="my-home-update-button"
+                disabled={openingStore}
+                aria-busy={openingStore}
+                aria-label={`아디 ${latestAppVersion} 버전으로 업데이트`}
+                onClick={requestUpdate}
+              >
+                업데이트
+              </button>
+            ) : null}
+          </div>
           <Link href="/my/social-login" className="my-home-menu-row primary">
             <span>간편 로그인 설정</span>
             <Image src="/profile/chevron-right.svg" alt="" width={20} height={20} />

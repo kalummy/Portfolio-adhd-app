@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "app-version:fixtures": "node --experimental-strip-types --experimental-loader=./scripts/ts-test-loader.mjs scripts/app-version-fixtures.mjs",
     "account-deletion:fixtures": "node --experimental-strip-types scripts/account-deletion-fixtures.mjs",
     "my-home:fixtures": "node --experimental-strip-types scripts/my-home-settings-fixtures.mjs",
     "analytics:fixtures": "node scripts/analytics-fixtures.mjs",

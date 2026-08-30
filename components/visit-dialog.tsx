@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 
 type VisitDialogProps = {
   title: ReactNode;
   description?: ReactNode;
-  cancelLabel: string;
+  cancelLabel?: string;
   confirmLabel: string;
-  onCancel: () => void;
+  onCancel?: () => void;
   onConfirm: () => void;
   busy?: boolean;
+  className?: string;
+  layerClassName?: string;
 };
 
 export function VisitDialog({
@@ -20,9 +22,14 @@ export function VisitDialog({
   onCancel,
   onConfirm,
   busy = false,
+  className = "",
+  layerClassName = "",
 }: VisitDialogProps) {
+  const titleId = useId();
+  const descriptionId = useId();
   const dialogRef = useRef<HTMLElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
   const onCancelRef = useRef(onCancel);
   const busyRef = useRef(busy);
   onCancelRef.current = onCancel;
@@ -30,10 +37,10 @@ export function VisitDialog({
 
   useEffect(() => {
     const previouslyFocused = document.activeElement;
-    cancelButtonRef.current?.focus();
+    (cancelButtonRef.current ?? confirmButtonRef.current)?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busyRef.current) {
+      if (event.key === "Escape" && !busyRef.current && onCancelRef.current) {
         event.preventDefault();
         onCancelRef.current();
         return;
@@ -64,22 +71,24 @@ export function VisitDialog({
   }, []);
 
   return (
-    <div className="visit-dialog-layer" role="presentation">
+    <div className={`visit-dialog-layer ${layerClassName}`.trim()} role="presentation">
       <section
         ref={dialogRef}
-        className="visit-dialog"
+        className={`visit-dialog ${className}`.trim()}
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="visit-dialog-title"
-        aria-describedby={description ? "visit-dialog-description" : undefined}
+        aria-labelledby={titleId}
+        aria-describedby={description ? descriptionId : undefined}
       >
-        <h2 id="visit-dialog-title">{title}</h2>
-        {description ? <p id="visit-dialog-description">{description}</p> : null}
+        <h2 id={titleId}>{title}</h2>
+        {description ? <p id={descriptionId}>{description}</p> : null}
         <div className="visit-dialog-actions">
-          <button ref={cancelButtonRef} type="button" className="cancel" onClick={onCancel} disabled={busy}>
-            {cancelLabel}
-          </button>
-          <button type="button" className="confirm" onClick={onConfirm} disabled={busy}>
+          {cancelLabel && onCancel ? (
+            <button ref={cancelButtonRef} type="button" className="cancel" onClick={onCancel} disabled={busy}>
+              {cancelLabel}
+            </button>
+          ) : null}
+          <button ref={confirmButtonRef} type="button" className="confirm" onClick={onConfirm} disabled={busy} aria-busy={busy}>
             {confirmLabel}
           </button>
         </div>

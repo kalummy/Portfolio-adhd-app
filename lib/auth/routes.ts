@@ -8,6 +8,7 @@ const PUBLIC_METADATA_PATHS = [
   "/sitemap.xml",
 ] as const;
 const SELF_AUTHENTICATING_API_PATHS = ["/api/account"] as const;
+const PUBLIC_VERSION_API_PATHS = ["/api/app-version"] as const;
 
 function matchesPathPrefix(pathname: string, prefix: string) {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
@@ -22,5 +23,8 @@ export function isPublicRequestPath(pathname: string) {
     || PUBLIC_METADATA_PATHS.includes(pathname as (typeof PUBLIC_METADATA_PATHS)[number])
     || SELF_AUTHENTICATING_API_PATHS.includes(
       pathname as (typeof SELF_AUTHENTICATING_API_PATHS)[number],
+    )
+    || PUBLIC_VERSION_API_PATHS.includes(
+      pathname as (typeof PUBLIC_VERSION_API_PATHS)[number],
     );
 }

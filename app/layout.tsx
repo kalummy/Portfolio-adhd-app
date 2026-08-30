@@ -3,6 +3,7 @@ import Script from "next/script";
 import { Suspense } from "react";
 import { AnalyticsAuthCompletion } from "@/components/analytics-auth-completion";
 import { AnalyticsScreenTracker } from "@/components/analytics-screen-tracker";
+import { AppVersionProvider } from "@/components/app-version-provider";
 import { MemberEntryGate } from "@/components/member-entry-gate";
 import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "./globals.css";
@@ -32,7 +33,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <Suspense fallback={null}>
           <AnalyticsScreenTracker />
         </Suspense>
-        <MemberEntryGate>{children}</MemberEntryGate>
+        <AppVersionProvider>
+          <MemberEntryGate>{children}</MemberEntryGate>
+        </AppVersionProvider>
       </body>
     </html>
   );
