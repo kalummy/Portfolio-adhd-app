@@ -6293,10 +6293,15 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
   line-height: 24px;
   font-weight: 700;
   letter-spacing: -0.4px;
+  text-decoration: none;
   white-space: nowrap;
 }
 
 .notifications-header .notifications-mark-all {
+  cursor: pointer;
+}
+
+.notifications-settings {
   cursor: pointer;
 }
 
@@ -6306,9 +6311,75 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
 }
 
 .notifications-header button:focus-visible,
+.notifications-header a:focus-visible,
 .notification-row:focus-visible {
   outline: 2px solid var(--color-border-focus-default);
   outline-offset: -2px;
+}
+
+/* Notification settings — one whole-Push permission control only. */
+.notification-settings-screen {
+  min-height: 100dvh;
+  background: var(--color-bg-base-01);
+}
+
+.notification-settings-header > a {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  place-items: center;
+  border-radius: 4px;
+}
+
+.notification-settings-header > a img {
+  display: block;
+}
+
+.notification-settings-header h1 {
+  flex: 0 1 auto;
+}
+
+.notification-settings-content {
+  display: flex;
+  padding: 32px 20px calc(32px + env(safe-area-inset-bottom));
+  flex-direction: column;
+  gap: 24px;
+}
+
+.notification-settings-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notification-settings-copy h2 {
+  margin: 0;
+  color: var(--color-font-base-02);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 700;
+  letter-spacing: -0.45px;
+}
+
+.notification-settings-copy p,
+.notification-settings-error {
+  margin: 0;
+  color: var(--color-font-base-05);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  letter-spacing: -0.35px;
+  overflow-wrap: anywhere;
+}
+
+.notification-settings-copy .notification-settings-guide {
+  margin-top: 4px;
+  color: var(--color-font-base-04);
+}
+
+.notification-settings-error {
+  color: var(--color-font-semantic-danger);
 }
 
 .notifications-content {
@@ -6323,6 +6394,81 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
   width: 100%;
   flex-direction: column;
   gap: 2px;
+}
+
+/* Notification Push OFF empty state — Figma node 437:46599. */
+.notifications-off-state {
+  display: flex;
+  width: 100%;
+  padding: 124px 20px calc(34px + env(safe-area-inset-bottom));
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.notifications-off-icon {
+  position: relative;
+  display: block;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  overflow: hidden;
+}
+
+.notifications-off-icon img {
+  position: absolute;
+  top: 12.48%;
+  left: 16.24%;
+  display: block;
+  width: 67.5009375%;
+  height: 75.09328125%;
+}
+
+.notifications-off-copy {
+  width: 100%;
+  margin: 0;
+  color: var(--color-font-base-04);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 400;
+  letter-spacing: -0.375px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.notifications-off-copy span {
+  display: block;
+}
+
+.notifications-off-enable {
+  display: flex;
+  width: 148px;
+  height: 40px;
+  padding: 10px 16px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 10px;
+  background: var(--color-bg-interactive-brand-default);
+  color: var(--color-font-base-01);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: -0.35px;
+  cursor: pointer;
+}
+
+.notifications-off-enable:active:not(:disabled) {
+  background: var(--color-bg-interactive-brand-pressed);
+}
+
+.notifications-off-enable:disabled {
+  cursor: wait;
+}
+
+.notifications-off-enable:focus-visible {
+  outline: 2px solid var(--color-border-focus-default);
+  outline-offset: 2px;
 }
 
 .notification-row {
@@ -6389,7 +6535,7 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
   position: absolute;
   top: 16.15%;
   left: 9.38%;
-  width: 81.24%;
+  width: 81.25%;
   height: 81.251875%;
 }
 

@@ -22,16 +22,30 @@ export function NotificationBellButton({
     if (!loadUnreadState) return;
     let active = true;
 
-    void hasUnreadNotifications()
-      .then((nextHasUnread) => {
-        if (active) setHasUnread(nextHasUnread);
-      })
-      .catch(() => {
-        if (active) setHasUnread(false);
-      });
+    function refreshUnreadState() {
+      void hasUnreadNotifications()
+        .then((nextHasUnread) => {
+          if (active) setHasUnread(nextHasUnread);
+        })
+        .catch(() => {
+          if (active) setHasUnread(false);
+        });
+    }
+
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible") refreshUnreadState();
+    }
+
+    refreshUnreadState();
+    window.addEventListener("focus", refreshUnreadState);
+    window.addEventListener("pageshow", refreshUnreadState);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       active = false;
+      window.removeEventListener("focus", refreshUnreadState);
+      window.removeEventListener("pageshow", refreshUnreadState);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [loadUnreadState]);
 

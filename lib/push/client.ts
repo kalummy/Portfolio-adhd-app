@@ -3,6 +3,12 @@
 import type { PushSubscriptionInput } from "@/lib/push/contracts";
 
 export type PushPermissionState = NotificationPermission | "unsupported";
+export type CurrentPushState =
+  | "unsupported"
+  | "default"
+  | "denied"
+  | "granted-unsubscribed"
+  | "subscribed";
 
 function publicVapidKey() {
   const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim();
@@ -29,6 +35,38 @@ export function getPushPermissionState(): PushPermissionState {
 export async function ensurePushServiceWorkerRegistration() {
   if (!browserSupportsPush()) throw new Error("push_unsupported");
   return navigator.serviceWorker.register("/sw.js", { scope: "/" });
+}
+
+export async function getCurrentPushSubscription() {
+  if (!browserSupportsPush()) return null;
+  const registration = await navigator.serviceWorker.getRegistration("/");
+  return registration?.pushManager.getSubscription() ?? null;
+}
+
+async function isServerSubscriptionActive(subscription: PushSubscription) {
+  const response = await fetch("/api/push/subscriptions/status", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ endpoint: subscription.endpoint }),
+  });
+  if (!response.ok) throw new Error("push_subscription_status_failed");
+
+  const result = await response.json().catch(() => null) as { ok?: unknown; active?: unknown } | null;
+  return result?.ok === true && result.active === true;
+}
+
+export async function getCurrentPushState(): Promise<CurrentPushState> {
+  const permission = getPushPermissionState();
+  if (permission === "unsupported" || permission === "default" || permission === "denied") {
+    return permission;
+  }
+
+  const subscription = await getCurrentPushSubscription();
+  if (!subscription) return "granted-unsubscribed";
+  return await isServerSubscriptionActive(subscription)
+    ? "subscribed"
+    : "granted-unsubscribed";
 }
 
 async function saveSubscription(subscription: PushSubscription) {
@@ -63,14 +101,21 @@ export async function requestPushSubscription() {
 
   const registration = await ensurePushServiceWorkerRegistration();
   let subscription = await registration.pushManager.getSubscription();
+  let createdSubscription = false;
   if (!subscription) {
     subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(publicVapidKey()),
     });
+    createdSubscription = true;
   }
 
-  await saveSubscription(subscription);
+  try {
+    await saveSubscription(subscription);
+  } catch (error) {
+    if (createdSubscription) await subscription.unsubscribe().catch(() => false);
+    throw error;
+  }
   return { status: "subscribed" as const };
 }
 
@@ -85,8 +130,9 @@ export async function unsubscribeFromPush() {
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ endpoint: subscription.endpoint }),
-  }).catch(() => null);
+  });
 
-  await subscription.unsubscribe();
-  if (!response?.ok) throw new Error("push_subscription_revoke_failed");
+  if (!response.ok) throw new Error("push_subscription_revoke_failed");
+  const unsubscribed = await subscription.unsubscribe();
+  if (!unsubscribed) throw new Error("push_subscription_unsubscribe_failed");
 }

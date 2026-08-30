@@ -10,8 +10,10 @@ import {
 } from "../lib/notification-contract.ts";
 import {
   isPushNotificationRoute,
+  isPushEndpoint,
   isPushSubscriptionInput,
 } from "../lib/push/contracts.ts";
+import { isNotificationPushTestEnvironment } from "../lib/preview-environment.ts";
 import {
   NOTIFICATION_PREVIEW_ITEMS,
   NOTIFICATION_PREVIEW_NOW,
@@ -45,6 +47,11 @@ assert.equal(toAppNotification({ ...baseRow, kind: "focus" }), null);
 
 const bell = read("components/notification-bell-button.tsx");
 const screen = read("components/notifications-screen.tsx");
+const settingsScreen = read("components/notification-settings-screen.tsx");
+const settingsPage = read("app/notifications/settings/page.tsx");
+const previewSettingsPage = read("app/preview/notifications/settings/page.tsx");
+const previewOffPage = read("app/preview/notifications/off/page.tsx");
+const pushStatusRoute = read("app/api/push/subscriptions/status/route.ts");
 const home = read("components/home-screen.tsx");
 const repository = read("lib/notifications.ts");
 const migration = read("supabase/migrations/20260830052705_harden_app_notifications_phase1.sql");
@@ -68,8 +75,9 @@ assert.match(screen, /markNotificationRead\(notification\.id/);
 assert.match(screen, /markAllRecentNotificationsRead/);
 assert.doesNotMatch(screen, /BottomNavigation/);
 assert.doesNotMatch(screen, /공지사항/);
-assert.match(screen, /<span className="notifications-settings">설정<\/span>/);
-assert.match(screen, /설정<\/span>[\s\S]*모두 읽음/);
+assert.match(screen, /settingsHref = "\/notifications\/settings"/);
+assert.match(screen, /<Link className="notifications-settings" href=\{settingsHref\}>/);
+assert.match(screen, /설정[\s\S]*<\/Link>[\s\S]*모두 읽음/);
 assert.doesNotMatch(screen, /Notification\.permission|requestPermission|PushManager|serviceWorker/);
 
 assert.match(repository, /\.from\("app_notifications"\)/);
@@ -104,6 +112,33 @@ assert.equal(isPushSubscriptionInput({
 }), false);
 assert.equal(isPushNotificationRoute("/"), true);
 assert.equal(isPushNotificationRoute("//example.com"), false);
+assert.equal(isPushEndpoint("https://push.example.test/device"), true);
+assert.equal(isPushEndpoint("http://push.example.test/device"), false);
+
+const originalPreviewEnvironment = {
+  nodeEnv: process.env.NODE_ENV,
+  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  vercelEnv: process.env.VERCEL_ENV,
+};
+process.env.NODE_ENV = "production";
+process.env.VERCEL_ENV = "preview";
+process.env.NEXT_PUBLIC_SUPABASE_URL = "https://ohobxicxchkaisxxswkk.supabase.co";
+assert.equal(isNotificationPushTestEnvironment(), true);
+process.env.VERCEL_ENV = "production";
+assert.equal(isNotificationPushTestEnvironment(), false);
+process.env.VERCEL_ENV = "preview";
+process.env.NEXT_PUBLIC_SUPABASE_URL = "https://joffvlsyxivveqycjrio.supabase.co";
+assert.equal(isNotificationPushTestEnvironment(), false);
+process.env.NEXT_PUBLIC_SUPABASE_URL = "not-a-url";
+assert.equal(isNotificationPushTestEnvironment(), false);
+for (const [key, value] of Object.entries({
+  NODE_ENV: originalPreviewEnvironment.nodeEnv,
+  NEXT_PUBLIC_SUPABASE_URL: originalPreviewEnvironment.supabaseUrl,
+  VERCEL_ENV: originalPreviewEnvironment.vercelEnv,
+})) {
+  if (value === undefined) delete process.env[key];
+  else process.env[key] = value;
+}
 
 assert.match(styles, /\.notification-row\.unread\s*\{\s*background: #f0f8fe;/);
 assert.match(styles, /gap: 14px;/);
@@ -115,6 +150,9 @@ assert.match(styles, /\.notifications-actions[\s\S]*gap: 12px;/);
 assert.match(styles, /\.notification-visit-icon img:first-child[\s\S]*top: 16\.15%;[\s\S]*left: 9\.38%;/);
 assert.match(styles, /\.notification-visit-icon img:last-child[\s\S]*left: 34\.79%;/);
 assert.match(styles, /\.notifications-retention-note[\s\S]*position: fixed;[\s\S]*bottom: 80px;/);
+assert.match(styles, /\.notifications-off-state[\s\S]*gap: 12px;/);
+assert.match(styles, /\.notifications-off-icon[\s\S]*width: 64px;[\s\S]*height: 64px;/);
+assert.match(styles, /\.notifications-off-enable[\s\S]*width: 148px;[\s\S]*height: 40px;[\s\S]*border-radius: 10px;/);
 
 assert.equal(sha256("public/icons/notification-bell-solid.svg"), "f992432adc926d43ec750c2caf365d8885f47f99b4820994859cdecb9e0a5ae2");
 assert.equal(sha256("public/icons/notification-red-dot.svg"), "bcde37d598a1b5141563c1148e371aec3f17fd6fec123df10fedc47367f5cfd5");
@@ -122,6 +160,7 @@ assert.equal(sha256("public/icons/notification-medication.svg"), "f8ea600d133bbd
 assert.equal(sha256("public/icons/notification-visit-building.svg"), "75fb7b921bb821a3188011ef925139f40d75a7ae5f5dd51dfdb7dfc513b1ea1a");
 assert.equal(sha256("public/icons/notification-visit-medication.svg"), "3cdc96ca5b500900605c02f32d5927687e4a45adf9c35592ce8269fcaedbadbd");
 assert.equal(sha256("public/icons/notification-mood.svg"), "365013287ed1a2277cc1d2856ef389d3380ff2769ea61d789c0e250393cd0fce");
+assert.equal(sha256("public/icons/notification-off-bell.svg"), "442794ff26dd0456c0ab768d1566c1997441fb0922fc758cd37cb3cc195cd0be");
 
 assert.deepEqual(
   NOTIFICATION_PREVIEW_ITEMS.map(({ kind, title, body }) => ({ kind, title, body })),
@@ -136,6 +175,8 @@ assert.equal(formatNotificationTime(NOTIFICATION_PREVIEW_ITEMS[1].firedAt, new D
 assert.equal(formatNotificationTime(NOTIFICATION_PREVIEW_ITEMS[2].firedAt, new Date(NOTIFICATION_PREVIEW_NOW)), "6월 4일");
 assert.equal(NOTIFICATION_PREVIEW_ITEMS.some(({ title }) => title === "공지사항"), false);
 assert.match(previewPage, /initialNotifications=\{NOTIFICATION_PREVIEW_ITEMS\}/);
+assert.match(previewPage, /initialPushState="subscribed"/);
+assert.match(previewPage, /settingsHref="\/preview\/notifications\/settings"/);
 assert.match(previewHomePage, /previewHasUnreadNotifications/);
 assert.match(previewHomePage, /previewNotificationHref="\/preview\/notifications"/);
 assert.match(proxy, /isNotificationPreviewEnvironment\(\)/);
@@ -146,11 +187,45 @@ assert.match(pushClient, /pushManager\.subscribe/);
 assert.match(subscriptionsRoute, /existing\.user_id !== userId/);
 assert.doesNotMatch(home, /requestPushSubscription|Notification\.requestPermission/);
 assert.doesNotMatch(bell, /requestPushSubscription|Notification\.requestPermission/);
+assert.match(bell, /window\.addEventListener\("focus", refreshUnreadState\)/);
+assert.match(settingsPage, /<NotificationSettingsScreen \/>/);
+assert.match(previewSettingsPage, /isNotificationPreviewEnvironment\(\)/);
+assert.match(previewSettingsPage, /initialState="default"/);
+assert.match(previewOffPage, /isNotificationPreviewEnvironment\(\)/);
+assert.match(previewOffPage, /initialNotifications=\{\[\]\}/);
+assert.match(previewOffPage, /initialPushState="default"/);
+assert.match(pushStatusRoute, /\.eq\("user_id", userData\.user\.id\)/);
+assert.match(pushStatusRoute, /\.eq\("endpoint", body\.endpoint\)/);
+assert.match(pushStatusRoute, /\.is\("revoked_at", null\)/);
+assert.match(settingsScreen, /<h1>알림 설정<\/h1>/);
+assert.match(settingsScreen, /<h2>알림 받기<\/h2>/);
+assert.match(settingsScreen, /requestPushSubscription\(\)/);
+assert.match(settingsScreen, /state === "denied"/);
+assert.match(settingsScreen, /기기 설정에서 알림을 허용해주세요\./);
+assert.match(settingsScreen, /unsubscribeFromPush\(\)/);
+assert.match(settingsScreen, /알림 켜기/);
+assert.match(settingsScreen, /알림 끄기/);
+assert.match(screen, /notification-off-bell\.svg/);
+assert.match(screen, /받은 알림이 없어요\./);
+assert.match(screen, /알림을 켜고 복용기록을 이어가세요\./);
+assert.match(screen, /requestPushSubscription\(\)/);
+assert.match(screen, /pushState !== "unknown"/);
+assert.match(pushClient, /\/api\/push\/subscriptions\/status/);
+assert.match(pushClient, /result\?\.ok === true && result\.active === true/);
+assert.match(testPushRoute, /isNotificationPushTestEnvironment\(\)/);
+assert.match(testPushRoute, /\.eq\("notification_id", notificationId\)/);
+assert.ok(
+  pushClient.indexOf('if (!response.ok) throw new Error("push_subscription_revoke_failed")')
+    < pushClient.lastIndexOf("await subscription.unsubscribe()"),
+  "server revoke must succeed before the current browser subscription is removed",
+);
 assert.match(serviceWorker, /self\.addEventListener\("push"/);
 assert.match(serviceWorker, /self\.addEventListener\("notificationclick"/);
 assert.match(serviceWorker, /\/api\/notifications\/read/);
 assert.match(serviceWorker, /await openNotificationRoute\(route\)/);
-assert.match(testPushRoute, /isNotificationPreviewEnvironment\(\)/);
+assert.match(testPushRoute, /isNotificationPushTestEnvironment\(\)/);
+assert.match(testPushRoute, /isPushEndpoint\(input\.endpoint\)/);
+assert.match(testPushRoute, /\.eq\("endpoint", input\.endpoint\)/);
 assert.match(testPushRoute, /title: "복용 알림"/);
 assert.match(testPushRoute, /body: "오늘 복용기록이 없어요\."/);
 assert.doesNotMatch(testPushRoute, /10:00|13:00|16:00|22:00|cron|visit_day|mood/);
