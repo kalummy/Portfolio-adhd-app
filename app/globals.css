@@ -4849,6 +4849,66 @@ html[data-addi-member-splash="skip"] .member-splash {
   font-weight: 600;
 }
 
+.privacy-policy-screen .legal-intro h1 {
+  margin-top: 0;
+}
+
+.privacy-policy-screen .legal-policy-blocks {
+  display: grid;
+  gap: 10px;
+}
+
+.privacy-policy-screen .legal-sections h3 {
+  margin: 0;
+  color: var(--color-font-base-03);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 600;
+  letter-spacing: -0.375px;
+}
+
+.privacy-policy-screen .legal-table-wrap {
+  width: 100%;
+  min-width: 0;
+}
+
+.privacy-policy-screen table {
+  width: 100%;
+  border-spacing: 0;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: var(--color-font-base-04);
+  font-size: 13px;
+  line-height: 20px;
+  letter-spacing: -0.325px;
+}
+
+.privacy-policy-screen th,
+.privacy-policy-screen td {
+  padding: 10px 8px;
+  border: 1px solid var(--color-border-base-03);
+  overflow-wrap: anywhere;
+  text-align: left;
+  vertical-align: top;
+  word-break: keep-all;
+}
+
+.privacy-policy-screen th {
+  background: var(--color-bg-base-03);
+  color: var(--color-font-base-03);
+  font-weight: 600;
+}
+
+.privacy-policy-screen th:first-child,
+.privacy-policy-screen td:first-child {
+  width: 38%;
+}
+
+.privacy-policy-screen a {
+  color: var(--color-mint-800);
+  overflow-wrap: anywhere;
+}
+
 .legal-draft-note {
   margin: 0;
   padding: 16px;
