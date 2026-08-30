@@ -14,6 +14,7 @@ import {
   MEMBER_SPLASH_SESSION_KEY,
 } from "@/lib/auth/routes";
 import { restoreClaimedGuestDatasetVisibilityForUser } from "@/lib/indexed-db";
+import { unsubscribeFromPush } from "@/lib/push/client";
 import {
   ADDI_PROFILES,
   getAddiProfileAsset,
@@ -97,6 +98,7 @@ export function MyHomeScreen({ displayName, userId, initialProfileId }: MyHomeSc
 
     try {
       await restoreClaimedGuestDatasetVisibilityForUser(userId);
+      await unsubscribeFromPush().catch(() => undefined);
       await signOut();
       try {
         window.sessionStorage.removeItem(MEMBER_SPLASH_SESSION_KEY);
