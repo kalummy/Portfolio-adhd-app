@@ -231,7 +231,7 @@ export function sanitizeAnalyticsRoute(input: string): AnalyticsRoute {
   if (pathname === "/moods") return "mood_history";
   if (pathname === "/visits/new") return "visit_add";
   if (pathname === "/visits" || pathname === "/visits/edit") return "visit_management";
-  if (pathname === "/terms" || pathname === "/privacy") return "legal";
+  if (pathname === "/terms" || pathname === "/privacy" || pathname === "/delete-account") return "legal";
   return "other_safe";
 }
 

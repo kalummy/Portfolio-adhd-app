@@ -48,6 +48,7 @@ try {
     "/visits",
     "/visits/new",
     "/privacy",
+    "/delete-account",
     "/previewish",
   ]) {
     assert.equal(pathPolicy.isAnalyticsPathBlocked(pathname), false, `${pathname} must remain allowed`);
@@ -66,6 +67,7 @@ try {
     ["/visits/new?date=private", "visit_add"],
     ["/visits/edit", "visit_management"],
     ["/privacy", "legal"],
+    ["/delete-account", "legal"],
     ["https://example.com/moods/new?private=1", "other_safe"],
   ];
   for (const [input, expected] of routeCases) {
@@ -129,6 +131,7 @@ try {
     ["/visits/edit", "visit"],
     ["/terms", "legal"],
     ["/privacy", "legal"],
+    ["/delete-account", "legal"],
     ["/preview/home", null],
     ["/unknown/private-id", null],
   ];

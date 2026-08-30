@@ -1,7 +1,7 @@
 export const MEMBER_SPLASH_SESSION_KEY = "addi:member-splash:shown:v1";
 export const LEGACY_HOME_SPLASH_SESSION_KEY = "addi:splash:shown:v1";
 
-const PUBLIC_PAGE_PATHS = ["/auth", "/privacy", "/terms"] as const;
+const PUBLIC_PAGE_PATHS = ["/auth", "/privacy", "/terms", "/delete-account"] as const;
 const PUBLIC_METADATA_PATHS = [
   "/manifest.webmanifest",
   "/robots.txt",
