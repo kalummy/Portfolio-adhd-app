@@ -5,7 +5,6 @@ import {
 } from "@/lib/push/contracts";
 import {
   createSupabaseAdminClient,
-  SupabaseAdminConfigurationError,
 } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -58,9 +57,8 @@ export async function POST(request: Request) {
     if (error) throw error;
 
     return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
-  } catch (error) {
-    const status = error instanceof SupabaseAdminConfigurationError ? 503 : 500;
-    return Response.json({ ok: false }, { status });
+  } catch {
+    return Response.json({ ok: false, reason: "push_unavailable" }, { status: 503 });
   }
 }
 
@@ -86,9 +84,8 @@ export async function DELETE(request: Request) {
     if (error) throw error;
 
     return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
-  } catch (error) {
-    const status = error instanceof SupabaseAdminConfigurationError ? 503 : 500;
-    return Response.json({ ok: false }, { status });
+  } catch {
+    return Response.json({ ok: false, reason: "push_unavailable" }, { status: 503 });
   }
 }
 
@@ -126,8 +123,7 @@ export async function PATCH(request: Request) {
     if (error) throw error;
 
     return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
-  } catch (error) {
-    const status = error instanceof SupabaseAdminConfigurationError ? 503 : 500;
-    return Response.json({ ok: false }, { status });
+  } catch {
+    return Response.json({ ok: false, reason: "push_unavailable" }, { status: 503 });
   }
 }
