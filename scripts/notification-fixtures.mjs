@@ -145,6 +145,10 @@ assert.equal(isPushEndpoint("http://push.example.test/device"), false);
 
 const medicationOn = setPushPreference(DISABLED_PUSH_PREFERENCES, "medication", true);
 assert.deepEqual(medicationOn, { medication: true, visit_day: false, mood: false });
+const visitOnlyOn = setPushPreference(DISABLED_PUSH_PREFERENCES, "visit_day", true);
+assert.deepEqual(visitOnlyOn, { medication: false, visit_day: true, mood: false });
+const moodOnlyOn = setPushPreference(DISABLED_PUSH_PREFERENCES, "mood", true);
+assert.deepEqual(moodOnlyOn, { medication: false, visit_day: false, mood: true });
 const medicationAndMoodOn = setPushPreference(medicationOn, "mood", true);
 assert.deepEqual(medicationAndMoodOn, { medication: true, visit_day: false, mood: true });
 const visitOnWhileMedicationSaves = setPushPreference(medicationOn, "visit_day", true);
