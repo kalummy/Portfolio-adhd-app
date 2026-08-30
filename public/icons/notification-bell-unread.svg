@@ -1,0 +1,10 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="icon/&#236;&#149;&#140;&#235;&#166;&#188;&#235;&#178;&#168;(bell)">
+<g id="Bell Icon">
+<path id="Union" d="M14 5.83333C9.48967 5.83333 5.83333 9.03263 5.83333 12.9792V18.25C5.83333 18.8023 5.31307 19.2193 4.93376 19.6208C4.76692 19.7973 4.66667 20.0238 4.66667 20.2708C4.66667 20.8346 5.189 21.2917 5.83333 21.2917H22.1667C22.811 21.2917 23.3333 20.8346 23.3333 20.2708C23.3333 20.0238 23.2331 19.7973 23.0662 19.6208C22.6869 19.2193 22.1667 18.8023 22.1667 18.25V12.9792C22.1667 9.03263 18.5103 5.83333 14 5.83333Z" stroke="#111111" stroke-width="2" stroke-linejoin="round"/>
+<path id="Vector 177" d="M14 3.5V5.83333" stroke="#111111" stroke-width="2" stroke-linecap="round"/>
+<path id="Vector 178" d="M10.5 24.5H17.5" stroke="#111111" stroke-width="2" stroke-linecap="round"/>
+</g>
+<circle id="RedDot" cx="24.5" cy="3.5" r="3.5" fill="#EF5350"/>
+</g>
+</svg>

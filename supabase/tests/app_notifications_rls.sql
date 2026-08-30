@@ -1,0 +1,139 @@
+-- Run after the Phase 1 notification migration against ADDI Dev only.
+-- Every fixture row and temporary auth user is rolled back.
+begin;
+
+select pg_catalog.set_config(
+  'fixture.notification_user_a',
+  (select id::text from auth.users order by created_at limit 1),
+  true
+);
+select pg_catalog.set_config(
+  'fixture.notification_user_b',
+  pg_catalog.gen_random_uuid()::text,
+  true
+);
+
+insert into auth.users (id, aud, role, created_at, updated_at, is_sso_user, is_anonymous)
+values (
+  pg_catalog.current_setting('fixture.notification_user_b')::uuid,
+  'authenticated',
+  'authenticated',
+  pg_catalog.now(),
+  pg_catalog.now(),
+  false,
+  false
+);
+
+insert into public.app_notifications (
+  user_id,
+  notification_id,
+  kind,
+  title,
+  body,
+  url,
+  fired_at
+)
+values
+  (
+    pg_catalog.current_setting('fixture.notification_user_a')::uuid,
+    'phase1-fixture-user-a',
+    'medication',
+    '복용 알림',
+    '오늘 복용기록이 없어요.',
+    '/',
+    pg_catalog.now()
+  ),
+  (
+    pg_catalog.current_setting('fixture.notification_user_b')::uuid,
+    'phase1-fixture-user-b',
+    'visit_day',
+    '내원 알림',
+    '오늘은 내원일이에요.',
+    '/visits',
+    pg_catalog.now()
+  );
+
+select pg_catalog.set_config(
+  'request.jwt.claim.sub',
+  pg_catalog.current_setting('fixture.notification_user_a'),
+  true
+);
+select pg_catalog.set_config('request.jwt.claim.role', 'authenticated', true);
+set local role authenticated;
+
+do $fixture$
+declare
+  v_visible_count integer;
+  v_cross_user_count integer;
+begin
+  select
+    pg_catalog.count(*),
+    pg_catalog.count(*) filter (
+      where user_id = pg_catalog.current_setting('fixture.notification_user_b')::uuid
+    )
+  into v_visible_count, v_cross_user_count
+  from public.app_notifications
+  where notification_id like 'phase1-fixture-%';
+
+  if v_visible_count <> 1 or v_cross_user_count <> 0 then
+    raise exception 'Cross-user notification SELECT was not blocked.';
+  end if;
+end;
+$fixture$;
+
+do $fixture$
+declare
+  v_count integer;
+begin
+  update public.app_notifications
+  set read_at = pg_catalog.now()
+  where notification_id = 'phase1-fixture-user-a';
+  get diagnostics v_count = row_count;
+  if v_count <> 1 then
+    raise exception 'Owner could not mark a notification read.';
+  end if;
+
+  update public.app_notifications
+  set read_at = pg_catalog.now()
+  where notification_id = 'phase1-fixture-user-b';
+  get diagnostics v_count = row_count;
+  if v_count <> 0 then
+    raise exception 'Cross-user notification UPDATE was not blocked.';
+  end if;
+
+  begin
+    update public.app_notifications
+    set title = 'must be blocked'
+    where notification_id = 'phase1-fixture-user-a';
+    raise exception 'Authenticated users can update protected notification columns.';
+  exception
+    when insufficient_privilege then null;
+  end;
+
+  begin
+    insert into public.app_notifications (
+      user_id,
+      notification_id,
+      kind,
+      title,
+      body,
+      url,
+      fired_at
+    )
+    values (
+      pg_catalog.current_setting('fixture.notification_user_a')::uuid,
+      'must-be-blocked',
+      'mood',
+      '감정기록 알림',
+      '지금 리포트 결과를 확인해보세요.',
+      '/moods?tab=report',
+      pg_catalog.now()
+    );
+    raise exception 'Authenticated users can create notifications.';
+  exception
+    when insufficient_privilege then null;
+  end;
+end;
+$fixture$;
+
+rollback;
