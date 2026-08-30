@@ -6558,7 +6558,7 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
 }
 
 .notification-row.unread {
-  background: var(--color-bg-base-01);
+  background: #f0f8fe;
 }
 
 .notification-row:disabled {
@@ -6589,7 +6589,92 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
 }
 
 .notification-row.unread .notification-icon {
+  background: var(--color-bg-base-01);
+}
+
+.push-diagnostics-screen {
+  min-height: 100dvh;
+  padding: 24px 20px calc(34px + env(safe-area-inset-bottom));
+  background: var(--color-bg-base-01);
+}
+
+.push-diagnostics-screen h1 {
+  margin: 0;
+  color: var(--color-font-base-02);
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.push-diagnostics-screen > p {
+  margin: 8px 0 0;
+  color: var(--color-font-base-04);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.push-diagnostics-list {
+  display: grid;
+  margin: 24px 0 0;
+  gap: 12px;
+}
+
+.push-diagnostics-list > div {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(116px, auto) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.push-diagnostics-list dt,
+.push-diagnostics-list dd {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.push-diagnostics-list dt {
+  color: var(--color-font-base-04);
+}
+
+.push-diagnostics-list dd {
+  color: var(--color-font-base-02);
+  font-weight: 600;
+}
+
+.push-diagnostics-actions {
+  display: grid;
+  margin-top: 24px;
+  gap: 12px;
+}
+
+.push-diagnostics-actions button {
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--color-font-base-02);
+  color: var(--color-bg-base-01);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.push-diagnostics-actions button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.push-diagnostics-result {
+  margin-top: 20px;
+  padding: 12px;
+  border-radius: 10px;
   background: var(--color-bg-base-05);
+  color: var(--color-font-base-03);
+  font-size: 13px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
 }
 
 .notification-icon > img {

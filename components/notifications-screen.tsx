@@ -143,18 +143,29 @@ export function NotificationsScreen({
     if (updating) return;
     setUpdating(true);
 
+    const readAt = notification.readAt === null ? new Date() : null;
+    const optimisticReadAt = readAt?.toISOString() ?? null;
+    if (readAt) {
+      setNotifications((current) => current.map((candidate) => (
+        candidate.id === notification.id
+          ? { ...candidate, readAt: optimisticReadAt }
+          : candidate
+      )));
+    }
+
     try {
-      if (notification.readAt === null) {
-        const readAt = new Date();
+      if (readAt) {
         if (!isPreviewFixture) await markNotificationRead(notification.id, readAt);
-        setNotifications((current) => current.map((candidate) => (
-          candidate.id === notification.id
-            ? { ...candidate, readAt: readAt.toISOString() }
-            : candidate
-        )));
       }
       router.push(notification.targetUrl);
     } catch {
+      if (readAt) {
+        setNotifications((current) => current.map((candidate) => (
+          candidate.id === notification.id && candidate.readAt === optimisticReadAt
+            ? { ...candidate, readAt: null }
+            : candidate
+        )));
+      }
       setLoadFailed(true);
     } finally {
       setUpdating(false);
