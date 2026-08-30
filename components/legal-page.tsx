@@ -29,7 +29,6 @@ export function LegalPage({
       <FlowHeader title={title} fallbackHref="/" />
       <article className="legal-content">
         <div className="legal-intro">
-          {published ? null : <span>MVP 초안</span>}
           <h1>{title}</h1>
           <p>{intro}</p>
           <small>{published?.effectiveDate ?? "최종 수정일 2026년 8월 19일"}</small>
