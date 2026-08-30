@@ -82,6 +82,7 @@ import type {
 import { resetDraft } from "@/lib/registration-session";
 import { MobileShell } from "./mobile-shell";
 import { BottomNavigation } from "./bottom-navigation";
+import { NotificationBellButton } from "./notification-bell-button";
 import { SplashScreen } from "./splash-screen";
 import { Toast } from "./toast";
 
@@ -675,6 +676,7 @@ export function HomeScreen({
           <strong>{greeting}</strong>
           <Image src="/icons/home-profile-chevron.svg" alt="" width={20} height={20} />
         </Link>
+        <NotificationBellButton />
       </header>
 
       <div className="home-month-select-row">
