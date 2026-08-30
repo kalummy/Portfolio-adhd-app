@@ -6518,7 +6518,7 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
 }
 
 .notification-row.unread {
-  background: #f0f8fe;
+  background: var(--color-bg-base-01);
 }
 
 .notification-row:disabled {

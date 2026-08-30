@@ -145,7 +145,7 @@ for (const [key, value] of Object.entries({
   else process.env[key] = value;
 }
 
-assert.match(styles, /\.notification-row\.unread\s*\{\s*background: #f0f8fe;/);
+assert.match(styles, /\.notification-row\.unread\s*\{\s*background: var\(--color-bg-base-01\);/);
 assert.match(styles, /gap: 14px;/);
 assert.match(styles, /font-size: 15px;[\s\S]*line-height: 22px;[\s\S]*letter-spacing: -0\.375px;/);
 assert.match(styles, /font-size: 14px;[\s\S]*line-height: 20px;[\s\S]*letter-spacing: -0\.35px;/);
