@@ -22,7 +22,7 @@
     "alias": "addi-upload"
   },
   "appVersion": "1.0.0",
-  "appVersionCode": 1,
+  "appVersionCode": 2,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://addi-gamma.vercel.app/manifest.webmanifest",
@@ -35,7 +35,7 @@
   "isChromeOSOnly": false,
   "isMetaQuest": false,
   "fullScopeUrl": "https://addi-gamma.vercel.app/",
-  "minSdkVersion": 21,
+  "minSdkVersion": 23,
   "orientation": "default",
   "fingerprints": [
     {

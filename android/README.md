@@ -6,9 +6,10 @@
 - 앱 이름: `아디`
 - Production origin: `https://addi-gamma.vercel.app`
 - 시작 URL: `https://addi-gamma.vercel.app/`
-- 버전: `1.0.0` (`versionCode` 1)
-- SDK: `compileSdk 36`, `targetSdk 36`
+- 버전: `1.0.0` (`versionCode` 2)
+- SDK: `minSdk 23`, `compileSdk 36`, `targetSdk 36`
 - 알림 위임: `enableNotifications: true`
+- TWA provider: Google Chrome (`com.android.chrome`)
 
 ## TWA 알림 위임
 
@@ -20,6 +21,11 @@ Bubblewrap의 알림 위임을 사용하며 Web Push 구조(Service Worker, VAPI
 - `com.google.androidbrowserhelper.trusted.NotificationPermissionRequestActivity`
 
 `monochromeIconUrl`은 기존 `addi-footer.svg`의 ADDI `AD` 모노그램 path를 정사각형·단색·투명 SVG로 파생해 재사용한다. Bubblewrap이 이를 Android density별 `ic_notification_icon.png`로 생성하며, Android는 해당 alpha mask를 시스템 색상으로 렌더링한다.
+
+Android Browser Helper 2.7.2의 explicit browser targeting을 사용한다. Bubblewrap 1.25.0의 `twa-manifest.json`에는 이 설정을 표현하는 필드가 없으므로 `app/src/main/AndroidManifest.xml`의 `LauncherActivity`에 다음 메타데이터를 유지한다. Bubblewrap `update`로 Android 프로젝트를 재생성한 경우 이 두 항목을 반드시 다시 확인한다.
+
+- `android.support.customtabs.trusted.LAUNCHING_BROWSER=com.android.chrome`
+- `android.support.customtabs.trusted.LAUNCHING_BROWSER_NAME=Google Chrome`
 
 ## 서명 준비
 
@@ -54,7 +60,7 @@ npx --yes @bubblewrap/cli@1.25.0 fingerprint add \
 
 ## Play 버전 확인
 
-현재 값은 `versionName 1.0.0`, `versionCode 1`이다. signed AAB를 만들기 전에 Play Console의 `테스트 및 출시 > 최신 버전 및 번들 > 모든 앱 버전`에서 전체 업로드 이력을 확인한다. `versionCode 1`이 사용된 적이 있으면 `twa-manifest.json`의 `appVersionCode`를 기존 최고값보다 큰 미사용 값으로 바꾼 뒤 생성물을 갱신한다. 이력 확인 없이 임의로 버전을 올리거나 기존 코드를 재사용하지 않는다.
+현재 값은 `versionName 1.0.0`, `versionCode 2`이다. Play Internal Testing의 기존 `versionCode 1` 설치본을 업데이트하기 위한 값이다. 이후 AAB를 만들기 전에는 Play Console의 `테스트 및 출시 > 최신 버전 및 번들 > 모든 앱 버전`에서 전체 업로드 이력을 확인하고, 이미 사용된 versionCode를 재사용하지 않는다.
 
 ```bash
 npx --yes @bubblewrap/cli@1.25.0 update --skipVersionUpgrade
@@ -98,4 +104,6 @@ Internal App Sharing이 아니라 Internal Testing 트랙을 사용한다.
 3. `테스터` 탭에서 Galaxy Play Store에 로그인한 Google 계정을 이메일 목록에 등록한다.
 4. 같은 계정으로 opt-in 링크를 열고 Play Store에서 ADDI를 설치한다.
 5. 설치본에서 로그인과 알림 허용을 수행한 뒤 새 PushSubscription이 Production에 저장되는지 확인한다.
-6. 그 설치본 endpoint 1개에만 Test Push를 보내 OS 표시, 클릭 후 `/`, `read_at`, red dot을 확인한다.
+6. 알림 설정을 변경해 Production row의 `updated_at`이 갱신되는지 확인하고, 기존 Samsung Internet subscription과 구분한다.
+7. 설치본에서 새로 확인한 endpoint 1개에만 Test Push를 보내 알림 발신 앱이 `아디`인지 확인한다.
+8. OS 표시, 알림 클릭 후 설치된 ADDI 실행, `/` 이동, `read_at`, red dot을 확인한다.
