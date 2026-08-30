@@ -6298,6 +6298,15 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
   position: relative;
   width: 104px;
   height: 104px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: transform 100ms ease-out;
+}
+
+.my-home-profile-image-wrap:active {
+  transform: scale(0.98);
 }
 
 .my-home-profile-image-wrap > img {
@@ -6323,8 +6332,8 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
 
 .my-home-profile-edit img {
   display: block;
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
 }
 
 .my-home-name {
@@ -6363,6 +6372,8 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
   font-weight: 500;
   letter-spacing: -0.35px;
   text-align: left;
+  text-decoration: none;
+  cursor: pointer;
   transition: transform 100ms ease-out;
 }
 
@@ -6403,9 +6414,217 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
   line-height: 18px;
 }
 
+.my-home-sheet-layer {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  display: flex;
+  width: min(100%, 430px);
+  min-height: 100dvh;
+  margin: 0 auto;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.my-home-profile-sheet {
+  display: flex;
+  width: 100%;
+  padding-top: 12px;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 16px 16px 0 0;
+  background: var(--color-bg-base-01);
+}
+
+.my-home-sheet-handle {
+  width: 88px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-gray-200);
+}
+
+.my-home-profile-sheet h2 {
+  width: 100%;
+  margin: 0;
+  padding: 24px 20px 0;
+  color: var(--color-font-base-03);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 700;
+  letter-spacing: -0.45px;
+}
+
+.my-home-profile-preview {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin-top: 24px;
+}
+
+.my-home-profile-options {
+  display: grid;
+  width: 100%;
+  margin-top: 24px;
+  padding: 0 40px;
+  grid-template-columns: repeat(4, 56px);
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.my-home-profile-options button {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: transform 100ms ease-out;
+}
+
+.my-home-profile-options button::after {
+  position: absolute;
+  inset: -3px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  content: "";
+}
+
+.my-home-profile-options button.selected::after {
+  border-color: var(--color-brand-primary);
+}
+
+.my-home-profile-options button img {
+  display: block;
+  width: 56px;
+  height: 56px;
+}
+
+.my-home-profile-options button:active {
+  transform: scale(0.98);
+}
+
+.my-home-profile-actions {
+  display: flex;
+  width: 100%;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 10px 20px calc(10px + env(safe-area-inset-bottom));
+}
+
+.my-home-profile-actions button {
+  min-width: 0;
+  height: 48px;
+  padding: 12px 16px;
+  flex: 1 1 0;
+  border: 0;
+  border-radius: 12px;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 100ms ease-out;
+}
+
+.my-home-profile-actions .cancel {
+  background: var(--color-bg-interactive-gray-default);
+  color: var(--color-font-base-03);
+}
+
+.my-home-profile-actions .confirm {
+  background: var(--color-bg-interactive-mint-default);
+  color: var(--color-font-primary);
+}
+
+.my-home-profile-actions button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.my-home-social-content {
+  display: flex;
+  padding-top: 32px;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.my-home-social-loading {
+  height: 96px;
+  margin: 0 20px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, var(--color-gray-75), var(--color-gray-100), var(--color-gray-75));
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+}
+
+.my-home-provider-row {
+  position: relative;
+  display: flex;
+  min-height: 36px;
+  padding: 0 20px;
+  align-items: center;
+  gap: 8px;
+}
+
+.my-home-provider-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-font-base-02);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: -0.35px;
+}
+
+.my-home-provider-copy img {
+  display: block;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+}
+
+.my-home-provider-row > button {
+  min-width: 76px;
+  height: 36px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  letter-spacing: -0.325px;
+  cursor: pointer;
+  transition: transform 100ms ease-out;
+}
+
+.my-home-provider-row > button.linked {
+  border: 0;
+  background: var(--color-bg-interactive-mint-default);
+  color: var(--color-font-base-03);
+}
+
+.my-home-provider-row > button.connect {
+  border: 1px solid var(--color-border-base-05);
+  background: var(--color-bg-interactive-neutral-default);
+  color: var(--color-font-base-03);
+}
+
+.my-home-provider-row > button:disabled {
+  border-color: transparent;
+  background: var(--color-bg-interactive-brand-disabled);
+  color: var(--color-font-base-06);
+  cursor: default;
+}
+
+.my-home-provider-row > button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
 .my-home-subheader {
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) 24px;
+  grid-template-columns: 24px minmax(0, 1fr) 64px;
   gap: 16px;
 }
 
@@ -6583,6 +6802,10 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .my-home-profile-image-wrap,
+  .my-home-profile-options button,
+  .my-home-profile-actions button,
+  .my-home-provider-row > button,
   .my-home-delete-option > button,
   .my-home-delete-actions .continue,
   .my-home-delete-actions .delete,
@@ -6590,6 +6813,10 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
     transition: none;
   }
 
+  .my-home-profile-image-wrap:active,
+  .my-home-profile-options button:active,
+  .my-home-profile-actions button:active:not(:disabled),
+  .my-home-provider-row > button:active:not(:disabled),
   .my-home-delete-option > button:active,
   .my-home-delete-actions .continue:active,
   .my-home-delete-actions .delete:active:not(:disabled),
@@ -6617,6 +6844,18 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
 }
 
 @media (max-width: 340px) {
+  .my-home-profile-options {
+    padding-right: 24px;
+    padding-left: 24px;
+    gap: 4px;
+  }
+
+  .my-home-provider-copy span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .week-strip {
     padding-right: 12px;
     padding-left: 12px;

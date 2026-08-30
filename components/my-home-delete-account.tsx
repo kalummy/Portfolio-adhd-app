@@ -14,12 +14,11 @@ const DELETE_REASONS = [
   "자주 사용하지 않아요",
   "필요한 기능이 부족해요",
   "사용하기 불편해요",
-  "개인정보·기록 보관이 걱정돼요",
-  "기타",
+  "직접 입력할게요",
 ] as const;
 
 type DeleteReason = (typeof DELETE_REASONS)[number];
-const CUSTOM_REASON: DeleteReason = "기타";
+const CUSTOM_REASON: DeleteReason = "직접 입력할게요";
 
 export function MyHomeDeleteAccount() {
   const router = useRouter();

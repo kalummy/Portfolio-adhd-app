@@ -1,5 +1,9 @@
-import type { User } from "@supabase/supabase-js";
+import type { Provider, User, UserIdentity } from "@supabase/supabase-js";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import {
+  ADDI_PROFILE_METADATA_KEY,
+  type AddiProfileId,
+} from "@/lib/profile";
 import { getSafeNextPath } from "./redirect";
 
 export type AuthState = {
@@ -21,6 +25,8 @@ export async function getAuthState(): Promise<AuthState> {
 
 type MemberOAuthProvider = "google" | "kakao";
 
+export type AddiOAuthProvider = MemberOAuthProvider;
+
 async function signInWithProvider(provider: MemberOAuthProvider, nextPath = "/") {
   const supabase = createBrowserSupabaseClient();
   const callbackUrl = new URL("/auth/callback", window.location.origin);
@@ -41,6 +47,56 @@ export function signInWithGoogle(nextPath = "/") {
 
 export function signInWithKakao(nextPath = "/") {
   return signInWithProvider("kakao", nextPath);
+}
+
+export async function getLinkedOAuthIdentities() {
+  const supabase = createBrowserSupabaseClient();
+  const { data, error } = await supabase.auth.getUserIdentities();
+  if (error) throw error;
+
+  return data.identities.filter(
+    (identity): identity is UserIdentity & { provider: AddiOAuthProvider } => (
+      identity.provider === "google" || identity.provider === "kakao"
+    ),
+  );
+}
+
+export async function linkOAuthIdentity(
+  provider: AddiOAuthProvider,
+  nextPath = "/my/social-login",
+) {
+  const supabase = createBrowserSupabaseClient();
+  const callbackUrl = new URL("/auth/callback", window.location.origin);
+  const safeNextPath = getSafeNextPath(nextPath);
+  callbackUrl.searchParams.set("next", safeNextPath);
+
+  const { error } = await supabase.auth.linkIdentity({
+    provider: provider as Provider,
+    options: { redirectTo: callbackUrl.toString() },
+  });
+  if (error) throw error;
+}
+
+export async function unlinkOAuthIdentity(provider: AddiOAuthProvider) {
+  const supabase = createBrowserSupabaseClient();
+  const identities = await getLinkedOAuthIdentities();
+  if (identities.length <= 1) throw new Error("last_identity");
+
+  const identity = identities.find((candidate) => candidate.provider === provider);
+  if (!identity) throw new Error("identity_not_found");
+
+  const { error } = await supabase.auth.unlinkIdentity(identity);
+  if (error) throw error;
+}
+
+export async function updateAddiProfile(profileId: AddiProfileId) {
+  const supabase = createBrowserSupabaseClient();
+  const { data, error } = await supabase.auth.updateUser({
+    data: { [ADDI_PROFILE_METADATA_KEY]: profileId },
+  });
+  if (error) throw error;
+  window.dispatchEvent(new CustomEvent("addi:profile-changed", { detail: { profileId } }));
+  return data.user;
 }
 
 export async function signOut() {
