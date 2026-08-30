@@ -43,11 +43,6 @@ export function LegalPage({
           ))}
         </div>
 
-        {published ? null : (
-          <p className="legal-draft-note">
-            본 문서는 아디(ADDI) MVP 운영을 위한 초안이며, 정식 운영 전 법률·운영 검토를 거쳐 확정됩니다.
-          </p>
-        )}
       </article>
     </MobileShell>
   );
