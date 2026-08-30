@@ -76,7 +76,10 @@ const subscriptionsRoute = read("app/api/push/subscriptions/route.ts");
 const testPushRoute = read("app/api/push/test/route.ts");
 const previewPage = read("app/preview/notifications/page.tsx");
 const previewHomePage = read("app/preview/notifications/home/page.tsx");
+const diagnosticsPage = read("app/preview/notifications/diagnostics/page.tsx");
+const diagnosticsScreen = read("components/push-diagnostics-screen.tsx");
 const navigationHistory = read("lib/navigation-history.ts");
+const authRoutes = read("lib/auth/routes.ts");
 const proxy = read("proxy.ts");
 
 assert.match(bell, /href = "\/notifications"/);
@@ -107,6 +110,16 @@ assert.match(screen, /requestPushSubscription\(\)/);
 assert.match(screen, /navigator\.serviceWorker\?\.addEventListener\("message", refreshAfterPush\)/);
 assert.match(screen, /message\.type === UNREAD_NOTIFICATION_MESSAGE/);
 assert.match(screen, /setNotifications\(nextNotifications\)/);
+const notificationClickHandler = screen.slice(
+  screen.indexOf("async function handleNotificationClick"),
+  screen.indexOf("async function handleMarkAllRead"),
+);
+assert.ok(
+  notificationClickHandler.indexOf("setNotifications((current)")
+    < notificationClickHandler.indexOf("await markNotificationRead"),
+  "the unread row must paint its read style before the network mutation resolves",
+);
+assert.doesNotMatch(notificationClickHandler, /router\.refresh\(\)/);
 
 assert.match(repository, /\.from\("app_notifications"\)/);
 assert.match(repository, /\.gte\("fired_at", getNotificationCutoff\(now\)\)/);
@@ -230,8 +243,10 @@ for (const [key, value] of Object.entries({
   else process.env[key] = value;
 }
 
-assert.match(styles, /\.notification-row\.unread\s*\{\s*background: var\(--color-bg-base-01\);/);
-assert.match(styles, /\.notification-row\.unread \.notification-icon\s*\{\s*background: var\(--color-bg-base-05\);/);
+assert.match(styles, /\.notification-row\s*\{[\s\S]*background: var\(--color-bg-base-01\);/);
+assert.match(styles, /\.notification-row\.unread\s*\{\s*background: #f0f8fe;/);
+assert.match(styles, /\.notification-icon\s*\{[\s\S]*background: var\(--color-bg-base-05\);/);
+assert.match(styles, /\.notification-row\.unread \.notification-icon\s*\{\s*background: var\(--color-bg-base-01\);/);
 assert.match(styles, /gap: 14px;/);
 assert.match(styles, /font-size: 15px;[\s\S]*line-height: 22px;[\s\S]*letter-spacing: -0\.375px;/);
 assert.match(styles, /font-size: 14px;[\s\S]*line-height: 20px;[\s\S]*letter-spacing: -0\.35px;/);
@@ -278,7 +293,20 @@ assert.match(previewPage, /backHref="\/preview\/notifications\/home"/);
 assert.match(previewPage, /initialPushState="subscribed"/);
 assert.match(previewHomePage, /previewHasUnreadNotifications/);
 assert.match(previewHomePage, /previewNotificationHref="\/preview\/notifications"/);
+assert.match(diagnosticsPage, /isNotificationPreviewEnvironment\(\)/);
+assert.match(diagnosticsPage, /providerTestEnabled=\{isNotificationPushTestEnvironment\(\)\}/);
+assert.match(diagnosticsScreen, /registration\.showNotification\("복용 알림"/);
+assert.match(diagnosticsScreen, /body: "오늘 복용기록이 없어요\."/);
+assert.match(diagnosticsScreen, /Notification\.permission/);
+assert.match(diagnosticsScreen, /getRegistration\("\/"\)/);
+assert.match(diagnosticsScreen, /pushManager\.getSubscription\(\)/);
+assert.match(diagnosticsScreen, /Samsung Internet 일반 탭/);
+assert.match(diagnosticsScreen, /홈 화면에 추가한 PWA/);
+assert.match(diagnosticsScreen, /TWA 설치본/);
+assert.doesNotMatch(diagnosticsScreen, /console\.(?:log|debug|info|warn|error)/);
+assert.doesNotMatch(diagnosticsScreen, />\{subscription\.endpoint\}</);
 assert.match(proxy, /isNotificationPreviewEnvironment\(\)/);
+assert.match(authRoutes, /PUBLIC_METADATA_PATHS = \[[\s\S]*"\/sw\.js"/);
 
 assert.match(pushClient, /navigator\.userActivation/);
 assert.match(pushClient, /Notification\.requestPermission\(\)/);
@@ -364,7 +392,11 @@ assert.ok(
   "server revoke must succeed before the current browser subscription is removed",
 );
 assert.match(serviceWorker, /self\.addEventListener\("push"/);
-assert.match(serviceWorker, /client\.postMessage\(\{ type: UNREAD_NOTIFICATION_MESSAGE \}\)/);
+assert.match(serviceWorker, /stage: "push_received"/);
+assert.match(serviceWorker, /stage: "notification_shown"/);
+assert.match(serviceWorker, /stage: "notification_failed"/);
+assert.match(serviceWorker, /catch \(error\)[\s\S]*throw error;/);
+assert.match(serviceWorker, /postMessageToWindowClients\(\{ type: UNREAD_NOTIFICATION_MESSAGE \}\)/);
 assert.match(serviceWorker, /self\.addEventListener\("notificationclick"/);
 assert.match(serviceWorker, /\/api\/notifications\/read/);
 assert.match(serviceWorker, /await openNotificationRoute\(route\)/);

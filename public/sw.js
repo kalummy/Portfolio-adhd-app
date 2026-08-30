@@ -1,8 +1,14 @@
 const SAFE_NOTIFICATION_ROUTES = new Set(["/", "/visits", "/moods?tab=report"]);
 const UNREAD_NOTIFICATION_MESSAGE = "addi:notification-unread";
+const PUSH_DIAGNOSTIC_MESSAGE = "addi:push-diagnostic";
 
 function safeNotificationRoute(value) {
   return typeof value === "string" && SAFE_NOTIFICATION_ROUTES.has(value) ? value : "/";
+}
+
+async function postMessageToWindowClients(message) {
+  const windowClients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  windowClients.forEach((client) => client.postMessage(message));
 }
 
 self.addEventListener("push", (event) => {
@@ -21,16 +27,32 @@ self.addEventListener("push", (event) => {
   const route = safeNotificationRoute(payload.route);
 
   event.waitUntil((async () => {
-    await self.registration.showNotification(title, {
-      body,
-      icon: "/icon.png",
-      badge: "/icon.png",
-      tag: notificationId ?? undefined,
-      data: { notificationId, route },
-    });
+    await postMessageToWindowClients({
+      type: PUSH_DIAGNOSTIC_MESSAGE,
+      stage: "push_received",
+    }).catch(() => undefined);
 
-    const windowClients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    windowClients.forEach((client) => client.postMessage({ type: UNREAD_NOTIFICATION_MESSAGE }));
+    try {
+      await self.registration.showNotification(title, {
+        body,
+        icon: "/icon.png",
+        badge: "/icon.png",
+        tag: notificationId ?? undefined,
+        data: { notificationId, route },
+      });
+    } catch (error) {
+      await postMessageToWindowClients({
+        type: PUSH_DIAGNOSTIC_MESSAGE,
+        stage: "notification_failed",
+      }).catch(() => undefined);
+      throw error;
+    }
+
+    await postMessageToWindowClients({
+      type: PUSH_DIAGNOSTIC_MESSAGE,
+      stage: "notification_shown",
+    }).catch(() => undefined);
+    await postMessageToWindowClients({ type: UNREAD_NOTIFICATION_MESSAGE });
   })());
 });
 

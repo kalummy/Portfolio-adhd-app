@@ -7,6 +7,7 @@ const PUBLIC_METADATA_PATHS = [
   "/manifest.webmanifest",
   "/robots.txt",
   "/sitemap.xml",
+  "/sw.js",
 ] as const;
 const SELF_AUTHENTICATING_API_PATHS = ["/api/account"] as const;
 const PUBLIC_VERSION_API_PATHS = ["/api/app-version"] as const;
