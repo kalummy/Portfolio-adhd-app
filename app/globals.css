@@ -4916,6 +4916,124 @@ html[data-addi-member-splash="skip"] .member-splash {
   background: var(--color-bg-base-03);
 }
 
+.account-deletion-screen {
+  overflow-x: clip;
+}
+
+.account-deletion-screen .legal-intro h1 {
+  margin-top: 0;
+}
+
+.account-deletion-service,
+.account-deletion-contact {
+  display: grid;
+  gap: 6px;
+  margin: 18px 0 0;
+  color: var(--color-font-base-04);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.account-deletion-service div,
+.account-deletion-contact div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.account-deletion-service dt,
+.account-deletion-contact dt {
+  color: var(--color-font-base-05);
+}
+
+.account-deletion-service dd,
+.account-deletion-contact dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.account-deletion-sections ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--color-font-base-04);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.account-deletion-sections a {
+  color: var(--color-mint-800);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.account-deletion-authenticated,
+.account-deletion-login {
+  display: grid;
+  gap: 16px;
+}
+
+.account-deletion-warning,
+.account-deletion-success,
+.account-deletion-error {
+  padding: 14px 16px;
+  border-radius: 12px;
+}
+
+.account-deletion-warning {
+  background: var(--color-bg-base-03);
+  color: var(--color-font-base-03) !important;
+}
+
+.account-deletion-success {
+  background: var(--color-bg-interactive-mint-default);
+  color: var(--color-mint-800) !important;
+  font-weight: 600;
+}
+
+.account-deletion-error {
+  background: var(--color-bg-base-03);
+  color: var(--color-font-semantic-danger) !important;
+}
+
+.account-deletion-login-buttons {
+  display: grid;
+  gap: 12px;
+}
+
+.account-deletion-delete-button {
+  width: 100%;
+  min-height: 52px;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--color-font-semantic-danger);
+  color: var(--color-font-base-01);
+  font: inherit;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.account-deletion-delete-button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.account-deletion-delete-button:focus-visible,
+.account-deletion-screen .visit-dialog-actions button:focus-visible {
+  outline: 2px solid var(--color-border-focus-default);
+  outline-offset: 2px;
+}
+
+.account-deletion-screen .visit-dialog-actions .confirm {
+  background: var(--color-font-semantic-danger);
+  color: var(--color-font-base-01);
+}
+
 /* Mood record order/detail: Figma 300:23674, 300:25449, 300:25617 */
 .mood-records-screen,
 .mood-record-detail-screen {

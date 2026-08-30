@@ -36,7 +36,7 @@ export function screenNameForPath(input: string): AnalyticsScreenName | null {
   if (pathname === "/visits" || pathname === "/visits/new" || pathname === "/visits/edit") {
     return "visit";
   }
-  if (pathname === "/terms" || pathname === "/privacy") return "legal";
+  if (pathname === "/terms" || pathname === "/privacy" || pathname === "/delete-account") return "legal";
   return null;
 }
 

@@ -8,6 +8,7 @@ import {
   isAddiOwnedStorageKey,
   removeAddiOwnedStorageKeys,
 } from "../lib/addi-storage.ts";
+import { getSafeNextPath } from "../lib/auth/redirect.ts";
 
 const calls = [];
 await deleteAuthenticatedAccount({
@@ -102,6 +103,8 @@ const localSource = await readFile(new URL("../lib/account-deletion-local.ts", i
 const indexedDbSource = await readFile(new URL("../lib/indexed-db.ts", import.meta.url), "utf8");
 const analyticsSource = await readFile(new URL("../lib/analytics/mixpanel.ts", import.meta.url), "utf8");
 const authRoutesSource = await readFile(new URL("../lib/auth/routes.ts", import.meta.url), "utf8");
+const pageSource = await readFile(new URL("../app/delete-account/page.tsx", import.meta.url), "utf8");
+const publicScreenSource = await readFile(new URL("../components/public-account-deletion.tsx", import.meta.url), "utf8");
 
 assert.match(routeSource, /sessionClient\.auth\.getUser\(\)/u);
 assert.doesNotMatch(routeSource, /request\.json\(/u);
@@ -116,5 +119,22 @@ assert.match(localSource, /clearAddiIndexedDatabase\(\)/u);
 assert.match(indexedDbSource, /indexedDB\.deleteDatabase\(DB_NAME\)/u);
 assert.match(analyticsSource, /mixpanel\.reset\(\)/u);
 assert.match(authRoutesSource, /SELF_AUTHENTICATING_API_PATHS = \["\/api\/account"\]/u);
+assert.match(authRoutesSource, /PUBLIC_PAGE_PATHS = \[[^\]]*"\/delete-account"/u);
+assert.match(pageSource, /title: "ADDI 계정 삭제"/u);
+assert.match(pageSource, /await connection\(\)/u);
+assert.match(publicScreenSource, /signInWithGoogle\(DELETE_ACCOUNT_PATH\)/u);
+assert.match(publicScreenSource, /signInWithKakao\(DELETE_ACCOUNT_PATH\)/u);
+assert.match(publicScreenSource, /fetch\("\/api\/account", \{/u);
+assert.match(publicScreenSource, /method: "DELETE"/u);
+assert.doesNotMatch(publicScreenSource, /body:/u);
+assert.match(publicScreenSource, /clearDeletedAccountLocalData\(\)/u);
+assert.match(publicScreenSource, /clearDeletedAccountSession\(\)/u);
+assert.match(publicScreenSource, /ADDI 계정이 삭제되었습니다\./u);
+assert.match(publicScreenSource, /계정 삭제에 실패했습니다\. 잠시 후 다시 시도해주세요\./u);
+assert.match(publicScreenSource, /현재 브라우저에 저장된 ADDI 관련 사용자 기록/u);
+assert.equal(getSafeNextPath("/delete-account"), "/delete-account");
+assert.equal(getSafeNextPath("https://attacker.invalid/delete-account"), "/");
+assert.equal(getSafeNextPath("//attacker.invalid/delete-account"), "/");
+assert.equal(getSafeNextPath("/\\attacker.invalid/delete-account"), "/");
 
 console.log("account deletion fixtures: PASS");
