@@ -13,6 +13,7 @@
     "feedback:fixtures": "node scripts/feedback-fixtures.mjs",
     "ai:fixtures": "node --experimental-strip-types --experimental-loader=./scripts/ts-test-loader.mjs scripts/ai-provider-fixtures.mjs",
     "mood:fixtures": "node --experimental-strip-types --experimental-loader=./scripts/ts-test-loader.mjs scripts/mood-to-be-fixtures.mjs",
+    "mood:cat-db-contract-fixtures": "node scripts/mood-cat-db-contract-fixtures.mjs",
     "mood:report-fixtures": "node --experimental-strip-types --experimental-loader=./scripts/ts-test-loader.mjs scripts/mood-report-fixtures.mjs",
     "mood:regression-fixtures": "node --experimental-strip-types --experimental-loader=./scripts/ts-test-loader.mjs scripts/mood-flow-fixtures.mjs && node scripts/mood-ownership-fixtures.mjs",
     "notifications:fixtures": "node --experimental-strip-types --experimental-loader=./scripts/ts-test-loader.mjs scripts/notification-fixtures.mjs",
