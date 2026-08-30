@@ -169,7 +169,6 @@ begin
         p_now
       from public.user_medications as medication
       where medication.active = true
-        and medication.schedule in ('daily', 'bedtime')
         and not exists (
           select 1
           from public.medication_intake_records as intake

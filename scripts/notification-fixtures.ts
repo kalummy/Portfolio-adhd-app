@@ -45,6 +45,8 @@ const serviceWorker = await readFile(new URL("../public/sw.js", import.meta.url)
 
 assert.match(migration, /at time zone 'Asia\/Seoul'/);
 assert.match(migration, /v_reminder_slot in \('10:00', '13:00', '16:00', '22:00'\)/);
+assert.match(migration, /from public\.user_medications as medication[\s\S]*medication\.active = true/);
+assert.doesNotMatch(migration, /medication\.schedule in/);
 assert.match(migration, /not exists \([\s\S]*medication_intake_records[\s\S]*intake_date = v_local_date/);
 assert.match(migration, /unique \(user_id, dedupe_key\)/);
 assert.match(migration, /mood_records_create_notification_after_completion/);
