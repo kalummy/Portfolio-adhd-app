@@ -113,14 +113,20 @@ export async function getCurrentPushSnapshot(): Promise<CurrentPushSnapshot> {
     : { state: "granted-unsubscribed", preferences: null };
 }
 
-export async function updateCurrentPushPreference(kind: PushPreferenceKind, enabled: boolean) {
+export async function updateCurrentPushPreference(
+  kind: PushPreferenceKind,
+  enabled: boolean,
+  requestId?: string,
+) {
   const subscription = await getCurrentPushSubscription();
   if (!subscription) throw new Error("push_subscription_missing");
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (requestId) headers["X-ADDI-Preference-Request-Id"] = requestId;
   const response = await fetch("/api/push/subscriptions", {
     method: "PATCH",
     credentials: "same-origin",
     keepalive: true,
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ endpoint: subscription.endpoint, kind, enabled }),
   });
   assertPushResponse(response, "push_preference_update_failed");
