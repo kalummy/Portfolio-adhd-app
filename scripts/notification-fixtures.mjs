@@ -114,6 +114,7 @@ assert.match(styles, /background: var\(--color-font-base-06\)/);
 assert.match(styles, /\.notifications-actions[\s\S]*gap: 12px;/);
 assert.match(styles, /\.notification-visit-icon img:first-child[\s\S]*top: 16\.15%;[\s\S]*left: 9\.38%;/);
 assert.match(styles, /\.notification-visit-icon img:last-child[\s\S]*left: 34\.79%;/);
+assert.match(styles, /\.notifications-retention-note[\s\S]*position: fixed;[\s\S]*bottom: 80px;/);
 
 assert.equal(sha256("public/icons/notification-bell-solid.svg"), "f992432adc926d43ec750c2caf365d8885f47f99b4820994859cdecb9e0a5ae2");
 assert.equal(sha256("public/icons/notification-red-dot.svg"), "bcde37d598a1b5141563c1148e371aec3f17fd6fec123df10fedc47367f5cfd5");

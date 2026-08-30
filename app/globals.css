@@ -6450,11 +6450,16 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
 }
 
 .notifications-retention-note {
+  position: fixed;
+  left: 50%;
+  bottom: 80px;
+  z-index: 1;
   display: flex;
-  width: 100%;
+  width: min(100%, 430px);
   padding: 0 20px;
   align-items: center;
   gap: 8px;
+  transform: translateX(-50%);
   color: var(--color-font-base-05);
   font-size: 13px;
   line-height: 18px;
