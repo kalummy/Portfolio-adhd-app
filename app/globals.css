@@ -6462,6 +6462,35 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
   cursor: pointer;
 }
 
+.notification-settings-disable {
+  display: flex;
+  width: 148px;
+  height: 40px;
+  padding: 10px 16px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border-base-03);
+  border-radius: 10px;
+  background: var(--color-bg-base-01);
+  color: var(--color-font-base-04);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: -0.35px;
+  cursor: pointer;
+}
+
+.notifications-off-enable:disabled,
+.notification-settings-disable:disabled {
+  cursor: default;
+}
+
+.notifications-off-enable:focus-visible,
+.notification-settings-disable:focus-visible {
+  outline: 2px solid var(--color-border-focus-default);
+  outline-offset: 2px;
+}
+
 .notifications-off-enable:active:not(:disabled) {
   background: var(--color-bg-interactive-brand-pressed);
 }

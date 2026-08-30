@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { MobileShell } from "@/components/mobile-shell";
-import { PrimaryButton } from "@/components/flow-ui";
 import {
   getCurrentPushState,
   getPushPermissionState,
@@ -19,15 +18,6 @@ type NotificationSettingsScreenProps = {
   backHref?: string;
   initialState?: PushSettingsState;
 };
-
-function stateDescription(state: PushSettingsState) {
-  if (state === "subscribed") return "알림을 받고 있어요.";
-  if (state === "granted-unsubscribed") return "이 기기에서 알림을 켜주세요.";
-  if (state === "denied") return "기기 설정에서 알림을 허용해주세요.";
-  if (state === "unsupported") return "이 브라우저에서는 푸시 알림을 사용할 수 없어요.";
-  if (state === "checking") return "알림 상태를 확인하고 있어요.";
-  return "알림을 켜면 복용과 내원 일정을 알려드려요.";
-}
 
 function stateFromCurrentPermission(): CurrentPushState {
   const permission = getPushPermissionState();
@@ -133,32 +123,60 @@ export function NotificationSettingsScreen({
         <Link href={backHref} aria-label="이전 화면">
           <Image src="/icons/back.svg" alt="" width={18} height={14} />
         </Link>
-        <h1>알림 설정</h1>
+        <h1>알림</h1>
       </header>
 
       <section className="notification-settings-content" aria-busy={busy}>
-        <div className="notification-settings-copy">
-          <h2>알림 받기</h2>
-          <p>{stateDescription(state)}</p>
-          {state === "denied" ? (
-            <p className="notification-settings-guide">
-              브라우저의 사이트 설정 또는 기기 설정의 알림 메뉴에서 ADDI 알림을 허용한 뒤 다시 열어주세요.
+        <p className="sr-only" aria-live="polite">
+          {state === "checking" ? "알림 상태를 확인하고 있어요." : ""}
+        </p>
+        {state === "checking" ? null : (
+          <div className="notifications-off-state">
+            <span className="notifications-off-icon" aria-hidden="true">
+              <Image src="/icons/notification-off-bell.svg" alt="" width={43.2006} height={48.0597} priority />
+            </span>
+            <p className="notifications-off-copy">
+              {state === "subscribed" ? (
+                <span>알림을 받고 있어요.</span>
+              ) : state === "denied" ? (
+                <>
+                  <span>기기 설정에서 알림을 허용해주세요.</span>
+                  <span>브라우저의 사이트 설정에서 ADDI 알림을 켤 수 있어요.</span>
+                </>
+              ) : state === "unsupported" ? (
+                <span>이 브라우저에서는 푸시 알림을 사용할 수 없어요.</span>
+              ) : (
+                <>
+                  <span>받은 알림이 없어요.</span>
+                  <span>알림을 켜고 복용기록을 이어가세요.</span>
+                </>
+              )}
             </p>
-          ) : null}
-        </div>
-
-        {canEnable ? (
-          <PrimaryButton type="button" variant="soft" onClick={() => void handleEnable()} disabled={busy} aria-busy={busy}>
-            {busy ? "알림 켜는 중" : "알림 켜기"}
-          </PrimaryButton>
-        ) : null}
-        {state === "subscribed" ? (
-          <PrimaryButton type="button" variant="secondary" onClick={() => void handleDisable()} disabled={busy} aria-busy={busy}>
-            {busy ? "알림 끄는 중" : "알림 끄기"}
-          </PrimaryButton>
-        ) : null}
-
-        {error ? <p className="notification-settings-error" role="alert">{error}</p> : null}
+            {canEnable ? (
+              <button
+                type="button"
+                className="notifications-off-enable"
+                onClick={() => void handleEnable()}
+                disabled={busy}
+                aria-busy={busy}
+              >
+                {busy ? "알림 켜는 중" : "알림 켜기"}
+              </button>
+            ) : null}
+            {state === "subscribed" ? (
+              <button
+                type="button"
+                className="notification-settings-disable"
+                onClick={() => void handleDisable()}
+                disabled={busy}
+                aria-busy={busy}
+              >
+                {busy ? "알림 끄는 중" : "알림 끄기"}
+              </button>
+            ) : null}
+            {error ? <p className="notification-settings-error" role="alert">{error}</p> : null}
+          </div>
+        )}
       </section>
     </MobileShell>
   );
