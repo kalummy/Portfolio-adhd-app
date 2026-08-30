@@ -2,19 +2,22 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MobileShell } from "@/components/mobile-shell";
 import {
-  getCurrentPushPreferences,
-  getCurrentPushState,
+  getCurrentPushSnapshot,
   getPushPermissionState,
   isPushUnavailableError,
   requestPushSubscription,
-  unsubscribeFromPush,
   updateCurrentPushPreference,
   type CurrentPushState,
 } from "@/lib/push/client";
 import type { PushPreferenceKind, PushPreferences } from "@/lib/push/contracts";
+import {
+  DISABLED_PUSH_PREFERENCES,
+  rollbackPushPreference,
+  setPushPreference,
+} from "@/lib/push/preferences";
 
 type PushSettingsState = "checking" | CurrentPushState;
 
@@ -34,7 +37,14 @@ const SETTING_ITEMS: Array<{
 ];
 
 const ALL_ENABLED: PushPreferences = { medication: true, visit_day: true, mood: true };
-const ALL_DISABLED: PushPreferences = { medication: false, visit_day: false, mood: false };
+
+type PendingPreferences = Record<PushPreferenceKind, boolean>;
+
+const NO_PENDING_PREFERENCES: PendingPreferences = {
+  medication: false,
+  visit_day: false,
+  mood: false,
+};
 
 function stateFromCurrentPermission(): CurrentPushState {
   const permission = getPushPermissionState();
@@ -48,111 +58,126 @@ export function NotificationSettingsScreen({
   const isPreviewFixture = initialState !== undefined;
   const [state, setState] = useState<PushSettingsState>(initialState ?? "checking");
   const [preferences, setPreferences] = useState<PushPreferences>(
-    initialState === "subscribed" ? ALL_ENABLED : ALL_DISABLED,
+    initialState === "subscribed" ? ALL_ENABLED : DISABLED_PUSH_PREFERENCES,
   );
-  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<PendingPreferences>(NO_PENDING_PREFERENCES);
   const [error, setError] = useState("");
+  const stateRef = useRef<PushSettingsState>(initialState ?? "checking");
+  const preferencesRef = useRef<PushPreferences>(
+    initialState === "subscribed" ? ALL_ENABLED : DISABLED_PUSH_PREFERENCES,
+  );
+  const pendingRef = useRef<PendingPreferences>(NO_PENDING_PREFERENCES);
+  const refreshVersionRef = useRef(0);
+  const activationRef = useRef<ReturnType<typeof requestPushSubscription> | null>(null);
 
-  const refreshState = useCallback(async () => {
-    try {
-      const nextState = await getCurrentPushState();
-      setState(nextState);
-      setPreferences(nextState === "subscribed"
-        ? await getCurrentPushPreferences() ?? ALL_ENABLED
-        : ALL_DISABLED);
-      setError("");
-    } catch (error) {
-      setState(stateFromCurrentPermission());
-      setError(isPushUnavailableError(error)
-        ? "현재 환경에서는 알림을 사용할 수 없어요."
-        : "알림 상태를 확인하지 못했어요. 다시 시도해주세요.");
-    }
-  }, []);
+  function applyState(nextState: PushSettingsState) {
+    stateRef.current = nextState;
+    setState(nextState);
+  }
+
+  function applyPreferences(nextPreferences: PushPreferences) {
+    preferencesRef.current = nextPreferences;
+    setPreferences(nextPreferences);
+  }
+
+  function applyPending(kind: PushPreferenceKind, isPending: boolean) {
+    const nextPending = { ...pendingRef.current, [kind]: isPending };
+    pendingRef.current = nextPending;
+    setPending(nextPending);
+  }
 
   useEffect(() => {
     if (isPreviewFixture) return;
     let active = true;
 
-    void getCurrentPushState()
-      .then(async (nextState) => {
-        if (!active) return;
-        setState(nextState);
-        setPreferences(nextState === "subscribed"
-          ? await getCurrentPushPreferences() ?? ALL_ENABLED
-          : ALL_DISABLED);
+    async function refreshFromCurrentSubscription() {
+      const refreshVersion = ++refreshVersionRef.current;
+      try {
+        const snapshot = await getCurrentPushSnapshot();
+        if (!active || refreshVersion !== refreshVersionRef.current) return;
+        applyState(snapshot.state);
+        applyPreferences(snapshot.preferences ?? DISABLED_PUSH_PREFERENCES);
         setError("");
-      })
-      .catch((error: unknown) => {
-        if (!active) return;
-        setState(stateFromCurrentPermission());
+      } catch (error) {
+        if (!active || refreshVersion !== refreshVersionRef.current) return;
+        applyState(stateFromCurrentPermission());
         setError(isPushUnavailableError(error)
           ? "현재 환경에서는 알림을 사용할 수 없어요."
           : "알림 상태를 확인하지 못했어요. 다시 시도해주세요.");
-      });
-
-    function refreshWhenVisible() {
-      if (document.visibilityState === "visible") void refreshState();
+      }
     }
 
-    window.addEventListener("focus", refreshState);
+    void refreshFromCurrentSubscription();
+
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible"
+        && !Object.values(pendingRef.current).some(Boolean)) {
+        void refreshFromCurrentSubscription();
+      }
+    }
+
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
       active = false;
-      window.removeEventListener("focus", refreshState);
+      refreshVersionRef.current += 1;
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [isPreviewFixture, refreshState]);
+  }, [isPreviewFixture]);
 
   async function handleToggle(kind: PushPreferenceKind) {
-    if (busy || state === "checking" || state === "denied" || state === "unsupported") return;
-    const enabled = !preferences[kind];
-    if (isPreviewFixture) {
-      const nextPreferences = { ...preferences, [kind]: enabled };
-      setPreferences(nextPreferences);
-      setState(Object.values(nextPreferences).some(Boolean) ? "subscribed" : "granted-unsubscribed");
-      return;
-    }
-    setBusy(true);
+    const currentState = stateRef.current;
+    if (pendingRef.current[kind] || currentState === "checking"
+      || currentState === "denied" || currentState === "unsupported") return;
+    const previousValue = preferencesRef.current[kind];
+    const enabled = !previousValue;
+    applyPreferences(setPushPreference(preferencesRef.current, kind, enabled));
     setError("");
 
+    if (isPreviewFixture) {
+      applyState("subscribed");
+      return;
+    }
+
+    refreshVersionRef.current += 1;
+    applyPending(kind, true);
+
     try {
-      const activatedSubscription = enabled && state !== "subscribed";
-      if (enabled && state !== "subscribed") {
-        const result = await requestPushSubscription();
-        if (result.status !== "subscribed") {
-          setState(result.status);
-          setPreferences(ALL_DISABLED);
-          return;
+      if (enabled && stateRef.current !== "subscribed") {
+        const activation = activationRef.current ?? requestPushSubscription({
+          startWithPreferencesDisabled: true,
+        });
+        activationRef.current = activation;
+        let result: Awaited<typeof activation>;
+        try {
+          result = await activation;
+        } finally {
+          if (activationRef.current === activation) activationRef.current = null;
         }
-        setState("subscribed");
+        if (result.status !== "subscribed") {
+          applyState(result.status);
+          throw new Error("push_subscription_not_active");
+        }
+        applyState("subscribed");
       }
 
-      if (activatedSubscription) {
-        await Promise.all(
-          SETTING_ITEMS.map((item) => updateCurrentPushPreference(item.kind, item.kind === kind)),
-        );
-      } else {
-        await updateCurrentPushPreference(kind, enabled);
-      }
-      const serverPreferences = await getCurrentPushPreferences();
-      const nextPreferences = serverPreferences ?? { ...preferences, [kind]: enabled };
-      setPreferences(nextPreferences);
-
-      if (!Object.values(nextPreferences).some(Boolean)) {
-        await unsubscribeFromPush();
-        setState("granted-unsubscribed");
-      }
+      await updateCurrentPushPreference(kind, enabled);
     } catch (error) {
-      setState(getPushPermissionState() === "granted" ? state : stateFromCurrentPermission());
+      applyPreferences(rollbackPushPreference(
+        preferencesRef.current,
+        kind,
+        enabled,
+        previousValue,
+      ));
       setError(isPushUnavailableError(error)
         ? "현재 환경에서는 알림을 사용할 수 없어요."
         : "알림 설정을 변경하지 못했어요. 잠시 후 다시 시도해주세요.");
     } finally {
-      setBusy(false);
+      applyPending(kind, false);
     }
   }
 
-  const controlsDisabled = busy || state === "checking" || state === "denied" || state === "unsupported";
+  const stateDisablesControls = state === "checking" || state === "denied" || state === "unsupported";
+  const hasPendingPreference = Object.values(pending).some(Boolean);
 
   return (
     <MobileShell className="notification-settings-screen">
@@ -163,7 +188,7 @@ export function NotificationSettingsScreen({
         <h1>알림 설정</h1>
       </header>
 
-      <section className="notification-settings-content" aria-busy={busy}>
+      <section className="notification-settings-content" aria-busy={hasPendingPreference}>
         <p className="sr-only" aria-live="polite">
           {state === "checking" ? "알림 상태를 확인하고 있어요." : ""}
         </p>
@@ -183,8 +208,8 @@ export function NotificationSettingsScreen({
                   aria-checked={preferences[item.kind]}
                   aria-label={`${item.title} ${preferences[item.kind] ? "끄기" : "켜기"}`}
                   onClick={() => void handleToggle(item.kind)}
-                  disabled={controlsDisabled}
-                  aria-busy={busy}
+                  disabled={stateDisablesControls || pending[item.kind]}
+                  aria-busy={pending[item.kind]}
                 >
                   {preferences[item.kind] ? (
                     <span className="notification-settings-toggle-visual on" aria-hidden="true">

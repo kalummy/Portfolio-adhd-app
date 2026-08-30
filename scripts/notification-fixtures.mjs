@@ -13,6 +13,11 @@ import {
   isPushEndpoint,
   isPushSubscriptionInput,
 } from "../lib/push/contracts.ts";
+import {
+  DISABLED_PUSH_PREFERENCES,
+  rollbackPushPreference,
+  setPushPreference,
+} from "../lib/push/preferences.ts";
 import { isNotificationPushTestEnvironment } from "../lib/preview-environment.ts";
 import {
   NOTIFICATION_PREVIEW_ITEMS,
@@ -53,6 +58,7 @@ const previewSettingsPage = read("app/preview/notifications/settings/page.tsx");
 const previewOffPage = read("app/preview/notifications/off/page.tsx");
 const previewEmptyPage = read("app/preview/notifications/empty/page.tsx");
 const pushStatusRoute = read("app/api/push/subscriptions/status/route.ts");
+const bottomNavigation = read("components/bottom-navigation.tsx");
 const home = read("components/home-screen.tsx");
 const repository = read("lib/notifications.ts");
 const baseMigration = read("supabase/migrations/20260830000000_create_app_notifications.sql");
@@ -73,11 +79,11 @@ assert.match(bell, /notification-red-dot\.svg/);
 assert.doesNotMatch(bell, /Notification\.permission|requestPermission|PushManager|serviceWorker/);
 assert.match(home, /<NotificationBellButton/);
 assert.match(home, /<BottomNavigation activeTab="home"/);
-assert.match(read("components/bottom-navigation.tsx"), /router\.prefetch\("\/moods"\)/);
-assert.match(read("components/bottom-navigation.tsx"), /navigator\.vibrate\(8\)/);
-assert.match(read("components/bottom-navigation.tsx"), /switch: ""/);
-assert.match(read("components/bottom-navigation.tsx"), /bottom-navigation-ios-haptic/);
-assert.match(styles, /\.bottom-navigation-ios-haptic[\s\S]*position: absolute;[\s\S]*inset: 0;/);
+assert.match(bottomNavigation, /<Link[\s\S]*href="\/moods"/);
+assert.match(bottomNavigation, /onClick=\{scheduleTabHaptic\}/);
+assert.match(bottomNavigation, /window\.setTimeout\(\(\) => \{[\s\S]*navigator\.vibrate\(8\)/);
+assert.doesNotMatch(bottomNavigation, /router\.push|router\.prefetch|bottom-navigation-ios-haptic|switch: ""/);
+assert.doesNotMatch(styles, /\.bottom-navigation-ios-haptic/);
 
 assert.match(screen, /markNotificationRead\(notification\.id/);
 assert.match(screen, /markAllRecentNotificationsRead/);
@@ -121,7 +127,13 @@ assert.match(pushMigration, /using \(\(select auth\.uid\(\)\) = user_id\)/);
 assert.equal(isPushSubscriptionInput({
   endpoint: "https://push.example.test/device",
   keys: { p256dh: "a".repeat(65), auth: "b".repeat(22) },
+  startWithPreferencesDisabled: true,
 }), true);
+assert.equal(isPushSubscriptionInput({
+  endpoint: "https://push.example.test/device",
+  keys: { p256dh: "a".repeat(65), auth: "b".repeat(22) },
+  startWithPreferencesDisabled: "yes",
+}), false);
 assert.equal(isPushSubscriptionInput({
   endpoint: "http://push.example.test/device",
   keys: { p256dh: "a".repeat(65), auth: "b".repeat(22) },
@@ -130,6 +142,26 @@ assert.equal(isPushNotificationRoute("/"), true);
 assert.equal(isPushNotificationRoute("//example.com"), false);
 assert.equal(isPushEndpoint("https://push.example.test/device"), true);
 assert.equal(isPushEndpoint("http://push.example.test/device"), false);
+
+const medicationOn = setPushPreference(DISABLED_PUSH_PREFERENCES, "medication", true);
+assert.deepEqual(medicationOn, { medication: true, visit_day: false, mood: false });
+const visitOnlyOn = setPushPreference(DISABLED_PUSH_PREFERENCES, "visit_day", true);
+assert.deepEqual(visitOnlyOn, { medication: false, visit_day: true, mood: false });
+const moodOnlyOn = setPushPreference(DISABLED_PUSH_PREFERENCES, "mood", true);
+assert.deepEqual(moodOnlyOn, { medication: false, visit_day: false, mood: true });
+const medicationAndMoodOn = setPushPreference(medicationOn, "mood", true);
+assert.deepEqual(medicationAndMoodOn, { medication: true, visit_day: false, mood: true });
+const visitOnWhileMedicationSaves = setPushPreference(medicationOn, "visit_day", true);
+assert.deepEqual(visitOnWhileMedicationSaves, { medication: true, visit_day: true, mood: false });
+assert.deepEqual(
+  rollbackPushPreference(visitOnWhileMedicationSaves, "medication", true, false),
+  { medication: false, visit_day: true, mood: false },
+);
+assert.equal(
+  rollbackPushPreference(medicationAndMoodOn, "medication", false, true),
+  medicationAndMoodOn,
+  "a stale response must not roll back a newer value",
+);
 
 const originalPreviewEnvironment = {
   nodeEnv: process.env.NODE_ENV,
@@ -224,15 +256,19 @@ assert.match(pushStatusRoute, /\.eq\("user_id", userData\.user\.id\)/);
 assert.match(pushStatusRoute, /\.eq\("endpoint", body\.endpoint\)/);
 assert.match(pushStatusRoute, /\.is\("revoked_at", null\)/);
 assert.match(settingsScreen, /<h1>알림 설정<\/h1>/);
-assert.match(settingsScreen, /requestPushSubscription\(\)/);
-assert.match(settingsScreen, /state === "denied"/);
-assert.match(settingsScreen, /unsubscribeFromPush\(\)/);
+assert.match(settingsScreen, /currentState === "denied"/);
 assert.match(settingsScreen, /role="switch"/);
-assert.match(settingsScreen, /item\.kind === kind/);
 assert.match(settingsScreen, /복용 알림/);
 assert.match(settingsScreen, /내원일 알림/);
 assert.match(settingsScreen, /감정기록 알림/);
 assert.match(settingsScreen, /updateCurrentPushPreference\(kind, enabled\)/);
+assert.match(settingsScreen, /getCurrentPushSnapshot\(\)/);
+assert.match(settingsScreen, /requestPushSubscription\(\{[\s\S]*startWithPreferencesDisabled: true/);
+assert.match(settingsScreen, /pendingRef\.current\[kind\]/);
+assert.match(settingsScreen, /!Object\.values\(pendingRef\.current\)\.some\(Boolean\)/);
+assert.match(settingsScreen, /disabled=\{stateDisablesControls \|\| pending\[item\.kind\]\}/);
+assert.match(settingsScreen, /rollbackPushPreference\(/);
+assert.doesNotMatch(settingsScreen, /getCurrentPushPreferences|Promise\.all|unsubscribeFromPush|router\.refresh/);
 assert.match(screen, /notification-off-bell\.svg/);
 assert.match(screen, /requestPushSubscription\(\)|getCurrentPushState\(\)/);
 assert.match(settingsScreen, /notification-toggle-on-track\.svg/);
@@ -240,8 +276,16 @@ assert.match(settingsScreen, /notification-toggle-on-thumb\.svg/);
 assert.match(settingsScreen, /notification-toggle-off\.svg/);
 assert.match(pushClient, /\/api\/push\/subscriptions\/status/);
 assert.match(pushClient, /preferences: result\.preferences \?\? null/);
+assert.match(pushClient, /method: "PATCH",[\s\S]*keepalive: true/);
 assert.match(subscriptionsRoute, /export async function PATCH/);
 assert.match(subscriptionsRoute, /isPushPreferenceKind\(body\.kind\)/);
+assert.match(subscriptionsRoute, /input\.startWithPreferencesDisabled/);
+assert.match(subscriptionsRoute, /medication_enabled: false/);
+assert.match(subscriptionsRoute, /visit_day_enabled: false/);
+assert.match(subscriptionsRoute, /mood_enabled: false/);
+assert.match(subscriptionsRoute, /\.update\(\{ \[columnByKind\[body\.kind\]\]: body\.enabled/);
+assert.match(subscriptionsRoute, /\.eq\("user_id", userId\)[\s\S]*\.eq\("endpoint", body\.endpoint\)[\s\S]*\.is\("revoked_at", null\)/);
+assert.match(subscriptionsRoute, /\.select\("id"\)[\s\S]*\.maybeSingle\(\)/);
 assert.match(testPushRoute, /\.eq\("medication_enabled", true\)/);
 assert.match(pushPreferencesMigration, /add column if not exists medication_enabled boolean not null default true/);
 assert.match(pushPreferencesMigration, /add column if not exists visit_day_enabled boolean not null default true/);
@@ -275,3 +319,4 @@ assert.doesNotMatch(testPushRoute, /10:00|13:00|16:00|22:00|cron|visit_day|mood/
 
 console.log("PASS Figma bell/header fidelity, isolated Preview fixtures, and no announcement notification");
 console.log("PASS Push permission gesture, subscription RLS, test-send guard, display, and click-to-read contracts");
+console.log("PASS independent optimistic preferences, targeted rollback, active-row persistence, and direct Link navigation");

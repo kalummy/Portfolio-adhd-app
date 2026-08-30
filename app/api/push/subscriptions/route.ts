@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const admin = createSupabaseAdminClient();
     const { data: existing, error: existingError } = await admin
       .from("push_subscriptions")
-      .select("user_id")
+      .select("user_id,revoked_at")
       .eq("endpoint", input.endpoint)
       .maybeSingle();
     if (existingError) throw existingError;
@@ -46,6 +46,9 @@ export async function POST(request: Request) {
       return Response.json({ ok: false }, { status: 409 });
     }
 
+    const shouldInitializePreferences = Boolean(
+      input.startWithPreferencesDisabled && (!existing || existing.revoked_at !== null),
+    );
     const { error } = await admin.from("push_subscriptions").upsert({
       user_id: userId,
       endpoint: input.endpoint,
@@ -53,6 +56,11 @@ export async function POST(request: Request) {
       auth: input.keys.auth,
       updated_at: now,
       revoked_at: null,
+      ...(shouldInitializePreferences ? {
+        medication_enabled: false,
+        visit_day_enabled: false,
+        mood_enabled: false,
+      } : {}),
     }, { onConflict: "endpoint" });
     if (error) throw error;
 
@@ -114,13 +122,16 @@ export async function PATCH(request: Request) {
   try {
     const now = new Date().toISOString();
     const admin = createSupabaseAdminClient();
-    const { error } = await admin
+    const { data, error } = await admin
       .from("push_subscriptions")
       .update({ [columnByKind[body.kind]]: body.enabled, updated_at: now })
       .eq("user_id", userId)
       .eq("endpoint", body.endpoint)
-      .is("revoked_at", null);
+      .is("revoked_at", null)
+      .select("id")
+      .maybeSingle();
     if (error) throw error;
+    if (!data) return Response.json({ ok: false }, { status: 409 });
 
     return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   } catch {

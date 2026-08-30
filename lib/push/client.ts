@@ -14,6 +14,11 @@ export type CurrentPushState =
   | "granted-unsubscribed"
   | "subscribed";
 
+export type CurrentPushSnapshot = {
+  state: CurrentPushState;
+  preferences: PushPreferences | null;
+};
+
 export class PushUnavailableError extends Error {
   constructor() {
     super("push_unavailable");
@@ -91,23 +96,21 @@ async function getServerSubscriptionStatus(subscription: PushSubscription): Prom
 }
 
 export async function getCurrentPushState(): Promise<CurrentPushState> {
+  return (await getCurrentPushSnapshot()).state;
+}
+
+export async function getCurrentPushSnapshot(): Promise<CurrentPushSnapshot> {
   const permission = getPushPermissionState();
   if (permission === "unsupported" || permission === "default" || permission === "denied") {
-    return permission;
+    return { state: permission, preferences: null };
   }
 
   const subscription = await getCurrentPushSubscription();
-  if (!subscription) return "granted-unsubscribed";
-  return (await getServerSubscriptionStatus(subscription)).active
-    ? "subscribed"
-    : "granted-unsubscribed";
-}
-
-export async function getCurrentPushPreferences(): Promise<PushPreferences | null> {
-  const subscription = await getCurrentPushSubscription();
-  if (!subscription) return null;
+  if (!subscription) return { state: "granted-unsubscribed", preferences: null };
   const status = await getServerSubscriptionStatus(subscription);
-  return status.active ? status.preferences : null;
+  return status.active
+    ? { state: "subscribed", preferences: status.preferences }
+    : { state: "granted-unsubscribed", preferences: null };
 }
 
 export async function updateCurrentPushPreference(kind: PushPreferenceKind, enabled: boolean) {
@@ -116,13 +119,14 @@ export async function updateCurrentPushPreference(kind: PushPreferenceKind, enab
   const response = await fetch("/api/push/subscriptions", {
     method: "PATCH",
     credentials: "same-origin",
+    keepalive: true,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ endpoint: subscription.endpoint, kind, enabled }),
   });
   assertPushResponse(response, "push_preference_update_failed");
 }
 
-async function saveSubscription(subscription: PushSubscription) {
+async function saveSubscription(subscription: PushSubscription, startWithPreferencesDisabled: boolean) {
   const json = subscription.toJSON();
   const input: PushSubscriptionInput = {
     endpoint: subscription.endpoint,
@@ -130,18 +134,20 @@ async function saveSubscription(subscription: PushSubscription) {
       p256dh: json.keys?.p256dh ?? "",
       auth: json.keys?.auth ?? "",
     },
+    ...(startWithPreferencesDisabled ? { startWithPreferencesDisabled: true } : {}),
   };
 
   const response = await fetch("/api/push/subscriptions", {
     method: "POST",
     credentials: "same-origin",
+    keepalive: true,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
   assertPushResponse(response, "push_subscription_save_failed");
 }
 
-export async function requestPushSubscription() {
+export async function requestPushSubscription(options?: { startWithPreferencesDisabled?: boolean }) {
   if (!browserSupportsPush()) return { status: "unsupported" as const };
   if (navigator.userActivation && !navigator.userActivation.isActive) {
     throw new Error("user_gesture_required");
@@ -164,7 +170,7 @@ export async function requestPushSubscription() {
   }
 
   try {
-    await saveSubscription(subscription);
+    await saveSubscription(subscription, options?.startWithPreferencesDisabled === true);
   } catch (error) {
     if (createdSubscription) await subscription.unsubscribe().catch(() => false);
     throw error;
