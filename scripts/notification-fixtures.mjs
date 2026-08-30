@@ -15,6 +15,9 @@ import {
 } from "../lib/push/contracts.ts";
 import {
   DISABLED_PUSH_PREFERENCES,
+  INITIAL_PUSH_PREFERENCE_VERSIONS,
+  isPushPreferences,
+  mergePushPreferenceSnapshot,
   rollbackPushPreference,
   setPushPreference,
 } from "../lib/push/preferences.ts";
@@ -167,6 +170,28 @@ assert.equal(
   medicationAndMoodOn,
   "a stale response must not roll back a newer value",
 );
+assert.equal(isPushPreferences({ medication: true, visit_day: false, mood: true }), true);
+assert.equal(isPushPreferences({ medication: true, visit_day: false }), false);
+assert.deepEqual(
+  mergePushPreferenceSnapshot(
+    medicationOn,
+    DISABLED_PUSH_PREFERENCES,
+    INITIAL_PUSH_PREFERENCE_VERSIONS,
+    { ...INITIAL_PUSH_PREFERENCE_VERSIONS, medication: 1 },
+  ),
+  medicationOn,
+  "a stale OFF snapshot must preserve the newer medication mutation",
+);
+assert.deepEqual(
+  mergePushPreferenceSnapshot(
+    medicationAndMoodOn,
+    { medication: false, visit_day: true, mood: false },
+    INITIAL_PUSH_PREFERENCE_VERSIONS,
+    { ...INITIAL_PUSH_PREFERENCE_VERSIONS, mood: 1 },
+  ),
+  { medication: false, visit_day: true, mood: true },
+  "snapshot reconciliation must merge only fields without a newer mutation",
+);
 
 const navigationCalls = [];
 const mockRouter = {
@@ -284,10 +309,19 @@ assert.match(settingsScreen, /내원일 알림/);
 assert.match(settingsScreen, /감정기록 알림/);
 assert.match(settingsScreen, /updateCurrentPushPreference\(kind, enabled\)/);
 assert.match(settingsScreen, /getCurrentPushSnapshot\(\)/);
+assert.equal(settingsScreen.match(/getCurrentPushSnapshot\(\)/g)?.length, 1);
 assert.match(settingsScreen, /requestPushSubscription\(\)/);
-assert.match(settingsScreen, /pendingRef\.current\[kind\]/);
-assert.match(settingsScreen, /!Object\.values\(pendingRef\.current\)\.some\(Boolean\)/);
-assert.match(settingsScreen, /disabled=\{stateDisablesControls \|\| pending\[item\.kind\]\}/);
+assert.match(settingsScreen, /getCachedPushPreferences\(\)/);
+assert.match(settingsScreen, /cachePushPreferences\(nextPreferences\)/);
+assert.match(settingsScreen, /mergePushPreferenceSnapshot\(/);
+assert.match(settingsScreen, /mutationVersionsRef\.current\[kind\] \+= 1/);
+assert.match(settingsScreen, /while \(preferencesRef\.current\)/);
+assert.match(settingsScreen, /workersRef\.current\[kind\]/);
+assert.match(settingsScreen, /disabled=\{stateDisablesControls\}/);
+assert.doesNotMatch(settingsScreen, /disabled=\{[^}]*pending\[item\.kind\]/);
+assert.doesNotMatch(settingsScreen, /document\.addEventListener\("visibilitychange"|window\.addEventListener\("focus"/);
+assert.doesNotMatch(settingsScreen, /applyPreferences\(snapshot\.preferences/);
+assert.match(settingsScreen, /<Toast message=\{error\}/);
 assert.match(settingsScreen, /rollbackPushPreference\(/);
 assert.doesNotMatch(settingsScreen, /getCurrentPushPreferences|Promise\.all|unsubscribeFromPush|router\.refresh/);
 assert.match(screen, /notification-off-bell\.svg/);
