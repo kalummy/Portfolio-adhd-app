@@ -100,12 +100,16 @@ export async function updateAddiProfile(profileId: AddiProfileId) {
 }
 
 export async function signOut() {
+  const { unsubscribeFromPush } = await import("@/lib/push/client");
+  await unsubscribeFromPush().catch(() => undefined);
   const supabase = createBrowserSupabaseClient();
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }
 
 export async function clearDeletedAccountSession() {
+  const { unsubscribeFromPush } = await import("@/lib/push/client");
+  await unsubscribeFromPush().catch(() => undefined);
   const supabase = createBrowserSupabaseClient();
   const { error } = await supabase.auth.signOut({ scope: "local" });
   if (error) throw error;

@@ -1,4 +1,5 @@
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { requestNotificationDispatch } from "@/lib/notifications/client";
 import {
   fromSupabaseVisitSchedule,
   toSupabaseVisitSchedule,
@@ -13,6 +14,10 @@ export function createSupabaseVisitScheduleRepository(
   userId: string,
 ): VisitScheduleRepository {
   const supabase = createBrowserSupabaseClient();
+
+  function dispatchIfDue(visitDate: string) {
+    void requestNotificationDispatch("visit_reminder", visitDate).catch(() => undefined);
+  }
 
   async function getUpcoming() {
     const { data, error } = await supabase
@@ -42,9 +47,11 @@ export function createSupabaseVisitScheduleRepository(
           .select(VISIT_COLUMNS)
           .single();
         if (error) throw error;
-        return fromSupabaseVisitSchedule(
+        const saved = fromSupabaseVisitSchedule(
           data as unknown as SupabaseVisitScheduleRow,
         );
+        dispatchIfDue(saved.visitDate);
+        return saved;
       }
 
       const row = toSupabaseVisitSchedule({
@@ -67,14 +74,18 @@ export function createSupabaseVisitScheduleRepository(
           .select(VISIT_COLUMNS)
           .single();
         if (concurrentError) throw concurrentError;
-        return fromSupabaseVisitSchedule(
+        const saved = fromSupabaseVisitSchedule(
           concurrentData as unknown as SupabaseVisitScheduleRow,
         );
+        dispatchIfDue(saved.visitDate);
+        return saved;
       }
       if (error || !data) throw error ?? new Error("내원일정을 저장하지 못했어요.");
-      return fromSupabaseVisitSchedule(
+      const saved = fromSupabaseVisitSchedule(
         data as unknown as SupabaseVisitScheduleRow,
       );
+      dispatchIfDue(saved.visitDate);
+      return saved;
     },
     async deleteUpcoming() {
       const { error } = await supabase

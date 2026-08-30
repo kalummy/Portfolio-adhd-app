@@ -675,6 +675,15 @@ export function HomeScreen({
           <strong>{greeting}</strong>
           <Image src="/icons/home-profile-chevron.svg" alt="" width={20} height={20} />
         </Link>
+        <Link
+          href="/notifications"
+          className="home-notification-button"
+          aria-label="알림 열기"
+        >
+          <span className="home-notification-icon" aria-hidden="true">
+            <Image src="/icons/bell.svg" alt="" width={21} height={23} />
+          </span>
+        </Link>
       </header>
 
       <div className="home-month-select-row">
