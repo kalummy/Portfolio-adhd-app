@@ -6,7 +6,7 @@
 - 앱 이름: `아디`
 - Production origin: `https://addi-gamma.vercel.app`
 - 시작 URL: `https://addi-gamma.vercel.app/`
-- 버전: `1.0.0` (`versionCode` 2)
+- 버전: `1.0.0` (`versionCode` 4)
 - SDK: `minSdk 23`, `compileSdk 36`, `targetSdk 36`
 - 알림 위임: `enableNotifications: true`
 - TWA provider: Google Chrome (`com.android.chrome`)
@@ -60,7 +60,7 @@ npx --yes @bubblewrap/cli@1.25.0 fingerprint add \
 
 ## Play 버전 확인
 
-현재 값은 `versionName 1.0.0`, `versionCode 2`이다. Play Internal Testing의 기존 `versionCode 1` 설치본을 업데이트하기 위한 값이다. 이후 AAB를 만들기 전에는 Play Console의 `테스트 및 출시 > 최신 버전 및 번들 > 모든 앱 버전`에서 전체 업로드 이력을 확인하고, 이미 사용된 versionCode를 재사용하지 않는다.
+현재 값은 `versionName 1.0.0`, `versionCode 4`이다. Play Console 최고 `versionCode 3` 다음의 미사용 값이다. 이후 AAB를 만들기 전에는 Play Console의 `테스트 및 출시 > 최신 버전 및 번들 > 모든 앱 버전`에서 전체 업로드 이력을 확인하고, 이미 사용된 versionCode를 재사용하지 않는다.
 
 ```bash
 npx --yes @bubblewrap/cli@1.25.0 update --skipVersionUpgrade
