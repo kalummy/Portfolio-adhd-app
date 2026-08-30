@@ -64,7 +64,6 @@ export function NotificationsScreen({
   }, [isPreviewFixture, now]);
 
   const hasUnread = notifications.some((notification) => notification.readAt === null);
-
   async function handleNotificationClick(notification: AppNotification) {
     if (updating) return;
     setUpdating(true);
