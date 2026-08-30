@@ -6190,7 +6190,7 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
   display: grid;
   width: 100%;
   height: 56px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .bottom-navigation-tab {

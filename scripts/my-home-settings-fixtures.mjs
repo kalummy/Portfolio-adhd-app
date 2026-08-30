@@ -20,8 +20,9 @@ assert.equal(
 );
 assert.equal(getAddiProfileAsset("hedgehog"), "/profile/profile-hedgehog.svg");
 
-const [authClient, bottomNavigation, homeScreen, myHome, deleteAccount, socialRoute] =
+const [styles, authClient, bottomNavigation, homeScreen, myHome, deleteAccount, socialRoute] =
   await Promise.all([
+    readSource("app/globals.css"),
     readSource("lib/auth/client.ts"),
     readSource("components/bottom-navigation.tsx"),
     readSource("components/home-screen.tsx"),
@@ -40,6 +41,10 @@ assert.match(myHome, /updateAddiProfile\(candidateProfileId\)/);
 assert.match(socialRoute, /if \(!user\) redirect\("\/auth\/login\?next=\/my\/social-login"\)/);
 
 assert.doesNotMatch(bottomNavigation, />집중</);
+assert.match(
+  styles,
+  /\.bottom-navigation-tabs\s*\{[^}]*grid-template-columns:\s*repeat\(3,/s,
+);
 assert.doesNotMatch(homeScreen, /home-notification-button/);
 assert.doesNotMatch(deleteAccount, /개인정보·기록 보관이 걱정돼요/);
 assert.match(deleteAccount, /직접 입력할게요/);
