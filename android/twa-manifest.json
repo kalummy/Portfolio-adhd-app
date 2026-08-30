@@ -11,11 +11,11 @@
   "navigationDividerColor": "#00000000",
   "navigationDividerColorDark": "#00000000",
   "backgroundColor": "#FAFAFB",
-  "enableNotifications": false,
+  "enableNotifications": true,
   "startUrl": "/",
   "iconUrl": "https://addi-gamma.vercel.app/icons/addi-app-icon-512.png",
   "maskableIconUrl": null,
-  "monochromeIconUrl": null,
+  "monochromeIconUrl": "https://addi-gamma.vercel.app/brand/addi-notification-monochrome.svg",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "./upload-keystore.jks",
