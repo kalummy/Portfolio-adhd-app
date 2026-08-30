@@ -2,9 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
-const [navigation, home, screen, page, styles, screens, schema, notificationApi, pushClient] = await Promise.all([
+const [navigation, screen, page, styles, screens, schema, notificationApi, pushClient] = await Promise.all([
   readSource("components/bottom-navigation.tsx"),
-  readSource("components/home-screen.tsx"),
   readSource("components/notifications-screen.tsx"),
   readSource("app/notifications/page.tsx"),
   readSource("app/globals.css"),
@@ -15,12 +14,8 @@ const [navigation, home, screen, page, styles, screens, schema, notificationApi,
 ]);
 
 assert.doesNotMatch(navigation, /href="\/notifications"/);
-assert.match(navigation, /getCurrentUser\(\)[\s\S]*\.catch\(\(\) => undefined\)/);
 assert.match(navigation, /href="\/moods"/);
 assert.doesNotMatch(navigation, />기록<\/span>/);
-assert.match(home, /href="\/notifications"/);
-assert.match(home, /aria-label="알림 열기"/);
-assert.match(home, /ensurePushSubscription\(\{ requestPermission: true \}\)/);
 assert.match(page, /<NotificationsScreen \/>/);
 assert.doesNotMatch(screen, /BottomNavigation/);
 assert.match(screen, /router\.back\(\)/);

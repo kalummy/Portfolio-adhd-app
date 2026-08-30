@@ -66,7 +66,6 @@ import { getMoodDiarySummary, getMoodPresentation } from "@/lib/mood-summary";
 import { UNKNOWN_CAT, type CatId } from "@/lib/cats";
 import { normalizeClinicPhraseForDisplay } from "@/lib/clinic-phrase";
 import { getMoodRecordDisplayCat } from "@/lib/mood-record-cat";
-import { ensurePushSubscription } from "@/lib/push/client";
 import {
   DEFAULT_ADDI_PROFILE_ID,
   getAddiProfileAsset,
@@ -675,18 +674,6 @@ export function HomeScreen({
           <Image src={getAddiProfileAsset(profileId)} alt="" width={32} height={32} priority />
           <strong>{greeting}</strong>
           <Image src="/icons/home-profile-chevron.svg" alt="" width={20} height={20} />
-        </Link>
-        <Link
-          href="/notifications"
-          className="home-notification-button"
-          aria-label="알림 열기"
-          onClick={() => {
-            void ensurePushSubscription({ requestPermission: true }).catch(() => undefined);
-          }}
-        >
-          <span className="home-notification-icon" aria-hidden="true">
-            <Image src="/icons/bell.svg" alt="" width={21} height={23} />
-          </span>
         </Link>
       </header>
 

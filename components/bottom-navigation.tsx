@@ -25,13 +25,9 @@ export function BottomNavigation({
 
   useEffect(() => {
     let active = true;
-    void getCurrentUser()
-      .then((user) => {
-        if (active) {
-          setProfileId(getAddiProfileId(user));
-        }
-      })
-      .catch(() => undefined);
+    void getCurrentUser().then((user) => {
+      if (active) setProfileId(getAddiProfileId(user));
+    });
 
     const handleProfileChanged = (event: Event) => {
       const nextProfileId = (event as CustomEvent<{ profileId?: unknown }>).detail?.profileId;

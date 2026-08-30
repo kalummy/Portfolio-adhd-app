@@ -6189,14 +6189,6 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
   place-items: center;
   border: 0;
   background: transparent;
-  color: inherit;
-  text-decoration: none;
-}
-
-.home-notification-button:focus-visible {
-  border-radius: 4px;
-  outline: 2px solid var(--color-border-focus-default);
-  outline-offset: 2px;
 }
 
 .home-notification-icon {

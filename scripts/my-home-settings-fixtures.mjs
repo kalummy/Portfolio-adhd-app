@@ -45,7 +45,7 @@ assert.match(
   styles,
   /\.bottom-navigation-tabs\s*\{[^}]*grid-template-columns:\s*repeat\(3,/s,
 );
-assert.match(homeScreen, /home-notification-button/);
+assert.doesNotMatch(homeScreen, /home-notification-button/);
 assert.match(homeScreen, /setProfileId\(getAddiProfileId\(authState\.user\)\)/);
 assert.match(homeScreen, /src=\{getAddiProfileAsset\(profileId\)\}/);
 assert.match(homeScreen, /<BottomNavigation activeTab="home" profileId=\{profileId\}/);
