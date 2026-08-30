@@ -20,7 +20,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 
 const PRODUCTION_SUPABASE_HOST = "joffvlsyxivveqycjrio.supabase.co";
-const PRODUCTION_E2E_NOTIFICATION_ID = "production-e2e:phase2.5";
+const PRODUCTION_E2E_NOTIFICATION_PREFIX = "production-twa-e2e:";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function isSameOriginRequest(request: Request) {
@@ -50,6 +50,11 @@ function isEndpointOnlyInput(value: unknown): value is { endpoint: string } {
     && isPushEndpoint((value as { endpoint?: unknown }).endpoint);
 }
 
+function isEmptyInput(value: unknown): value is Record<string, never> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  return Object.keys(value).length === 0;
+}
+
 export async function POST(request: Request) {
   const isPreviewTest = isNotificationPushTestEnvironment();
   const productionTestUserId = getProductionPushE2EUserId();
@@ -66,29 +71,44 @@ export async function POST(request: Request) {
   }
 
   const input = await request.json().catch(() => null);
-  if (!isEndpointOnlyInput(input)) {
+  if ((isPreviewTest && !isEndpointOnlyInput(input))
+    || (productionTestUserId && !isEmptyInput(input))) {
     return Response.json({ ok: false }, { status: 400 });
   }
 
   try {
     assertWebPushConfigured();
     const admin = createSupabaseAdminClient();
-    const { data: subscription, error: subscriptionError } = await admin
+    const subscriptionQuery = admin
       .from("push_subscriptions")
-      .select("endpoint,p256dh,auth")
+      .select("endpoint,p256dh,auth,medication_enabled")
       .eq("user_id", userData.user.id)
-      .eq("endpoint", input.endpoint)
-      .eq("medication_enabled", true)
       .is("revoked_at", null)
-      .maybeSingle();
+      .limit(2);
+    if (isPreviewTest && isEndpointOnlyInput(input)) {
+      subscriptionQuery.eq("endpoint", input.endpoint);
+    }
+    const { data: subscriptions, error: subscriptionError } = await subscriptionQuery;
     if (subscriptionError) throw subscriptionError;
-    if (!subscription) {
+    if (!subscriptions || subscriptions.length !== 1
+      || subscriptions[0].medication_enabled !== true) {
       return Response.json({ ok: false, code: "subscription_required" }, { status: 409 });
+    }
+    const subscription = subscriptions[0];
+
+    if (productionTestUserId) {
+      const { count, error: priorTestError } = await admin
+        .from("app_notifications")
+        .select("notification_id", { count: "exact", head: true })
+        .eq("user_id", userData.user.id)
+        .like("notification_id", `${PRODUCTION_E2E_NOTIFICATION_PREFIX}%`);
+      if (priorTestError) throw priorTestError;
+      if ((count ?? 0) > 0) return Response.json({ ok: false }, { status: 404 });
     }
 
     const notificationId = isPreviewTest
       ? `preview-test:${randomUUID()}`
-      : PRODUCTION_E2E_NOTIFICATION_ID;
+      : `${PRODUCTION_E2E_NOTIFICATION_PREFIX}${new Date().toISOString()}:${randomUUID()}`;
     const firedAt = new Date().toISOString();
     const payload: PushNotificationPayload = {
       notificationId,
@@ -115,12 +135,14 @@ export async function POST(request: Request) {
 
     let delivered = 0;
     let failed = 0;
+    let providerStatusCode: number | null = null;
     const pushSubscription: PushSubscriptionInput = {
       endpoint: subscription.endpoint,
       keys: { p256dh: subscription.p256dh, auth: subscription.auth },
     };
     try {
-      await sendWebPush(pushSubscription, payload);
+      const providerResult = await sendWebPush(pushSubscription, payload);
+      providerStatusCode = providerResult.statusCode;
       delivered = 1;
     } catch (error) {
       failed = 1;
@@ -143,7 +165,14 @@ export async function POST(request: Request) {
     }
 
     return Response.json(
-      { ok: delivered > 0, notificationId, delivered, failed },
+      {
+        ok: delivered > 0,
+        notificationId,
+        delivered,
+        failed,
+        providerAccepted: delivered > 0,
+        providerStatusCode,
+      },
       { status: delivered > 0 ? 200 : 502, headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
