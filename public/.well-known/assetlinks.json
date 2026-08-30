@@ -6,7 +6,9 @@
     "target": {
       "namespace": "android_app",
       "package_name": "com.addi.app",
-      "sha256_cert_fingerprints": []
+      "sha256_cert_fingerprints": [
+        "76:2F:82:83:36:A5:16:12:38:48:1F:12:D0:82:40:12:49:CF:36:B5:C4:96:55:88:74:22:6B:43:0D:1C:E7:90"
+      ]
     }
   }
 ]
