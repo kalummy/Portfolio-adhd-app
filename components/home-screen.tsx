@@ -159,6 +159,9 @@ function ChevronRight() {
 
 type HomeScreenProps = {
   previewData?: HomeDataSet;
+  previewGreeting?: string;
+  previewNotificationHref?: string;
+  previewHasUnreadNotifications?: boolean;
   referenceDateKey?: string;
   initialDateKey?: string;
   minimumDateKey?: string;
@@ -171,6 +174,9 @@ type HomeScreenProps = {
 
 export function HomeScreen({
   previewData,
+  previewGreeting,
+  previewNotificationHref,
+  previewHasUnreadNotifications,
   referenceDateKey,
   initialDateKey,
   minimumDateKey,
@@ -225,7 +231,7 @@ export function HomeScreen({
     "idle" | "running" | "succeeded" | "failed"
   >("idle");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [greeting, setGreeting] = useState("로그인이 필요해요");
+  const [greeting, setGreeting] = useState(previewGreeting ?? "로그인이 필요해요");
   const [profileId, setProfileId] = useState(DEFAULT_ADDI_PROFILE_ID);
   const [activeSegment, setActiveSegment] = useState<HomeSegment>("medication");
   const [launchSplashRequired, setLaunchSplashRequired] = useState(enableLaunchSplash);
@@ -676,7 +682,11 @@ export function HomeScreen({
           <strong>{greeting}</strong>
           <Image src="/icons/home-profile-chevron.svg" alt="" width={20} height={20} />
         </Link>
-        <NotificationBellButton />
+        <NotificationBellButton
+          href={previewNotificationHref}
+          initialHasUnread={previewHasUnreadNotifications}
+          loadUnreadState={!previewData}
+        />
       </header>
 
       <div className="home-month-select-row">

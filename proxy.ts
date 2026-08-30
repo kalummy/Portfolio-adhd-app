@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { isPublicRequestPath } from "@/lib/auth/routes";
+import { isNotificationPreviewEnvironment } from "@/lib/preview-environment";
 
 function hasSupabaseAuthCookie(request: NextRequest) {
   return request.cookies.getAll().some(({ name }) =>
@@ -15,7 +16,11 @@ function isRoutePrefetch(request: NextRequest) {
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  const isPublicRoute = isPublicRequestPath(pathname);
+  const isNotificationPreview = (
+    pathname === "/preview/notifications"
+    || pathname.startsWith("/preview/notifications/")
+  ) && isNotificationPreviewEnvironment();
+  const isPublicRoute = isPublicRequestPath(pathname) || isNotificationPreview;
   const hasAuthCookie = hasSupabaseAuthCookie(request);
 
   if (!hasAuthCookie) {

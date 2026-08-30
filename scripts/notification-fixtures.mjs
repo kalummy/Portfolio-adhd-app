@@ -8,6 +8,14 @@ import {
   getNotificationTargetUrl,
   toAppNotification,
 } from "../lib/notification-contract.ts";
+import {
+  isPushNotificationRoute,
+  isPushSubscriptionInput,
+} from "../lib/push/contracts.ts";
+import {
+  NOTIFICATION_PREVIEW_ITEMS,
+  NOTIFICATION_PREVIEW_NOW,
+} from "../lib/preview-notifications-fixture.ts";
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const sha256 = (path) => createHash("sha256").update(read(path)).digest("hex");
@@ -40,18 +48,28 @@ const screen = read("components/notifications-screen.tsx");
 const home = read("components/home-screen.tsx");
 const repository = read("lib/notifications.ts");
 const migration = read("supabase/migrations/20260830052705_harden_app_notifications_phase1.sql");
+const pushMigration = read("supabase/migrations/20260830062111_create_push_subscriptions_phase2.sql");
 const styles = read("app/globals.css");
+const serviceWorker = read("public/sw.js");
+const pushClient = read("lib/push/client.ts");
+const subscriptionsRoute = read("app/api/push/subscriptions/route.ts");
+const testPushRoute = read("app/api/push/test/route.ts");
+const previewPage = read("app/preview/notifications/page.tsx");
+const previewHomePage = read("app/preview/notifications/home/page.tsx");
+const proxy = read("proxy.ts");
 
-assert.match(bell, /href="\/notifications"/);
-assert.match(bell, /notification-bell-unread\.svg/);
+assert.match(bell, /href = "\/notifications"/);
+assert.match(bell, /notification-red-dot\.svg/);
 assert.doesNotMatch(bell, /Notification\.permission|requestPermission|PushManager|serviceWorker/);
-assert.match(home, /<NotificationBellButton\s*\/>/);
+assert.match(home, /<NotificationBellButton/);
 assert.match(home, /<BottomNavigation activeTab="home"/);
 
 assert.match(screen, /markNotificationRead\(notification\.id/);
 assert.match(screen, /markAllRecentNotificationsRead/);
 assert.doesNotMatch(screen, /BottomNavigation/);
-assert.doesNotMatch(screen, /공지사항|>설정</);
+assert.doesNotMatch(screen, /공지사항/);
+assert.match(screen, /<span className="notifications-settings">설정<\/span>/);
+assert.match(screen, /설정<\/span>[\s\S]*모두 읽음/);
 assert.doesNotMatch(screen, /Notification\.permission|requestPermission|PushManager|serviceWorker/);
 
 assert.match(repository, /\.from\("app_notifications"\)/);
@@ -68,17 +86,74 @@ assert.match(migration, /grant update \(read_at\) on table public\.app_notificat
 assert.match(migration, /using \(\(select auth\.uid\(\)\) = user_id\)/);
 assert.match(migration, /kind in \('medication', 'visit_day', 'mood'\)/);
 
+assert.match(pushMigration, /create table public\.push_subscriptions/);
+assert.match(pushMigration, /user_id uuid not null references auth\.users\(id\) on delete cascade/);
+assert.match(pushMigration, /endpoint text not null unique/);
+assert.match(pushMigration, /grant select, delete on table public\.push_subscriptions to authenticated/);
+assert.doesNotMatch(pushMigration, /grant .*insert.* to authenticated/i);
+assert.doesNotMatch(pushMigration, /grant .*update.* to authenticated/i);
+assert.match(pushMigration, /using \(\(select auth\.uid\(\)\) = user_id\)/);
+
+assert.equal(isPushSubscriptionInput({
+  endpoint: "https://push.example.test/device",
+  keys: { p256dh: "a".repeat(65), auth: "b".repeat(22) },
+}), true);
+assert.equal(isPushSubscriptionInput({
+  endpoint: "http://push.example.test/device",
+  keys: { p256dh: "a".repeat(65), auth: "b".repeat(22) },
+}), false);
+assert.equal(isPushNotificationRoute("/"), true);
+assert.equal(isPushNotificationRoute("//example.com"), false);
+
 assert.match(styles, /\.notification-row\.unread\s*\{\s*background: #f0f8fe;/);
 assert.match(styles, /gap: 14px;/);
 assert.match(styles, /font-size: 15px;[\s\S]*line-height: 22px;[\s\S]*letter-spacing: -0\.375px;/);
 assert.match(styles, /font-size: 14px;[\s\S]*line-height: 20px;[\s\S]*letter-spacing: -0\.35px;/);
+assert.match(styles, /mask: url\("\/icons\/notification-bell-solid\.svg"\)/);
+assert.match(styles, /background: var\(--color-font-base-06\)/);
+assert.match(styles, /\.notifications-actions[\s\S]*gap: 12px;/);
+assert.match(styles, /\.notification-visit-icon img:first-child[\s\S]*top: 16\.15%;[\s\S]*left: 9\.38%;/);
+assert.match(styles, /\.notification-visit-icon img:last-child[\s\S]*left: 34\.79%;/);
+assert.match(styles, /\.notifications-retention-note[\s\S]*position: fixed;[\s\S]*bottom: 80px;/);
 
-assert.equal(sha256("public/icons/notification-bell.svg"), "69c178abd4190f3bca929ede03afd83c54ab2dad13fdd7f3a736be76cbde7153");
-assert.equal(sha256("public/icons/notification-bell-unread.svg"), "115e233b123317958b8133ced38d07b0fe9d00dbd48269ee5a6f0c20d2ca747d");
+assert.equal(sha256("public/icons/notification-bell-solid.svg"), "f992432adc926d43ec750c2caf365d8885f47f99b4820994859cdecb9e0a5ae2");
+assert.equal(sha256("public/icons/notification-red-dot.svg"), "bcde37d598a1b5141563c1148e371aec3f17fd6fec123df10fedc47367f5cfd5");
 assert.equal(sha256("public/icons/notification-medication.svg"), "f8ea600d133bbdc8126db078c4712450182a6f23b1e126399431c0d9244cf1eb");
 assert.equal(sha256("public/icons/notification-visit-building.svg"), "75fb7b921bb821a3188011ef925139f40d75a7ae5f5dd51dfdb7dfc513b1ea1a");
 assert.equal(sha256("public/icons/notification-visit-medication.svg"), "3cdc96ca5b500900605c02f32d5927687e4a45adf9c35592ce8269fcaedbadbd");
 assert.equal(sha256("public/icons/notification-mood.svg"), "365013287ed1a2277cc1d2856ef389d3380ff2769ea61d789c0e250393cd0fce");
 
-console.log("PASS notification routes, 90-day filtering, read state, RLS contract, and exact Figma SVG assets");
-console.log("PASS notification inbox remains separate from Push permission and Bottom Navigation");
+assert.deepEqual(
+  NOTIFICATION_PREVIEW_ITEMS.map(({ kind, title, body }) => ({ kind, title, body })),
+  [
+    { kind: "medication", title: "복용 알림", body: "오늘 복용기록이 없어요." },
+    { kind: "visit_day", title: "내원 알림", body: "오늘은 내원일이에요." },
+    { kind: "mood", title: "감정기록 알림", body: "지금 리포트 결과를 확인해보세요." },
+  ],
+);
+assert.equal(formatNotificationTime(NOTIFICATION_PREVIEW_ITEMS[0].firedAt, new Date(NOTIFICATION_PREVIEW_NOW)), "1분 전");
+assert.equal(formatNotificationTime(NOTIFICATION_PREVIEW_ITEMS[1].firedAt, new Date(NOTIFICATION_PREVIEW_NOW)), "5시간 전");
+assert.equal(formatNotificationTime(NOTIFICATION_PREVIEW_ITEMS[2].firedAt, new Date(NOTIFICATION_PREVIEW_NOW)), "6월 4일");
+assert.equal(NOTIFICATION_PREVIEW_ITEMS.some(({ title }) => title === "공지사항"), false);
+assert.match(previewPage, /initialNotifications=\{NOTIFICATION_PREVIEW_ITEMS\}/);
+assert.match(previewHomePage, /previewHasUnreadNotifications/);
+assert.match(previewHomePage, /previewNotificationHref="\/preview\/notifications"/);
+assert.match(proxy, /isNotificationPreviewEnvironment\(\)/);
+
+assert.match(pushClient, /navigator\.userActivation/);
+assert.match(pushClient, /Notification\.requestPermission\(\)/);
+assert.match(pushClient, /pushManager\.subscribe/);
+assert.match(subscriptionsRoute, /existing\.user_id !== userId/);
+assert.doesNotMatch(home, /requestPushSubscription|Notification\.requestPermission/);
+assert.doesNotMatch(bell, /requestPushSubscription|Notification\.requestPermission/);
+assert.match(serviceWorker, /self\.addEventListener\("push"/);
+assert.match(serviceWorker, /self\.addEventListener\("notificationclick"/);
+assert.match(serviceWorker, /\/api\/notifications\/read/);
+assert.match(serviceWorker, /await openNotificationRoute\(route\)/);
+assert.match(testPushRoute, /isNotificationPreviewEnvironment\(\)/);
+assert.match(testPushRoute, /title: "복용 알림"/);
+assert.match(testPushRoute, /body: "오늘 복용기록이 없어요\."/);
+assert.doesNotMatch(testPushRoute, /10:00|13:00|16:00|22:00|cron|visit_day|mood/);
+
+console.log("PASS Figma bell/header fidelity, isolated Preview fixtures, and no announcement notification");
+console.log("PASS Push permission gesture, subscription RLS, test-send guard, display, and click-to-read contracts");

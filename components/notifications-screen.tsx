@@ -21,15 +21,25 @@ const ICON_BY_KIND: Record<VisibleNotificationKind, string> = {
   mood: "/icons/notification-mood.svg",
 };
 
-export function NotificationsScreen() {
+type NotificationsScreenProps = {
+  initialNotifications?: AppNotification[];
+  referenceNow?: string;
+};
+
+export function NotificationsScreen({
+  initialNotifications,
+  referenceNow,
+}: NotificationsScreenProps = {}) {
   const router = useRouter();
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const isPreviewFixture = initialNotifications !== undefined;
+  const [notifications, setNotifications] = useState<AppNotification[]>(initialNotifications ?? []);
+  const [loading, setLoading] = useState(!isPreviewFixture);
   const [updating, setUpdating] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [now] = useState(() => new Date());
+  const [now] = useState(() => referenceNow ? new Date(referenceNow) : new Date());
 
   useEffect(() => {
+    if (isPreviewFixture) return;
     let active = true;
 
     void listRecentNotifications(now)
@@ -48,7 +58,7 @@ export function NotificationsScreen() {
     return () => {
       active = false;
     };
-  }, [now]);
+  }, [isPreviewFixture, now]);
 
   const hasUnread = notifications.some((notification) => notification.readAt === null);
 
@@ -59,7 +69,7 @@ export function NotificationsScreen() {
     try {
       if (notification.readAt === null) {
         const readAt = new Date();
-        await markNotificationRead(notification.id, readAt);
+        if (!isPreviewFixture) await markNotificationRead(notification.id, readAt);
         setNotifications((current) => current.map((candidate) => (
           candidate.id === notification.id
             ? { ...candidate, readAt: readAt.toISOString() }
@@ -80,7 +90,7 @@ export function NotificationsScreen() {
 
     try {
       const readAt = new Date();
-      await markAllRecentNotificationsRead(readAt);
+      if (!isPreviewFixture) await markAllRecentNotificationsRead(readAt);
       setNotifications((current) => current.map((notification) => (
         notification.readAt === null
           ? { ...notification, readAt: readAt.toISOString() }
@@ -100,14 +110,17 @@ export function NotificationsScreen() {
           <Image src="/icons/back.svg" alt="" width={18} height={14} />
         </button>
         <h1>알림</h1>
-        <button
-          type="button"
-          className="notifications-mark-all"
-          onClick={() => void handleMarkAllRead()}
-          disabled={!hasUnread || updating}
-        >
-          모두 읽음
-        </button>
+        <div className="notifications-actions">
+          <span className="notifications-settings">설정</span>
+          <button
+            type="button"
+            className="notifications-mark-all"
+            onClick={() => void handleMarkAllRead()}
+            disabled={!hasUnread || updating}
+          >
+            모두 읽음
+          </button>
+        </div>
       </header>
 
       <section className="notifications-content" aria-busy={loading}>
@@ -127,7 +140,7 @@ export function NotificationsScreen() {
                 <span className="notification-icon" aria-hidden="true">
                   {notification.kind === "visit_day" ? (
                     <span className="notification-visit-icon">
-                      <Image src={ICON_BY_KIND.visit_day} alt="" width={26} height={27} />
+                      <Image src={ICON_BY_KIND.visit_day} alt="" width={26} height={26} />
                       <Image src="/icons/notification-visit-medication.svg" alt="" width={11} height={13} />
                     </span>
                   ) : (

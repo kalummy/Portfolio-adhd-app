@@ -5,10 +5,21 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { hasUnreadNotifications } from "@/lib/notifications";
 
-export function NotificationBellButton() {
-  const [hasUnread, setHasUnread] = useState(false);
+type NotificationBellButtonProps = {
+  href?: string;
+  initialHasUnread?: boolean;
+  loadUnreadState?: boolean;
+};
+
+export function NotificationBellButton({
+  href = "/notifications",
+  initialHasUnread = false,
+  loadUnreadState = true,
+}: NotificationBellButtonProps) {
+  const [hasUnread, setHasUnread] = useState(initialHasUnread);
 
   useEffect(() => {
+    if (!loadUnreadState) return;
     let active = true;
 
     void hasUnreadNotifications()
@@ -22,22 +33,21 @@ export function NotificationBellButton() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [loadUnreadState]);
 
   return (
     <Link
-      href="/notifications"
+      href={href}
       className="home-notification-button"
       aria-label={hasUnread ? "알림함 열기, 읽지 않은 알림 있음" : "알림함 열기"}
     >
-      <span className={`home-notification-icon${hasUnread ? " unread" : ""}`} aria-hidden="true">
-        <Image
-          src={hasUnread ? "/icons/notification-bell-unread.svg" : "/icons/notification-bell.svg"}
-          alt=""
-          width={hasUnread ? 28 : 21}
-          height={hasUnread ? 28 : 23}
-          priority
-        />
+      <span className="home-notification-icon" aria-hidden="true">
+        <span className="home-notification-bell-glyph" />
+        {hasUnread ? (
+          <span className="home-notification-red-dot">
+            <Image src="/icons/notification-red-dot.svg" alt="" width={7} height={7} priority />
+          </span>
+        ) : null}
       </span>
     </Link>
   );

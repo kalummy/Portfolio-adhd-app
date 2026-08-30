@@ -6195,21 +6195,38 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
 }
 
 .home-notification-icon {
+  position: relative;
   display: grid;
   width: 28px;
   height: 28px;
   place-items: center;
 }
 
-.home-notification-icon img {
+.home-notification-bell-glyph {
+  position: absolute;
+  top: 2.5px;
+  left: 3.6667px;
   display: block;
   width: 20.6667px;
   height: 23px;
+  background: var(--color-font-base-06);
+  mask: url("/icons/notification-bell-solid.svg") center / 100% 100% no-repeat;
+  -webkit-mask: url("/icons/notification-bell-solid.svg") center / 100% 100% no-repeat;
 }
 
-.home-notification-icon.unread img {
-  width: 28px;
-  height: 28px;
+.home-notification-red-dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: block;
+  width: 7px;
+  height: 7px;
+}
+
+.home-notification-red-dot img {
+  display: block;
+  width: 7px;
+  height: 7px;
 }
 
 .home-notification-button:focus-visible {
@@ -6217,7 +6234,7 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
   outline-offset: 2px;
 }
 
-/* Notification inbox — Figma nodes 437:44825 and 404:13438. */
+/* Notification inbox — Figma nodes 437:44825 and 437:44234. */
 .notifications-screen {
   min-height: 100dvh;
   background: var(--color-bg-base-01);
@@ -6258,6 +6275,15 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
   letter-spacing: -0.4px;
 }
 
+.notifications-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.notifications-settings,
 .notifications-header .notifications-mark-all {
   padding: 0;
   flex: 0 0 auto;
@@ -6269,6 +6295,9 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
   font-weight: 700;
   letter-spacing: -0.4px;
   white-space: nowrap;
+}
+
+.notifications-header .notifications-mark-all {
   cursor: pointer;
 }
 
@@ -6359,18 +6388,18 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
 
 .notification-visit-icon img:first-child {
   position: absolute;
-  right: 3px;
-  bottom: 1px;
-  width: 26px;
-  height: 26px;
+  top: 16.15%;
+  left: 9.38%;
+  width: 81.24%;
+  height: 81.251875%;
 }
 
 .notification-visit-icon img:last-child {
   position: absolute;
   top: 0;
-  left: 7px;
-  width: 10.2152px;
-  height: 12.8884px;
+  left: 34.79%;
+  width: 31.9225%;
+  height: 40.27625%;
 }
 
 .notification-copy {
@@ -6421,11 +6450,16 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
 }
 
 .notifications-retention-note {
+  position: fixed;
+  left: 50%;
+  bottom: 80px;
+  z-index: 1;
   display: flex;
-  width: 100%;
+  width: min(100%, 430px);
   padding: 0 20px;
   align-items: center;
   gap: 8px;
+  transform: translateX(-50%);
   color: var(--color-font-base-05);
   font-size: 13px;
   line-height: 18px;
