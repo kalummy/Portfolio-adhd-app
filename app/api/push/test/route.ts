@@ -19,13 +19,41 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
+const PRODUCTION_SUPABASE_HOST = "joffvlsyxivveqycjrio.supabase.co";
+const PRODUCTION_E2E_NOTIFICATION_ID = "production-e2e:phase2.5";
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function isSameOriginRequest(request: Request) {
   const origin = request.headers.get("origin");
   return Boolean(origin && origin === new URL(request.url).origin);
 }
 
+function getProductionPushE2EUserId() {
+  if (process.env.VERCEL_ENV !== "production") return null;
+
+  const userId = process.env.PRODUCTION_PUSH_E2E_USER_ID?.trim();
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (!userId || !UUID_PATTERN.test(userId) || !supabaseUrl) return null;
+
+  try {
+    return new URL(supabaseUrl).hostname === PRODUCTION_SUPABASE_HOST ? userId : null;
+  } catch {
+    return null;
+  }
+}
+
+function isEndpointOnlyInput(value: unknown): value is { endpoint: string } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const keys = Object.keys(value);
+  return keys.length === 1
+    && keys[0] === "endpoint"
+    && isPushEndpoint((value as { endpoint?: unknown }).endpoint);
+}
+
 export async function POST(request: Request) {
-  if (!isNotificationPushTestEnvironment()) {
+  const isPreviewTest = isNotificationPushTestEnvironment();
+  const productionTestUserId = getProductionPushE2EUserId();
+  if (!isPreviewTest && !productionTestUserId) {
     return Response.json({ ok: false }, { status: 404 });
   }
   if (!isSameOriginRequest(request)) return Response.json({ ok: false }, { status: 403 });
@@ -33,28 +61,34 @@ export async function POST(request: Request) {
   const sessionClient = await createServerSupabaseClient();
   const { data: userData, error: userError } = await sessionClient.auth.getUser();
   if (userError || !userData.user) return Response.json({ ok: false }, { status: 401 });
+  if (productionTestUserId && userData.user.id !== productionTestUserId) {
+    return Response.json({ ok: false }, { status: 404 });
+  }
 
-  const input = await request.json().catch(() => null) as { endpoint?: unknown } | null;
-  if (!input || !isPushEndpoint(input.endpoint)) {
+  const input = await request.json().catch(() => null);
+  if (!isEndpointOnlyInput(input)) {
     return Response.json({ ok: false }, { status: 400 });
   }
 
   try {
     assertWebPushConfigured();
     const admin = createSupabaseAdminClient();
-    const { data: subscriptions, error: subscriptionsError } = await admin
+    const { data: subscription, error: subscriptionError } = await admin
       .from("push_subscriptions")
       .select("endpoint,p256dh,auth")
       .eq("user_id", userData.user.id)
       .eq("endpoint", input.endpoint)
       .eq("medication_enabled", true)
-      .is("revoked_at", null);
-    if (subscriptionsError) throw subscriptionsError;
-    if (!subscriptions?.length) {
+      .is("revoked_at", null)
+      .maybeSingle();
+    if (subscriptionError) throw subscriptionError;
+    if (!subscription) {
       return Response.json({ ok: false, code: "subscription_required" }, { status: 409 });
     }
 
-    const notificationId = `preview-test:${randomUUID()}`;
+    const notificationId = isPreviewTest
+      ? `preview-test:${randomUUID()}`
+      : PRODUCTION_E2E_NOTIFICATION_ID;
     const firedAt = new Date().toISOString();
     const payload: PushNotificationPayload = {
       notificationId,
@@ -72,28 +106,32 @@ export async function POST(request: Request) {
       url: payload.route,
       fired_at: firedAt,
     });
-    if (notificationError) throw notificationError;
+    if (notificationError) {
+      if (!isPreviewTest && notificationError.code === "23505") {
+        return Response.json({ ok: false, code: "test_already_sent" }, { status: 409 });
+      }
+      throw notificationError;
+    }
 
     let delivered = 0;
     let failed = 0;
-    await Promise.all(subscriptions.map(async (subscription) => {
-      const pushSubscription: PushSubscriptionInput = {
-        endpoint: subscription.endpoint,
-        keys: { p256dh: subscription.p256dh, auth: subscription.auth },
-      };
-      try {
-        await sendWebPush(pushSubscription, payload);
-        delivered += 1;
-      } catch (error) {
-        failed += 1;
-        if (isExpiredPushSubscriptionError(error)) {
-          await admin
-            .from("push_subscriptions")
-            .update({ revoked_at: new Date().toISOString() })
-            .eq("endpoint", subscription.endpoint);
-        }
+    const pushSubscription: PushSubscriptionInput = {
+      endpoint: subscription.endpoint,
+      keys: { p256dh: subscription.p256dh, auth: subscription.auth },
+    };
+    try {
+      await sendWebPush(pushSubscription, payload);
+      delivered = 1;
+    } catch (error) {
+      failed = 1;
+      if (isExpiredPushSubscriptionError(error)) {
+        await admin
+          .from("push_subscriptions")
+          .update({ revoked_at: new Date().toISOString() })
+          .eq("user_id", userData.user.id)
+          .eq("endpoint", subscription.endpoint);
       }
-    }));
+    }
 
     if (delivered === 0) {
       const { error: cleanupError } = await admin
