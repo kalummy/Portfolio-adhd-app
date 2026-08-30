@@ -15,11 +15,6 @@ import {
   markAllRecentNotificationsRead,
   markNotificationRead,
 } from "@/lib/notifications";
-import {
-  getCurrentPushState,
-  requestPushSubscription,
-  type CurrentPushState,
-} from "@/lib/push/client";
 
 const ICON_BY_KIND: Record<VisibleNotificationKind, string> = {
   medication: "/icons/notification-medication.svg",
@@ -31,25 +26,18 @@ type NotificationsScreenProps = {
   initialNotifications?: AppNotification[];
   referenceNow?: string;
   settingsHref?: string;
-  initialPushState?: CurrentPushState;
 };
-
-type NotificationsPushState = "checking" | "unknown" | CurrentPushState;
 
 export function NotificationsScreen({
   initialNotifications,
   referenceNow,
   settingsHref = "/notifications/settings",
-  initialPushState,
 }: NotificationsScreenProps = {}) {
   const router = useRouter();
   const isPreviewFixture = initialNotifications !== undefined;
-  const isPushPreviewFixture = initialPushState !== undefined;
   const [notifications, setNotifications] = useState<AppNotification[]>(initialNotifications ?? []);
-  const [pushState, setPushState] = useState<NotificationsPushState>(initialPushState ?? "checking");
   const [loading, setLoading] = useState(!isPreviewFixture);
   const [updating, setUpdating] = useState(false);
-  const [enablingPush, setEnablingPush] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [now] = useState(() => referenceNow ? new Date(referenceNow) : new Date());
 
@@ -75,60 +63,7 @@ export function NotificationsScreen({
     };
   }, [isPreviewFixture, now]);
 
-  useEffect(() => {
-    if (isPushPreviewFixture) return;
-    let active = true;
-
-    function refreshPushState() {
-      void getCurrentPushState()
-        .then((nextState) => {
-          if (active) setPushState(nextState);
-        })
-        .catch(() => {
-          if (active) setPushState("unknown");
-        });
-    }
-
-    function refreshWhenVisible() {
-      if (document.visibilityState === "visible") refreshPushState();
-    }
-
-    refreshPushState();
-    window.addEventListener("focus", refreshPushState);
-    document.addEventListener("visibilitychange", refreshWhenVisible);
-    return () => {
-      active = false;
-      window.removeEventListener("focus", refreshPushState);
-      document.removeEventListener("visibilitychange", refreshWhenVisible);
-    };
-  }, [isPushPreviewFixture]);
-
   const hasUnread = notifications.some((notification) => notification.readAt === null);
-  const showPushOffState = pushState !== "checking"
-    && pushState !== "unknown"
-    && pushState !== "subscribed";
-
-  async function handleEnablePush() {
-    if (enablingPush) return;
-    if (isPreviewFixture || isPushPreviewFixture) {
-      setPushState("subscribed");
-      return;
-    }
-    if (pushState === "denied" || pushState === "unsupported") {
-      return;
-    }
-
-    setEnablingPush(true);
-    try {
-      await requestPushSubscription();
-      setPushState("subscribed");
-    } catch {
-      setPushState(await getCurrentPushState().catch(() => "unknown"));
-    } finally {
-      setEnablingPush(false);
-    }
-  }
-
   async function handleNotificationClick(notification: AppNotification) {
     if (updating) return;
     setUpdating(true);
@@ -152,7 +87,7 @@ export function NotificationsScreen({
   }
 
   async function handleMarkAllRead() {
-    if (pushState === "checking" || showPushOffState || !hasUnread || updating) return;
+    if (!hasUnread || updating) return;
     setUpdating(true);
 
     try {
@@ -185,39 +120,19 @@ export function NotificationsScreen({
             type="button"
             className="notifications-mark-all"
             onClick={() => void handleMarkAllRead()}
-            disabled={pushState === "checking" || showPushOffState || !hasUnread || updating}
+            disabled={loading || !hasUnread || updating}
           >
             모두 읽음
           </button>
         </div>
       </header>
 
-      <section className="notifications-content" aria-busy={loading || pushState === "checking"}>
+      <section className="notifications-content" aria-busy={loading}>
         <p className="sr-only" aria-live="polite">
           {loadFailed ? "알림을 불러오지 못했어요." : loading ? "알림을 불러오는 중" : ""}
         </p>
-        {pushState === "checking" ? null : showPushOffState ? (
-          <div className="notifications-off-state">
-            <span className="notifications-off-icon" aria-hidden="true">
-              <Image src="/icons/notification-off-bell.svg" alt="" width={43.2006} height={48.0597} priority />
-            </span>
-            <p className="notifications-off-copy">
-              <span>받은 알림이 없어요.</span>
-              <span>알림을 켜고 복용기록을 이어가세요.</span>
-            </p>
-            <button
-              type="button"
-              className="notifications-off-enable"
-              onClick={() => void handleEnablePush()}
-              disabled={enablingPush}
-              aria-busy={enablingPush}
-            >
-              알림 켜기
-            </button>
-          </div>
-        ) : (
-          <div className="notifications-list">
-            {notifications.map((notification) => (
+        <div className="notifications-list">
+          {notifications.map((notification) => (
               <button
                 key={notification.id}
                 type="button"
@@ -257,11 +172,10 @@ export function NotificationsScreen({
                   </span>
                 </span>
               </button>
-            ))}
-          </div>
-        )}
+          ))}
+        </div>
 
-        {pushState !== "checking" && !showPushOffState ? (
+        {!loading ? (
           <div className="notifications-retention-note">
             <i />
             <span>90일 전 알림까지 확인할 수 있어요</span>

@@ -1,4 +1,8 @@
-import { isPushSubscriptionInput } from "@/lib/push/contracts";
+import {
+  isPushEndpoint,
+  isPushPreferenceKind,
+  isPushSubscriptionInput,
+} from "@/lib/push/contracts";
 import {
   createSupabaseAdminClient,
   SupabaseAdminConfigurationError,
@@ -79,6 +83,46 @@ export async function DELETE(request: Request) {
       .update({ revoked_at: now, updated_at: now })
       .eq("user_id", userId)
       .eq("endpoint", body.endpoint);
+    if (error) throw error;
+
+    return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    const status = error instanceof SupabaseAdminConfigurationError ? 503 : 500;
+    return Response.json({ ok: false }, { status });
+  }
+}
+
+export async function PATCH(request: Request) {
+  if (!isSameOriginRequest(request)) return Response.json({ ok: false }, { status: 403 });
+
+  const userId = await authenticatedUserId();
+  if (!userId) return Response.json({ ok: false }, { status: 401 });
+
+  const body = await request.json().catch(() => null) as {
+    endpoint?: unknown;
+    kind?: unknown;
+    enabled?: unknown;
+  } | null;
+  if (!body || !isPushEndpoint(body.endpoint) || !isPushPreferenceKind(body.kind)
+    || typeof body.enabled !== "boolean") {
+    return Response.json({ ok: false }, { status: 400 });
+  }
+
+  const columnByKind = {
+    medication: "medication_enabled",
+    visit_day: "visit_day_enabled",
+    mood: "mood_enabled",
+  } as const;
+
+  try {
+    const now = new Date().toISOString();
+    const admin = createSupabaseAdminClient();
+    const { error } = await admin
+      .from("push_subscriptions")
+      .update({ [columnByKind[body.kind]]: body.enabled, updated_at: now })
+      .eq("user_id", userId)
+      .eq("endpoint", body.endpoint)
+      .is("revoked_at", null);
     if (error) throw error;
 
     return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });

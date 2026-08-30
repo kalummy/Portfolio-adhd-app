@@ -47,6 +47,7 @@ export async function POST(request: Request) {
       .select("endpoint,p256dh,auth")
       .eq("user_id", userData.user.id)
       .eq("endpoint", input.endpoint)
+      .eq("medication_enabled", true)
       .is("revoked_at", null);
     if (subscriptionsError) throw subscriptionsError;
     if (!subscriptions?.length) {

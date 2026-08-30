@@ -1,6 +1,10 @@
 "use client";
 
-import type { PushSubscriptionInput } from "@/lib/push/contracts";
+import type {
+  PushPreferenceKind,
+  PushPreferences,
+  PushSubscriptionInput,
+} from "@/lib/push/contracts";
 
 export type PushPermissionState = NotificationPermission | "unsupported";
 export type CurrentPushState =
@@ -43,7 +47,12 @@ export async function getCurrentPushSubscription() {
   return registration?.pushManager.getSubscription() ?? null;
 }
 
-async function isServerSubscriptionActive(subscription: PushSubscription) {
+type ServerSubscriptionStatus = {
+  active: boolean;
+  preferences: PushPreferences | null;
+};
+
+async function getServerSubscriptionStatus(subscription: PushSubscription): Promise<ServerSubscriptionStatus> {
   const response = await fetch("/api/push/subscriptions/status", {
     method: "POST",
     credentials: "same-origin",
@@ -52,8 +61,16 @@ async function isServerSubscriptionActive(subscription: PushSubscription) {
   });
   if (!response.ok) throw new Error("push_subscription_status_failed");
 
-  const result = await response.json().catch(() => null) as { ok?: unknown; active?: unknown } | null;
-  return result?.ok === true && result.active === true;
+  const result = await response.json().catch(() => null) as {
+    ok?: unknown;
+    active?: unknown;
+    preferences?: PushPreferences | null;
+  } | null;
+  if (result?.ok !== true) throw new Error("push_subscription_status_failed");
+  return {
+    active: result.active === true,
+    preferences: result.preferences ?? null,
+  };
 }
 
 export async function getCurrentPushState(): Promise<CurrentPushState> {
@@ -64,9 +81,28 @@ export async function getCurrentPushState(): Promise<CurrentPushState> {
 
   const subscription = await getCurrentPushSubscription();
   if (!subscription) return "granted-unsubscribed";
-  return await isServerSubscriptionActive(subscription)
+  return (await getServerSubscriptionStatus(subscription)).active
     ? "subscribed"
     : "granted-unsubscribed";
+}
+
+export async function getCurrentPushPreferences(): Promise<PushPreferences | null> {
+  const subscription = await getCurrentPushSubscription();
+  if (!subscription) return null;
+  const status = await getServerSubscriptionStatus(subscription);
+  return status.active ? status.preferences : null;
+}
+
+export async function updateCurrentPushPreference(kind: PushPreferenceKind, enabled: boolean) {
+  const subscription = await getCurrentPushSubscription();
+  if (!subscription) throw new Error("push_subscription_missing");
+  const response = await fetch("/api/push/subscriptions", {
+    method: "PATCH",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ endpoint: subscription.endpoint, kind, enabled }),
+  });
+  if (!response.ok) throw new Error("push_preference_update_failed");
 }
 
 async function saveSubscription(subscription: PushSubscription) {

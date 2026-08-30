@@ -12,7 +12,6 @@ export default function PreviewNotificationsPage() {
   return (
     <NotificationsScreen
       initialNotifications={NOTIFICATION_PREVIEW_ITEMS}
-      initialPushState="subscribed"
       referenceNow={NOTIFICATION_PREVIEW_NOW}
       settingsHref="/preview/notifications/settings"
     />
