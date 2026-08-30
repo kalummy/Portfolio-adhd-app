@@ -8,6 +8,7 @@ import {
   getCurrentPushPreferences,
   getCurrentPushState,
   getPushPermissionState,
+  isPushUnavailableError,
   requestPushSubscription,
   unsubscribeFromPush,
   updateCurrentPushPreference,
@@ -60,9 +61,11 @@ export function NotificationSettingsScreen({
         ? await getCurrentPushPreferences() ?? ALL_ENABLED
         : ALL_DISABLED);
       setError("");
-    } catch {
+    } catch (error) {
       setState(stateFromCurrentPermission());
-      setError("알림 상태를 확인하지 못했어요. 다시 시도해주세요.");
+      setError(isPushUnavailableError(error)
+        ? "현재 환경에서는 알림을 사용할 수 없어요."
+        : "알림 상태를 확인하지 못했어요. 다시 시도해주세요.");
     }
   }, []);
 
@@ -79,10 +82,12 @@ export function NotificationSettingsScreen({
           : ALL_DISABLED);
         setError("");
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (!active) return;
         setState(stateFromCurrentPermission());
-        setError("알림 상태를 확인하지 못했어요. 다시 시도해주세요.");
+        setError(isPushUnavailableError(error)
+          ? "현재 환경에서는 알림을 사용할 수 없어요."
+          : "알림 상태를 확인하지 못했어요. 다시 시도해주세요.");
       });
 
     function refreshWhenVisible() {
@@ -137,9 +142,11 @@ export function NotificationSettingsScreen({
         await unsubscribeFromPush();
         setState("granted-unsubscribed");
       }
-    } catch {
+    } catch (error) {
       setState(getPushPermissionState() === "granted" ? state : stateFromCurrentPermission());
-      setError("알림 설정을 변경하지 못했어요. 잠시 후 다시 시도해주세요.");
+      setError(isPushUnavailableError(error)
+        ? "현재 환경에서는 알림을 사용할 수 없어요."
+        : "알림 설정을 변경하지 못했어요. 잠시 후 다시 시도해주세요.");
     } finally {
       setBusy(false);
     }

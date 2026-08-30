@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     .is("revoked_at", null)
     .maybeSingle();
 
-  if (error) return Response.json({ ok: false }, { status: 500 });
+  if (error) return Response.json({ ok: false, reason: "push_unavailable" }, { status: 503 });
 
   return Response.json(
     {

@@ -15,6 +15,12 @@ import {
   markAllRecentNotificationsRead,
   markNotificationRead,
 } from "@/lib/notifications";
+import {
+  getCurrentPushState,
+  isPushUnavailableError,
+  requestPushSubscription,
+  type CurrentPushState,
+} from "@/lib/push/client";
 
 const ICON_BY_KIND: Record<VisibleNotificationKind, string> = {
   medication: "/icons/notification-medication.svg",
@@ -26,12 +32,14 @@ type NotificationsScreenProps = {
   initialNotifications?: AppNotification[];
   referenceNow?: string;
   settingsHref?: string;
+  initialPushState?: CurrentPushState;
 };
 
 export function NotificationsScreen({
   initialNotifications,
   referenceNow,
   settingsHref = "/notifications/settings",
+  initialPushState,
 }: NotificationsScreenProps = {}) {
   const router = useRouter();
   const isPreviewFixture = initialNotifications !== undefined;
@@ -39,6 +47,11 @@ export function NotificationsScreen({
   const [loading, setLoading] = useState(!isPreviewFixture);
   const [updating, setUpdating] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [pushState, setPushState] = useState<CurrentPushState | "checking">(
+    initialPushState ?? "checking",
+  );
+  const [pushUpdating, setPushUpdating] = useState(false);
+  const [pushError, setPushError] = useState("");
   const [now] = useState(() => referenceNow ? new Date(referenceNow) : new Date());
 
   useEffect(() => {
@@ -62,6 +75,27 @@ export function NotificationsScreen({
       active = false;
     };
   }, [isPreviewFixture, now]);
+
+  useEffect(() => {
+    if (initialPushState !== undefined) return;
+    let active = true;
+
+    void getCurrentPushState()
+      .then((nextState) => {
+        if (active) setPushState(nextState);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setPushState("granted-unsubscribed");
+        if (isPushUnavailableError(error)) {
+          setPushError("현재 환경에서는 알림을 사용할 수 없어요.");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [initialPushState]);
 
   const hasUnread = notifications.some((notification) => notification.readAt === null);
   async function handleNotificationClick(notification: AppNotification) {
@@ -105,6 +139,44 @@ export function NotificationsScreen({
     }
   }
 
+  async function handleEnablePush() {
+    if (pushUpdating || pushState === "checking") return;
+    if (isPreviewFixture) {
+      setPushState("subscribed");
+      setPushError("");
+      return;
+    }
+
+    if (pushState === "denied") {
+      setPushError("기기 또는 브라우저 설정에서 알림을 허용해주세요.");
+      return;
+    }
+    if (pushState === "unsupported") {
+      setPushError("이 브라우저에서는 시스템 알림을 사용할 수 없어요.");
+      return;
+    }
+
+    setPushUpdating(true);
+    setPushError("");
+    try {
+      const result = await requestPushSubscription();
+      setPushState(result.status);
+      if (result.status === "denied") {
+        setPushError("기기 또는 브라우저 설정에서 알림을 허용해주세요.");
+      }
+    } catch (error) {
+      setPushError(isPushUnavailableError(error)
+        ? "현재 환경에서는 알림을 사용할 수 없어요."
+        : "알림을 켜지 못했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setPushUpdating(false);
+    }
+  }
+
+  const pushOff = pushState !== "checking" && pushState !== "subscribed";
+  const showNotificationList = !loading && !pushOff && notifications.length > 0;
+  const showEmptyInbox = !loading && !pushOff && notifications.length === 0;
+
   return (
     <MobileShell className="notifications-screen">
       <header className="notifications-header">
@@ -131,8 +203,9 @@ export function NotificationsScreen({
         <p className="sr-only" aria-live="polite">
           {loadFailed ? "알림을 불러오지 못했어요." : loading ? "알림을 불러오는 중" : ""}
         </p>
-        <div className="notifications-list">
-          {notifications.map((notification) => (
+        {showNotificationList ? (
+          <div className="notifications-list">
+            {notifications.map((notification) => (
               <button
                 key={notification.id}
                 type="button"
@@ -172,10 +245,42 @@ export function NotificationsScreen({
                   </span>
                 </span>
               </button>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : null}
 
-        {!loading ? (
+        {!loading && pushOff ? (
+          <div className="notifications-state notifications-push-off-state">
+            <span className="notifications-state-icon" aria-hidden="true">
+              <Image src="/icons/notification-off-bell.svg" alt="" width={43.2006} height={48.0597} priority />
+            </span>
+            <p>
+              <span>받은 알림이 없어요.</span>
+              <span>알림을 켜고 복용기록을 이어가세요.</span>
+            </p>
+            <button
+              type="button"
+              className="notifications-enable-push"
+              onClick={() => void handleEnablePush()}
+              disabled={pushUpdating}
+              aria-busy={pushUpdating}
+            >
+              알림 켜기
+            </button>
+            {pushError ? <span className="notifications-state-error" role="alert">{pushError}</span> : null}
+          </div>
+        ) : null}
+
+        {showEmptyInbox ? (
+          <div className="notifications-state notifications-empty-state">
+            <span className="notifications-state-icon" aria-hidden="true">
+              <Image src="/icons/notification-off-bell.svg" alt="" width={43.2006} height={48.0597} priority />
+            </span>
+            <p>받은 알림이 없어요.</p>
+          </div>
+        ) : null}
+
+        {showNotificationList ? (
           <div className="notifications-retention-note">
             <i />
             <span>90일 전 알림까지 확인할 수 있어요</span>

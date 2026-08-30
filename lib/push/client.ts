@@ -14,6 +14,23 @@ export type CurrentPushState =
   | "granted-unsubscribed"
   | "subscribed";
 
+export class PushUnavailableError extends Error {
+  constructor() {
+    super("push_unavailable");
+    this.name = "PushUnavailableError";
+  }
+}
+
+export function isPushUnavailableError(error: unknown): error is PushUnavailableError {
+  return error instanceof PushUnavailableError;
+}
+
+function assertPushResponse(response: Response, fallbackCode: string) {
+  if (response.ok) return;
+  if (response.status === 503) throw new PushUnavailableError();
+  throw new Error(fallbackCode);
+}
+
 function publicVapidKey() {
   const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim();
   if (!key) throw new Error("vapid_public_key_missing");
@@ -59,7 +76,7 @@ async function getServerSubscriptionStatus(subscription: PushSubscription): Prom
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ endpoint: subscription.endpoint }),
   });
-  if (!response.ok) throw new Error("push_subscription_status_failed");
+  assertPushResponse(response, "push_subscription_status_failed");
 
   const result = await response.json().catch(() => null) as {
     ok?: unknown;
@@ -102,7 +119,7 @@ export async function updateCurrentPushPreference(kind: PushPreferenceKind, enab
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ endpoint: subscription.endpoint, kind, enabled }),
   });
-  if (!response.ok) throw new Error("push_preference_update_failed");
+  assertPushResponse(response, "push_preference_update_failed");
 }
 
 async function saveSubscription(subscription: PushSubscription) {
@@ -121,7 +138,7 @@ async function saveSubscription(subscription: PushSubscription) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  if (!response.ok) throw new Error("push_subscription_save_failed");
+  assertPushResponse(response, "push_subscription_save_failed");
 }
 
 export async function requestPushSubscription() {
@@ -168,7 +185,7 @@ export async function unsubscribeFromPush() {
     body: JSON.stringify({ endpoint: subscription.endpoint }),
   });
 
-  if (!response.ok) throw new Error("push_subscription_revoke_failed");
+  assertPushResponse(response, "push_subscription_revoke_failed");
   const unsubscribed = await subscription.unsubscribe();
   if (!unsubscribed) throw new Error("push_subscription_unsubscribe_failed");
 }

@@ -6467,6 +6467,83 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
   gap: 2px;
 }
 
+/* Figma 446:48896 (empty inbox) and 437:46599 (system Push off). */
+.notifications-state {
+  position: fixed;
+  z-index: 1;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  width: min(100%, 430px);
+  padding: 20px;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.notifications-state-icon {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  padding: 7.97px 10.4px;
+  place-items: center;
+  overflow: hidden;
+}
+
+.notifications-state-icon img {
+  display: block;
+  width: 43.2006px;
+  height: 48.0597px;
+}
+
+.notifications-state p {
+  display: flex;
+  width: 100%;
+  margin: 0;
+  flex-direction: column;
+  color: var(--color-font-base-04);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 400;
+  letter-spacing: -0.375px;
+}
+
+.notifications-enable-push {
+  display: grid;
+  width: 148px;
+  min-height: 40px;
+  padding: 10px 16px;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: var(--color-bg-interactive-brand-default);
+  color: var(--color-font-base-01);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: -0.35px;
+  cursor: pointer;
+}
+
+.notifications-enable-push:disabled {
+  cursor: default;
+}
+
+.notifications-enable-push:focus-visible {
+  outline: 2px solid var(--color-border-focus-default);
+  outline-offset: 2px;
+}
+
+.notifications-state-error {
+  color: var(--color-font-semantic-danger);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+  letter-spacing: -0.325px;
+}
+
 .notification-row {
   display: flex;
   width: 100%;
@@ -6805,6 +6882,13 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.bottom-navigation-tab-wrap {
+  position: relative;
+  display: block;
+  min-width: 0;
+  height: 56px;
+}
+
 .bottom-navigation-tab {
   display: flex;
   min-width: 0;
@@ -6819,6 +6903,23 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
   letter-spacing: -0.3px;
   text-align: center;
   text-decoration: none;
+}
+
+.bottom-navigation-tab-wrap > .bottom-navigation-tab {
+  width: 100%;
+  height: 100%;
+}
+
+.bottom-navigation-ios-haptic {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0.001;
+  cursor: pointer;
 }
 
 .bottom-navigation-tab[href]:focus-visible {

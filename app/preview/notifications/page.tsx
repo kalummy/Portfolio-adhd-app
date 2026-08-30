@@ -14,6 +14,7 @@ export default function PreviewNotificationsPage() {
       initialNotifications={NOTIFICATION_PREVIEW_ITEMS}
       referenceNow={NOTIFICATION_PREVIEW_NOW}
       settingsHref="/preview/notifications/settings"
+      initialPushState="subscribed"
     />
   );
 }
