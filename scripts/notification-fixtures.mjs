@@ -86,6 +86,9 @@ assert.match(repository, /\.from\("app_notifications"\)/);
 assert.match(repository, /\.gte\("fired_at", getNotificationCutoff\(now\)\)/);
 assert.match(repository, /\.is\("read_at", null\)/);
 assert.match(repository, /\.in\("kind", visibleKinds\(\)\)/);
+assert.match(repository, /markAllRecentNotificationsRead[\s\S]*\.update\(\{ read_at: now\.toISOString\(\) \}\)/);
+assert.doesNotMatch(repository, /markAllRecentNotificationsRead[\s\S]*\.delete\(\)/);
+assert.match(screen, /setNotifications\(\(current\) => current\.map\(\(notification\)/);
 
 assert.match(migration, /create table if not exists public\.app_notifications/);
 assert.doesNotMatch(migration, /create table(?: if not exists)? public\.notifications\s*\(/);
