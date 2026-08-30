@@ -13,7 +13,7 @@ import {
 } from "@/lib/profile";
 
 type BottomNavigationProps = {
-  activeTab: "home" | "moods" | "my";
+  activeTab: "home" | "moods" | "notifications" | "my";
   profileId?: AddiProfileId;
 };
 
@@ -25,9 +25,11 @@ export function BottomNavigation({
 
   useEffect(() => {
     let active = true;
-    void getCurrentUser().then((user) => {
-      if (active) setProfileId(getAddiProfileId(user));
-    });
+    void getCurrentUser()
+      .then((user) => {
+        if (active) setProfileId(getAddiProfileId(user));
+      })
+      .catch(() => undefined);
 
     const handleProfileChanged = (event: Event) => {
       const nextProfileId = (event as CustomEvent<{ profileId?: unknown }>).detail?.profileId;
@@ -72,6 +74,16 @@ export function BottomNavigation({
             />
           </span>
           <span>감정기록</span>
+        </Link>
+        <Link
+          href="/notifications"
+          className={`bottom-navigation-tab${activeTab === "notifications" ? " active" : ""}`}
+          aria-current={activeTab === "notifications" ? "page" : undefined}
+        >
+          <span className="bottom-navigation-icon bottom-navigation-notification-icon" aria-hidden="true">
+            <Image src="/icons/bell.svg" alt="" width={21} height={23} />
+          </span>
+          <span>알림</span>
         </Link>
         <Link
           href="/my"

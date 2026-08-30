@@ -70,6 +70,7 @@ export type AnalyticsRoute =
   | "medication_add"
   | "mood_entry"
   | "mood_history"
+  | "notification"
   | "visit_add"
   | "visit_management"
   | "legal"
@@ -229,6 +230,7 @@ export function sanitizeAnalyticsRoute(input: string): AnalyticsRoute {
   }
   if (pathname === "/moods/new") return "mood_entry";
   if (pathname === "/moods") return "mood_history";
+  if (pathname === "/notifications") return "notification";
   if (pathname === "/visits/new") return "visit_add";
   if (pathname === "/visits" || pathname === "/visits/edit") return "visit_management";
   if (pathname === "/terms" || pathname === "/privacy" || pathname === "/delete-account") return "legal";
