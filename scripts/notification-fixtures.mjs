@@ -21,6 +21,10 @@ import {
   rollbackPushPreference,
   setPushPreference,
 } from "../lib/push/preferences.ts";
+import {
+  createPushPreferenceMutationQueue,
+  isPushPreferenceRequestInstrumentationEnabled,
+} from "../lib/push/preference-mutations.ts";
 import { navigateBackOrReplace } from "../lib/navigation-history.ts";
 import { isNotificationPushTestEnvironment } from "../lib/preview-environment.ts";
 import {
@@ -335,16 +339,19 @@ assert.match(settingsScreen, /role="switch"/);
 assert.match(settingsScreen, /복용 알림/);
 assert.match(settingsScreen, /내원일 알림/);
 assert.match(settingsScreen, /감정기록 알림/);
-assert.match(settingsScreen, /updateCurrentPushPreference\(kind, enabled\)/);
+assert.match(settingsScreen, /updateCurrentPushPreference\(kind, enabled, requestId\)/);
 assert.match(settingsScreen, /getCurrentPushSnapshot\(\)/);
 assert.equal(settingsScreen.match(/getCurrentPushSnapshot\(\)/g)?.length, 1);
 assert.match(settingsScreen, /requestPushSubscription\(\)/);
+assert.match(settingsScreen, /await snapshotReadyRef\.current/);
+assert.match(settingsScreen, /enabled && currentState !== "subscribed"/);
 assert.match(settingsScreen, /getCachedPushPreferences\(\)/);
 assert.match(settingsScreen, /cachePushPreferences\(nextPreferences\)/);
 assert.match(settingsScreen, /mergePushPreferenceSnapshot\(/);
 assert.match(settingsScreen, /mutationVersionsRef\.current\[kind\] \+= 1/);
-assert.match(settingsScreen, /while \(preferencesRef\.current\)/);
-assert.match(settingsScreen, /workersRef\.current\[kind\]/);
+assert.doesNotMatch(settingsScreen, /while \(preferencesRef\.current\)/);
+assert.doesNotMatch(settingsScreen, /workersRef\.current\[kind\]/);
+assert.match(settingsScreen, /createPushPreferenceMutationQueue\(/);
 assert.match(settingsScreen, /disabled=\{stateDisablesControls\}/);
 assert.doesNotMatch(settingsScreen, /disabled=\{[^}]*pending\[item\.kind\]/);
 assert.doesNotMatch(settingsScreen, /document\.addEventListener\("visibilitychange"|window\.addEventListener\("focus"/);
@@ -360,6 +367,9 @@ assert.match(settingsScreen, /notification-toggle-off\.svg/);
 assert.match(pushClient, /\/api\/push\/subscriptions\/status/);
 assert.match(pushClient, /preferences: result\.preferences \?\? null/);
 assert.match(pushClient, /method: "PATCH",[\s\S]*keepalive: true/);
+assert.match(pushClient, /X-ADDI-Preference-Request-Id/);
+assert.match(pushClient, /JSON\.stringify\(\{ endpoint: subscription\.endpoint, kind, enabled \}\)/);
+assert.doesNotMatch(pushClient, /console\.(?:log|debug|info|warn|error)/);
 assert.match(subscriptionsRoute, /export async function PATCH/);
 assert.match(subscriptionsRoute, /isPushPreferenceKind\(body\.kind\)/);
 assert.match(subscriptionsRoute, /shouldInitializePreferences = !existing \|\| existing\.revoked_at !== null/);
@@ -417,6 +427,172 @@ assert.match(testPushRoute, /title: "복용 알림"/);
 assert.match(testPushRoute, /body: "오늘 복용기록이 없어요\."/);
 assert.doesNotMatch(testPushRoute, /10:00|13:00|16:00|22:00|cron|visit_day|mood/);
 
+async function recordSinglePreferenceMutation(kind, enabled) {
+  const requests = [];
+  const confirmed = [];
+  const pending = [];
+  const queue = createPushPreferenceMutationQueue({
+    persist: async (requestKind, requestEnabled, request) => {
+      requests.push({ kind: requestKind, enabled: requestEnabled, ...request });
+    },
+    onPendingChange: (requestKind, isPending) => pending.push([requestKind, isPending]),
+    onConfirmed: (requestKind, requestEnabled) => confirmed.push([requestKind, requestEnabled]),
+    createRequestId: (requestKind, sequence) => `preference-${requestKind}-${sequence}`,
+  });
+  await queue.enqueue(kind, enabled);
+  return { requests, confirmed, pending };
+}
+
+const medicationOffRequest = await recordSinglePreferenceMutation("medication", false);
+assert.deepEqual(medicationOffRequest.requests, [{
+  kind: "medication",
+  enabled: false,
+  sequence: 1,
+  requestId: "preference-medication-1",
+}]);
+assert.deepEqual(medicationOffRequest.confirmed, [["medication", false]]);
+assert.deepEqual(medicationOffRequest.pending, [["medication", true], ["medication", false]]);
+
+const visitOffRequest = await recordSinglePreferenceMutation("visit_day", false);
+assert.deepEqual(visitOffRequest.requests, [{
+  kind: "visit_day",
+  enabled: false,
+  sequence: 1,
+  requestId: "preference-visit_day-1",
+}]);
+
+const moodOffRequest = await recordSinglePreferenceMutation("mood", false);
+assert.deepEqual(moodOffRequest.requests, [{
+  kind: "mood",
+  enabled: false,
+  sequence: 1,
+  requestId: "preference-mood-1",
+}]);
+
+await new Promise((resolve) => setImmediate(resolve));
+assert.equal(medicationOffRequest.requests.length, 1, "an idle field must not replay its PATCH");
+
+let persistedForReentry = { medication: true, visit_day: true, mood: true };
+const reentryQueue = createPushPreferenceMutationQueue({
+  persist: async (kind, enabled) => {
+    persistedForReentry = setPushPreference(persistedForReentry, kind, enabled);
+  },
+});
+await reentryQueue.enqueue("medication", false);
+assert.deepEqual(persistedForReentry, { medication: false, visit_day: true, mood: true });
+const preferencesAfterReentry = mergePushPreferenceSnapshot(
+  null,
+  persistedForReentry,
+  INITIAL_PUSH_PREFERENCE_VERSIONS,
+  INITIAL_PUSH_PREFERENCE_VERSIONS,
+);
+const preferencesAfterRefresh = mergePushPreferenceSnapshot(
+  null,
+  persistedForReentry,
+  INITIAL_PUSH_PREFERENCE_VERSIONS,
+  INITIAL_PUSH_PREFERENCE_VERSIONS,
+);
+assert.deepEqual(preferencesAfterReentry, persistedForReentry);
+assert.deepEqual(preferencesAfterRefresh, persistedForReentry);
+
+let releaseRapidMedication;
+const rapidMedicationRequest = new Promise((resolve) => {
+  releaseRapidMedication = resolve;
+});
+const rapidMedicationRequests = [];
+const rapidMedicationConfirmed = [];
+const rapidMedicationQueue = createPushPreferenceMutationQueue({
+  persist: async (kind, enabled) => {
+    rapidMedicationRequests.push({ kind, enabled });
+    await rapidMedicationRequest;
+  },
+  onConfirmed: (kind, enabled) => rapidMedicationConfirmed.push([kind, enabled]),
+});
+const rapidMedicationRun = rapidMedicationQueue.enqueue("medication", true);
+void rapidMedicationQueue.enqueue("medication", false);
+void rapidMedicationQueue.enqueue("medication", true);
+releaseRapidMedication();
+await rapidMedicationRun;
+assert.deepEqual(rapidMedicationRequests, [{ kind: "medication", enabled: true }]);
+assert.deepEqual(rapidMedicationConfirmed, [["medication", true]]);
+
+let releaseDifferentFinalValue;
+const differentFinalValueRequest = new Promise((resolve) => {
+  releaseDifferentFinalValue = resolve;
+});
+const differentFinalValueRequests = [];
+const differentFinalValueQueue = createPushPreferenceMutationQueue({
+  persist: async (kind, enabled) => {
+    differentFinalValueRequests.push({ kind, enabled });
+    if (differentFinalValueRequests.length === 1) await differentFinalValueRequest;
+  },
+});
+const differentFinalValueRun = differentFinalValueQueue.enqueue("medication", false);
+void differentFinalValueQueue.enqueue("medication", true);
+releaseDifferentFinalValue();
+await differentFinalValueRun;
+assert.deepEqual(differentFinalValueRequests, [
+  { kind: "medication", enabled: false },
+  { kind: "medication", enabled: true },
+]);
+
+const independentResolvers = new Map();
+const independentRequests = [];
+let independentPersisted = { medication: true, visit_day: true, mood: true };
+const independentQueue = createPushPreferenceMutationQueue({
+  persist: (kind, enabled) => new Promise((resolve) => {
+    independentRequests.push({ kind, enabled });
+    independentResolvers.set(kind, () => {
+      independentPersisted = setPushPreference(independentPersisted, kind, enabled);
+      resolve();
+    });
+  }),
+});
+void independentQueue.enqueue("medication", false);
+void independentQueue.enqueue("visit_day", false);
+assert.deepEqual(independentRequests, [
+  { kind: "medication", enabled: false },
+  { kind: "visit_day", enabled: false },
+]);
+independentResolvers.get("medication")();
+independentResolvers.get("visit_day")();
+await Promise.all([
+  independentQueue.whenIdle("medication"),
+  independentQueue.whenIdle("visit_day"),
+]);
+assert.deepEqual(independentPersisted, { medication: false, visit_day: false, mood: true });
+
+const failedMutations = [];
+const failedQueue = createPushPreferenceMutationQueue({
+  persist: async () => {
+    throw new Error("fixture_failure");
+  },
+  onFailed: (kind, enabled) => failedMutations.push({ kind, enabled }),
+});
+await failedQueue.enqueue("mood", false);
+assert.deepEqual(failedMutations, [{ kind: "mood", enabled: false }]);
+
+const originalPreferenceInstrumentationEnvironment = {
+  nodeEnv: process.env.NODE_ENV,
+  publicVercelEnv: process.env.NEXT_PUBLIC_VERCEL_ENV,
+};
+process.env.NODE_ENV = "development";
+process.env.NEXT_PUBLIC_VERCEL_ENV = "production";
+assert.equal(isPushPreferenceRequestInstrumentationEnabled(), true);
+process.env.NODE_ENV = "production";
+process.env.NEXT_PUBLIC_VERCEL_ENV = "preview";
+assert.equal(isPushPreferenceRequestInstrumentationEnabled(), true);
+process.env.NEXT_PUBLIC_VERCEL_ENV = "production";
+assert.equal(isPushPreferenceRequestInstrumentationEnabled(), false);
+for (const [key, value] of Object.entries({
+  NODE_ENV: originalPreferenceInstrumentationEnvironment.nodeEnv,
+  NEXT_PUBLIC_VERCEL_ENV: originalPreferenceInstrumentationEnvironment.publicVercelEnv,
+})) {
+  if (value === undefined) delete process.env[key];
+  else process.env[key] = value;
+}
+
 console.log("PASS Figma bell/header fidelity, isolated Preview fixtures, and no announcement notification");
 console.log("PASS Push permission gesture, subscription RLS, test-send guard, display, and click-to-read contracts");
 console.log("PASS independent optimistic preferences, targeted rollback, active-row persistence, and direct Link navigation");
+console.log("PASS preference QA A-H: one field-only request, no replay, coalesced latest write, and independent fields");

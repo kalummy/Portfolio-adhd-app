@@ -15,9 +15,14 @@ import {
   isPushUnavailableError,
   requestPushSubscription,
   updateCurrentPushPreference,
+  type CurrentPushSnapshot,
   type CurrentPushState,
 } from "@/lib/push/client";
 import type { PushPreferenceKind, PushPreferences } from "@/lib/push/contracts";
+import {
+  createPushPreferenceMutationQueue,
+  isPushPreferenceRequestInstrumentationEnabled,
+} from "@/lib/push/preference-mutations";
 import {
   cachePushPreferences,
   DISABLED_PUSH_PREFERENCES,
@@ -49,18 +54,11 @@ const SETTING_ITEMS: Array<{
 const ALL_ENABLED: PushPreferences = { medication: true, visit_day: true, mood: true };
 
 type PendingPreferences = Record<PushPreferenceKind, boolean>;
-type PreferenceWorkers = Record<PushPreferenceKind, Promise<void> | null>;
 
 const NO_PENDING_PREFERENCES: PendingPreferences = {
   medication: false,
   visit_day: false,
   mood: false,
-};
-
-const NO_PREFERENCE_WORKERS: PreferenceWorkers = {
-  medication: null,
-  visit_day: null,
-  mood: null,
 };
 
 function stateFromCurrentPermission(): CurrentPushState {
@@ -90,10 +88,11 @@ export function NotificationSettingsScreen({
   const mutationVersionsRef = useRef<PushPreferenceVersions>({
     ...INITIAL_PUSH_PREFERENCE_VERSIONS,
   });
-  const workersRef = useRef<PreferenceWorkers>({ ...NO_PREFERENCE_WORKERS });
   const hasBackEntryRef = useRef(false);
   const snapshotRequestRef = useRef(0);
+  const snapshotReadyRef = useRef<Promise<CurrentPushSnapshot | null> | null>(null);
   const activationRef = useRef<ReturnType<typeof requestPushSubscription> | null>(null);
+  const preferenceMutationsRef = useRef<ReturnType<typeof createPushPreferenceMutationQueue> | null>(null);
 
   function applyState(nextState: PushSettingsState) {
     stateRef.current = nextState;
@@ -124,16 +123,16 @@ export function NotificationSettingsScreen({
     applyPreferences(cachedPreferences, false);
   }, [isPreviewFixture]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isPreviewFixture) return;
     let active = true;
 
-    async function refreshFromCurrentSubscription() {
+    async function refreshFromCurrentSubscription(): Promise<CurrentPushSnapshot | null> {
       const requestId = ++snapshotRequestRef.current;
       const requestVersions = { ...mutationVersionsRef.current };
       try {
         const snapshot = await getCurrentPushSnapshot();
-        if (!active || requestId !== snapshotRequestRef.current) return;
+        if (!active || requestId !== snapshotRequestRef.current) return snapshot;
         const currentVersions = mutationVersionsRef.current;
         const hasNewerMutation = Object.keys(currentVersions).some((kind) => {
           const preferenceKind = kind as PushPreferenceKind;
@@ -157,91 +156,91 @@ export function NotificationSettingsScreen({
         confirmedPreferencesRef.current = mergedConfirmed;
         applyPreferences(merged);
         setError("");
+        return snapshot;
       } catch (error) {
-        if (!active || requestId !== snapshotRequestRef.current) return;
+        if (!active || requestId !== snapshotRequestRef.current) return null;
         applyState(stateFromCurrentPermission());
         setError(isPushUnavailableError(error)
           ? "현재 환경에서는 알림을 사용할 수 없어요."
           : "알림 상태를 확인하지 못했어요. 다시 시도해주세요.");
+        return null;
       }
     }
 
-    void refreshFromCurrentSubscription();
+    snapshotReadyRef.current = refreshFromCurrentSubscription();
     return () => {
       active = false;
       snapshotRequestRef.current += 1;
     };
   }, [isPreviewFixture]);
 
-  async function persistLatestPreference(kind: PushPreferenceKind) {
-    applyPending(kind, true);
-    try {
-      while (preferencesRef.current) {
-        const mutationVersion = mutationVersionsRef.current[kind];
-        const enabled = preferencesRef.current[kind];
+  async function persistPreference(
+    kind: PushPreferenceKind,
+    enabled: boolean,
+    requestId?: string,
+  ) {
+    const initialSnapshot = stateRef.current === "checking"
+      ? await snapshotReadyRef.current
+      : null;
+    const currentState = initialSnapshot?.state ?? stateRef.current;
 
-        try {
-          if (enabled && stateRef.current !== "subscribed") {
-            const activation = activationRef.current ?? requestPushSubscription();
-            activationRef.current = activation;
-            let result: Awaited<typeof activation>;
-            try {
-              result = await activation;
-            } finally {
-              if (activationRef.current === activation) activationRef.current = null;
-            }
-            if (result.status !== "subscribed") {
-              applyState(result.status);
-              throw new Error("push_subscription_not_active");
-            }
-            applyState("subscribed");
-          }
-
-          if (mutationVersion !== mutationVersionsRef.current[kind]) continue;
-          const hasKnownMissingSubscription = !enabled
-            && stateRef.current !== "checking"
-            && stateRef.current !== "subscribed";
-          if (!hasKnownMissingSubscription) {
-            await updateCurrentPushPreference(kind, enabled);
-          }
-
-          confirmedPreferencesRef.current = setPushPreference(
-            confirmedPreferencesRef.current ?? DISABLED_PUSH_PREFERENCES,
-            kind,
-            enabled,
-          );
-          if (preferencesRef.current) cachePushPreferences(preferencesRef.current);
-          if (mutationVersion === mutationVersionsRef.current[kind]) return;
-        } catch (saveError) {
-          if (mutationVersion !== mutationVersionsRef.current[kind]) continue;
-          const currentPreferences = preferencesRef.current;
-          const previousValue = confirmedPreferencesRef.current?.[kind] ?? !enabled;
-          if (currentPreferences) {
-            applyPreferences(rollbackPushPreference(
-              currentPreferences,
-              kind,
-              enabled,
-              previousValue,
-            ));
-          }
-          setError(isPushUnavailableError(saveError)
-            ? "현재 환경에서는 알림을 사용할 수 없어요."
-            : "알림 설정을 변경하지 못했어요. 잠시 후 다시 시도해주세요.");
-          return;
-        }
+    if (enabled && currentState !== "subscribed") {
+      const activation = activationRef.current ?? requestPushSubscription();
+      activationRef.current = activation;
+      let result: Awaited<typeof activation>;
+      try {
+        result = await activation;
+      } finally {
+        if (activationRef.current === activation) activationRef.current = null;
       }
-    } finally {
-      applyPending(kind, false);
+      if (result.status !== "subscribed") {
+        applyState(result.status);
+        throw new Error("push_subscription_not_active");
+      }
+      applyState("subscribed");
+    }
+
+    const hasKnownMissingSubscription = !enabled
+      && currentState !== "checking"
+      && currentState !== "subscribed";
+    if (!hasKnownMissingSubscription) {
+      await updateCurrentPushPreference(kind, enabled, requestId);
     }
   }
 
-  function startPreferenceWorker(kind: PushPreferenceKind) {
-    if (workersRef.current[kind]) return;
-    const worker = persistLatestPreference(kind);
-    workersRef.current[kind] = worker;
-    void worker.finally(() => {
-      if (workersRef.current[kind] === worker) workersRef.current[kind] = null;
+  function getPreferenceMutations() {
+    if (preferenceMutationsRef.current) return preferenceMutationsRef.current;
+    preferenceMutationsRef.current = createPushPreferenceMutationQueue({
+      persist: (kind, enabled, request) => persistPreference(kind, enabled, request.requestId),
+      onPendingChange: applyPending,
+      onConfirmed: (kind, enabled) => {
+        confirmedPreferencesRef.current = setPushPreference(
+          confirmedPreferencesRef.current ?? DISABLED_PUSH_PREFERENCES,
+          kind,
+          enabled,
+        );
+        if (preferencesRef.current) cachePushPreferences(preferencesRef.current);
+      },
+      onFailed: (kind, attemptedValue, saveError) => {
+        const currentPreferences = preferencesRef.current;
+        const previousValue = confirmedPreferencesRef.current?.[kind] ?? !attemptedValue;
+        if (currentPreferences) {
+          applyPreferences(rollbackPushPreference(
+            currentPreferences,
+            kind,
+            attemptedValue,
+            previousValue,
+          ));
+        }
+        setError(isPushUnavailableError(saveError)
+          ? "현재 환경에서는 알림을 사용할 수 없어요."
+          : "알림 설정을 변경하지 못했어요. 잠시 후 다시 시도해주세요.");
+      },
+      createRequestId: isPushPreferenceRequestInstrumentationEnabled()
+        ? (kind, sequence) => `preference-${kind}-${sequence}`
+        : undefined,
     });
+    return preferenceMutationsRef.current;
   }
 
   function handleToggle(kind: PushPreferenceKind) {
@@ -258,7 +257,7 @@ export function NotificationSettingsScreen({
       applyState("subscribed");
       return;
     }
-    startPreferenceWorker(kind);
+    void getPreferenceMutations().enqueue(kind, enabled);
   }
 
   const stateDisablesControls = preferences === null || state === "denied" || state === "unsupported";
