@@ -15,6 +15,7 @@ const MOOD_TOAST_MESSAGES: Record<string, string> = {
 const MEDICATION_TOAST_MESSAGES: Record<string, string> = {
   added: "약을 등록했어요!",
   "schedule-updated": "복용 일정을 수정했어요.",
+  "time-updated": "복용 시간을 수정했어요.",
 };
 
 const FEEDBACK_TOAST_MESSAGES: Record<string, string> = {

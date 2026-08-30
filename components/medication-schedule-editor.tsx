@@ -36,6 +36,13 @@ function keepInputVisible(input: HTMLInputElement) {
   }, 250);
 }
 
+function isSameRecordedAtInstant(left?: string, right?: string) {
+  if (!left || !right) return false;
+  const leftTime = Date.parse(left);
+  const rightTime = Date.parse(right);
+  return Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime === rightTime;
+}
+
 export function MedicationScheduleEditor({
   medicationId,
   targetDateKey,
@@ -180,11 +187,13 @@ export function MedicationScheduleEditor({
       if (
         persistedMatches.length !== 1
         || savedRecord.id !== intake.id
-        || savedRecord.recordedAt !== recordedAt
+        || !isSameRecordedAtInstant(savedRecord.recordedAt, recordedAt)
         || persistedRecord?.id !== intake.id
-        || persistedRecord.recordedAt !== recordedAt
+        || !isSameRecordedAtInstant(persistedRecord?.recordedAt, recordedAt)
       ) throw new Error("복용 완료 시간 저장 결과를 확인하지 못했어요.");
-      router.replace(homeHref);
+      const destination = new URL(homeHref, window.location.origin);
+      destination.searchParams.set("medicationToast", "time-updated");
+      router.replace(`${destination.pathname}${destination.search}${destination.hash}`);
     } catch {
       // Figma does not define a save failure state for this screen.
     } finally {
