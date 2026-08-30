@@ -55,7 +55,8 @@ const previewEmptyPage = read("app/preview/notifications/empty/page.tsx");
 const pushStatusRoute = read("app/api/push/subscriptions/status/route.ts");
 const home = read("components/home-screen.tsx");
 const repository = read("lib/notifications.ts");
-const migration = read("supabase/migrations/20260830052705_harden_app_notifications_phase1.sql");
+const baseMigration = read("supabase/migrations/20260830000000_create_app_notifications.sql");
+const hardeningMigration = read("supabase/migrations/20260830052706_harden_app_notifications_forward_only.sql");
 const pushMigration = read("supabase/migrations/20260830062111_create_push_subscriptions_phase2.sql");
 const pushPreferencesMigration = read("supabase/migrations/20260830083000_add_push_subscription_preferences.sql");
 const styles = read("app/globals.css");
@@ -99,14 +100,15 @@ assert.match(repository, /markAllRecentNotificationsRead[\s\S]*\.update\(\{ read
 assert.doesNotMatch(repository, /markAllRecentNotificationsRead[\s\S]*\.delete\(\)/);
 assert.match(screen, /setNotifications\(\(current\) => current\.map\(\(notification\)/);
 
-assert.match(migration, /create table if not exists public\.app_notifications/);
-assert.doesNotMatch(migration, /create table(?: if not exists)? public\.notifications\s*\(/);
-assert.match(migration, /on delete cascade/);
-assert.match(migration, /alter table public\.app_notifications enable row level security/);
-assert.match(migration, /revoke insert, update, delete on table public\.app_notifications from authenticated/);
-assert.match(migration, /grant update \(read_at\) on table public\.app_notifications to authenticated/);
-assert.match(migration, /using \(\(select auth\.uid\(\)\) = user_id\)/);
-assert.match(migration, /kind in \('medication', 'visit_day', 'mood'\)/);
+assert.match(baseMigration, /create table public\.app_notifications/);
+assert.doesNotMatch(baseMigration, /create table(?: if not exists)? public\.notifications\s*\(/);
+assert.match(baseMigration, /on delete cascade/);
+assert.match(hardeningMigration, /alter table public\.app_notifications enable row level security/);
+assert.match(hardeningMigration, /revoke insert, update, delete on table public\.app_notifications from authenticated/);
+assert.match(hardeningMigration, /grant update \(read_at\) on table public\.app_notifications to authenticated/);
+assert.match(hardeningMigration, /using \(\(select auth\.uid\(\)\) = user_id\)/);
+assert.match(hardeningMigration, /kind in \('medication', 'visit_day', 'mood'\)/);
+assert.match(hardeningMigration, /alter column fired_at set default now\(\)/);
 
 assert.match(pushMigration, /create table public\.push_subscriptions/);
 assert.match(pushMigration, /user_id uuid not null references auth\.users\(id\) on delete cascade/);
