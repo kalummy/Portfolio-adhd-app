@@ -43,9 +43,9 @@ assert.match(socialRoute, /if \(!user\) redirect\("\/auth\/login\?next=\/my\/soc
 assert.doesNotMatch(bottomNavigation, />집중</);
 assert.match(
   styles,
-  /\.bottom-navigation-tabs\s*\{[^}]*grid-template-columns:\s*repeat\(4,/s,
+  /\.bottom-navigation-tabs\s*\{[^}]*grid-template-columns:\s*repeat\(3,/s,
 );
-assert.doesNotMatch(homeScreen, /home-notification-button/);
+assert.match(homeScreen, /home-notification-button/);
 assert.match(homeScreen, /setProfileId\(getAddiProfileId\(authState\.user\)\)/);
 assert.match(homeScreen, /src=\{getAddiProfileAsset\(profileId\)\}/);
 assert.match(homeScreen, /<BottomNavigation activeTab="home" profileId=\{profileId\}/);

@@ -26,6 +26,7 @@ import { readMoodAnalysisFailure, type MoodAnalysisFailureType, type MoodStorage
 import { classifyMoodSaveFailure } from "@/lib/analytics/mood-save-failure";
 import { selectRandomRewardCatId, type CatId } from "@/lib/cats";
 import { createClientId } from "@/lib/client-id";
+import { requestNotificationDispatch } from "@/lib/notifications/client";
 import {
   clearMoodDraft,
   readMoodDraft,
@@ -479,6 +480,9 @@ export function MoodQuestionFlow({
 
     clearMoodDraft(window.sessionStorage, targetDateKey);
     void trackMoodSaved(attempt, storageBackend);
+    if (storageBackend === "supabase") {
+      void requestNotificationDispatch("mood_reminder", targetDateKey).catch(() => undefined);
+    }
     const destination = new URL(homeHref, window.location.origin);
     destination.searchParams.set("moodToast", "saved");
     destination.searchParams.set("toastId", createClientId());

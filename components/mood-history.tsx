@@ -46,9 +46,15 @@ function getRecordSummary(record: MoodRecord) {
   return record.moodLabel || record.memberSummary || record.diaryEntries?.[0] || "";
 }
 
-export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: boolean }) {
+export function MoodHistory({
+  showDeletedToast = false,
+  initialTab = "records",
+}: {
+  showDeletedToast?: boolean;
+  initialTab?: MoodTab;
+}) {
   const entryDateKey = getKstDateKey();
-  const [activeTab, setActiveTab] = useState<MoodTab>("records");
+  const [activeTab, setActiveTab] = useState<MoodTab>(initialTab);
   const [records, setRecords] = useState<MoodRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [collectionRecords, setCollectionRecords] = useState<MoodRecord[]>([]);
