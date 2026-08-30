@@ -248,6 +248,15 @@ assert.match(pushPreferencesMigration, /add column if not exists visit_day_enabl
 assert.match(pushPreferencesMigration, /add column if not exists mood_enabled boolean not null default true/);
 assert.match(testPushRoute, /isNotificationPushTestEnvironment\(\)/);
 assert.match(testPushRoute, /\.eq\("notification_id", notificationId\)/);
+assert.match(testPushRoute, /PRODUCTION_PUSH_E2E_USER_ID/);
+assert.match(testPushRoute, /joffvlsyxivveqycjrio\.supabase\.co/);
+assert.match(testPushRoute, /userData\.user\.id !== productionTestUserId/);
+assert.match(testPushRoute, /keys\.length === 1/);
+assert.match(testPushRoute, /keys\[0\] === "endpoint"/);
+assert.match(testPushRoute, /\.maybeSingle\(\)/);
+assert.match(testPushRoute, /PRODUCTION_E2E_NOTIFICATION_ID/);
+assert.match(testPushRoute, /notificationError\.code === "23505"/);
+assert.doesNotMatch(testPushRoute, /Promise\.all|subscriptions\.map/);
 assert.ok(
   pushClient.indexOf('if (!response.ok) throw new Error("push_subscription_revoke_failed")')
     < pushClient.lastIndexOf("await subscription.unsubscribe()"),
@@ -258,7 +267,7 @@ assert.match(serviceWorker, /self\.addEventListener\("notificationclick"/);
 assert.match(serviceWorker, /\/api\/notifications\/read/);
 assert.match(serviceWorker, /await openNotificationRoute\(route\)/);
 assert.match(testPushRoute, /isNotificationPushTestEnvironment\(\)/);
-assert.match(testPushRoute, /isPushEndpoint\(input\.endpoint\)/);
+assert.match(testPushRoute, /isEndpointOnlyInput\(input\)/);
 assert.match(testPushRoute, /\.eq\("endpoint", input\.endpoint\)/);
 assert.match(testPushRoute, /title: "복용 알림"/);
 assert.match(testPushRoute, /body: "오늘 복용기록이 없어요\."/);
