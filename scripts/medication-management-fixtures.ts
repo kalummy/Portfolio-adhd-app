@@ -227,8 +227,14 @@ assert.match(scheduleEditor, /resolveMedicationEditorInitialTime/);
 assert.match(scheduleEditor, /targetDateKey/);
 assert.match(scheduleEditor, /repository\.updateRecordedAt\([\s\S]*?repository\.listByDate\(targetDateKey\)/);
 assert.match(scheduleEditor, /savedRecord\.id !== intake\.id/);
-assert.match(scheduleEditor, /savedRecord\.recordedAt !== recordedAt/);
+assert.match(scheduleEditor, /function isSameRecordedAtInstant/);
+assert.match(scheduleEditor, /Date\.parse\(left\)/);
+assert.match(scheduleEditor, /Date\.parse\(right\)/);
+assert.match(scheduleEditor, /isSameRecordedAtInstant\(savedRecord\.recordedAt, recordedAt\)/);
+assert.match(scheduleEditor, /isSameRecordedAtInstant\(persistedRecord\?\.recordedAt, recordedAt\)/);
 assert.match(scheduleEditor, /persistedRecord\?\.id !== intake\.id/);
+assert.match(scheduleEditor, /destination\.searchParams\.set\("medicationToast", "time-updated"\)/);
+assert.doesNotMatch(scheduleEditor, /savedRecord\.recordedAt !== recordedAt/);
 assert.doesNotMatch(scheduleEditor, /scheduledTime|updateSchedule|trackMedicationScheduleUpdated/);
 assert.equal((scheduleEditor.match(/updateRecordedAt\(/g) ?? []).length, 1);
 const completeHandlerIndex = scheduleEditor.indexOf("async function complete()");
@@ -263,6 +269,18 @@ assert.doesNotMatch(homeScreen, /scheduledTimeLabel \?\?/);
 
 const homePage = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
 assert.match(homePage, /medicationToast === "added" \|\| moodToast === "saved"/);
+assert.match(homePage, /"time-updated": "복용 시간을 수정했어요\."/);
+
+assert.equal(
+  Date.parse("2026-08-23T11:01:00.000Z"),
+  Date.parse("2026-08-23T11:01:00+00:00"),
+  "equivalent UTC timestamp formats describe the same saved instant",
+);
+assert.notEqual(
+  Date.parse("2026-08-23T11:01:00.000Z"),
+  Date.parse("2026-08-23T11:02:00+00:00"),
+  "a different saved minute must still fail verification",
+);
 
 const toastComponent = await readFile(
   new URL("../components/toast.tsx", import.meta.url),

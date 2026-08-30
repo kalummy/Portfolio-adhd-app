@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { getHomeMedicationProjection } from "../lib/home-medication-projection.ts";
 import { getWeekProgress } from "../lib/home-week-progress.ts";
 import {
   addDaysToDateKey,
+  getMonthCalendarDateKeys,
   getKstDateKey,
   isValidDateKey,
   moveMonthDateKey,
@@ -176,5 +178,31 @@ assert.equal(addDaysToDateKey("2026-08-31", 1), "2026-09-01");
 assert.equal(moveMonthDateKey("2026-12-15", 1), "2027-01-01");
 assert.equal(isValidDateKey("2026-02-29"), false);
 assert.equal(isValidDateKey("2028-02-29"), true);
+
+const augustCalendarDates = getMonthCalendarDateKeys("2026-08-01");
+assert.equal(augustCalendarDates.length, 42, "August 2026 requires six calendar rows");
+assert.equal(augustCalendarDates.includes("2026-08-31"), true, "August 31 remains visible");
+
+const globalCss = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+assert.match(
+  globalCss,
+  /\.home-date-picker-sheet[\s\S]*?height: min\(650px, calc\(100dvh - env\(safe-area-inset-top\)\)\)/,
+);
+const homeCalendarCss = globalCss.match(/\.home-calendar \{([^}]*)\}/)?.[1] ?? "";
+assert.match(homeCalendarCss, /height: 422px/);
+assert.match(homeCalendarCss, /overflow: hidden/);
+assert.doesNotMatch(homeCalendarCss, /overflow-y: auto/);
+assert.match(globalCss, /\.home-calendar-weekdays \{[\s\S]*?min-height: 26px/);
+assert.match(globalCss, /grid-template-columns: repeat\(7, minmax\(0, 44px\)\)/);
+assert.match(globalCss, /\.home-calendar-grid button \{[\s\S]*?aspect-ratio: 1/);
+
+for (const viewportWidth of [320, 360, 375, 390, 430]) {
+  const contentWidth = viewportWidth - 40;
+  const cellWidth = Math.min(44, contentWidth / 7);
+  assert.ok(
+    cellWidth * 7 <= contentWidth,
+    `${viewportWidth}px calendar columns stay inside the 20px side padding`,
+  );
+}
 
 console.log("PASS home date picker progress and KST date fixtures");
