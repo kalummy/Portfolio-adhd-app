@@ -386,21 +386,16 @@ assert.match(pushPreferencesMigration, /add column if not exists visit_day_enabl
 assert.match(pushPreferencesMigration, /add column if not exists mood_enabled boolean not null default true/);
 assert.match(testPushRoute, /isNotificationPushTestEnvironment\(\)/);
 assert.match(testPushRoute, /\.eq\("notification_id", notificationId\)/);
-assert.match(testPushRoute, /PRODUCTION_PUSH_E2E_USER_ID/);
-assert.match(testPushRoute, /joffvlsyxivveqycjrio\.supabase\.co/);
-assert.match(testPushRoute, /userData\.user\.id !== productionTestUserId/);
 assert.match(testPushRoute, /keys\.length === 1/);
 assert.match(testPushRoute, /keys\[0\] === "endpoint"/);
-assert.match(testPushRoute, /isEmptyInput\(input\)/);
-assert.match(testPushRoute, /subscriptions\.length !== 1/);
-assert.match(testPushRoute, /subscriptions\[0\]\.medication_enabled !== true/);
-assert.match(testPushRoute, /PRODUCTION_E2E_NOTIFICATION_PREFIX = "production-twa-e2e:"/);
-assert.match(testPushRoute, /new Date\(\)\.toISOString\(\)/);
+assert.match(testPushRoute, /\.eq\("endpoint", input\.endpoint\)/);
+assert.match(testPushRoute, /\.eq\("medication_enabled", true\)/);
+assert.match(testPushRoute, /\.maybeSingle\(\)/);
 assert.match(testPushRoute, /randomUUID\(\)/);
-assert.match(testPushRoute, /\.like\("notification_id", `\$\{PRODUCTION_E2E_NOTIFICATION_PREFIX\}%`\)/);
-assert.match(testPushRoute, /providerAccepted: delivered > 0/);
+assert.doesNotMatch(testPushRoute, /PRODUCTION_PUSH_E2E_USER_ID/);
+assert.doesNotMatch(testPushRoute, /PRODUCTION_E2E_NOTIFICATION_PREFIX/);
+assert.doesNotMatch(testPushRoute, /providerAccepted/);
 assert.doesNotMatch(testPushRoute, /production-e2e:phase2\.5/);
-assert.match(testPushRoute, /notificationError\.code === "23505"/);
 assert.doesNotMatch(testPushRoute, /Promise\.all|subscriptions\.map/);
 assert.ok(
   pushClient.indexOf('if (!response.ok) throw new Error("push_subscription_revoke_failed")')
