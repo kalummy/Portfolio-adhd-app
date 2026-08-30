@@ -70,6 +70,8 @@ assert.match(bell, /notification-red-dot\.svg/);
 assert.doesNotMatch(bell, /Notification\.permission|requestPermission|PushManager|serviceWorker/);
 assert.match(home, /<NotificationBellButton/);
 assert.match(home, /<BottomNavigation activeTab="home"/);
+assert.match(read("components/bottom-navigation.tsx"), /router\.prefetch\("\/moods"\)/);
+assert.match(read("components/bottom-navigation.tsx"), /navigator\.vibrate\(8\)/);
 
 assert.match(screen, /markNotificationRead\(notification\.id/);
 assert.match(screen, /markAllRecentNotificationsRead/);
@@ -150,7 +152,7 @@ assert.match(styles, /\.notifications-actions[\s\S]*gap: 12px;/);
 assert.match(styles, /\.notification-visit-icon img:first-child[\s\S]*top: 16\.15%;[\s\S]*left: 9\.38%;/);
 assert.match(styles, /\.notification-visit-icon img:last-child[\s\S]*left: 34\.79%;/);
 assert.match(styles, /\.notifications-retention-note[\s\S]*position: fixed;[\s\S]*bottom: 80px;/);
-assert.match(styles, /\.notifications-off-state[\s\S]*gap: 12px;/);
+assert.match(styles, /\.notifications-off-state[\s\S]*position: fixed;[\s\S]*top: 50%;[\s\S]*transform: translate\(-50%, -50%\);[\s\S]*gap: 12px;/);
 assert.match(styles, /\.notifications-off-icon[\s\S]*width: 64px;[\s\S]*height: 64px;/);
 assert.match(styles, /\.notifications-off-enable[\s\S]*width: 148px;[\s\S]*height: 40px;[\s\S]*border-radius: 10px;/);
 

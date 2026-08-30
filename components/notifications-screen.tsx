@@ -111,22 +111,21 @@ export function NotificationsScreen({
   async function handleEnablePush() {
     if (enablingPush) return;
     if (isPreviewFixture || isPushPreviewFixture) {
-      router.push(settingsHref);
+      setPushState("subscribed");
       return;
     }
     if (pushState === "denied" || pushState === "unsupported") {
-      router.push(settingsHref);
       return;
     }
 
     setEnablingPush(true);
     try {
       await requestPushSubscription();
+      setPushState("subscribed");
     } catch {
-      // The settings screen keeps the retry and device-settings guidance in one place.
+      setPushState(await getCurrentPushState().catch(() => "unknown"));
     } finally {
       setEnablingPush(false);
-      router.push(settingsHref);
     }
   }
 

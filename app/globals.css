@@ -5653,7 +5653,7 @@ html[data-addi-member-splash="skip"] .member-splash {
 .mood-record-detail-screen button,
 .mood-record-detail-screen a,
 .bottom-navigation-tab[href] {
-  transition: transform 100ms ease-out;
+  transition: transform 60ms ease-out;
 }
 
 .appointment-row:active,
@@ -6398,9 +6398,13 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
 
 /* Notification Push OFF empty state — Figma node 437:46599. */
 .notifications-off-state {
+  position: fixed;
+  top: 50%;
+  left: 50%;
   display: flex;
-  width: 100%;
-  padding: 124px 20px calc(34px + env(safe-area-inset-bottom));
+  width: min(100%, 430px);
+  padding: 20px;
+  transform: translate(-50%, -50%);
   flex-direction: column;
   align-items: center;
   gap: 12px;
