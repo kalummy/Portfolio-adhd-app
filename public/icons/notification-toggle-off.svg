@@ -1,0 +1,20 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="68" height="44" viewBox="0 0 68 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Button">
+<path id="Vector" d="M6 22C6 13.1634 13.1175 6 21.8974 6H52.1026C60.8825 6 68 13.1634 68 22C68 30.8366 60.8825 38 52.1026 38H21.8974C13.1175 38 6 30.8366 6 22Z" fill="#CFD1D6"/>
+<g id="Vector_2" filter="url(#filter0_d_0_44)">
+<circle cx="22" cy="22" r="14" fill="#FAFAFB"/>
+</g>
+</g>
+<defs>
+<filter id="filter0_d_0_44" x="0" y="0" width="44" height="44" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset/>
+<feGaussianBlur stdDeviation="4"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_44"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_0_44" result="shape"/>
+</filter>
+</defs>
+</svg>

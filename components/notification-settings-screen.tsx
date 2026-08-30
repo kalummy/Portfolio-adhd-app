@@ -5,12 +5,15 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { MobileShell } from "@/components/mobile-shell";
 import {
+  getCurrentPushPreferences,
   getCurrentPushState,
   getPushPermissionState,
   requestPushSubscription,
   unsubscribeFromPush,
+  updateCurrentPushPreference,
   type CurrentPushState,
 } from "@/lib/push/client";
+import type { PushPreferenceKind, PushPreferences } from "@/lib/push/contracts";
 
 type PushSettingsState = "checking" | CurrentPushState;
 
@@ -18,6 +21,19 @@ type NotificationSettingsScreenProps = {
   backHref?: string;
   initialState?: PushSettingsState;
 };
+
+const SETTING_ITEMS: Array<{
+  kind: PushPreferenceKind;
+  title: string;
+  description: string;
+}> = [
+  { kind: "medication", title: "복용 알림", description: "복용 시간을 놓치지 않도록 알려드려요" },
+  { kind: "visit_day", title: "내원일 알림", description: "다가오는 내원일을 미리 알려드려요" },
+  { kind: "mood", title: "감정기록 알림", description: "오늘의 감정을 기록할 때 알려드려요" },
+];
+
+const ALL_ENABLED: PushPreferences = { medication: true, visit_day: true, mood: true };
+const ALL_DISABLED: PushPreferences = { medication: false, visit_day: false, mood: false };
 
 function stateFromCurrentPermission(): CurrentPushState {
   const permission = getPushPermissionState();
@@ -30,12 +46,19 @@ export function NotificationSettingsScreen({
 }: NotificationSettingsScreenProps = {}) {
   const isPreviewFixture = initialState !== undefined;
   const [state, setState] = useState<PushSettingsState>(initialState ?? "checking");
+  const [preferences, setPreferences] = useState<PushPreferences>(
+    initialState === "subscribed" ? ALL_ENABLED : ALL_DISABLED,
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const refreshState = useCallback(async () => {
     try {
-      setState(await getCurrentPushState());
+      const nextState = await getCurrentPushState();
+      setState(nextState);
+      setPreferences(nextState === "subscribed"
+        ? await getCurrentPushPreferences() ?? ALL_ENABLED
+        : ALL_DISABLED);
       setError("");
     } catch {
       setState(stateFromCurrentPermission());
@@ -48,9 +71,12 @@ export function NotificationSettingsScreen({
     let active = true;
 
     void getCurrentPushState()
-      .then((nextState) => {
+      .then(async (nextState) => {
         if (!active) return;
         setState(nextState);
+        setPreferences(nextState === "subscribed"
+          ? await getCurrentPushPreferences() ?? ALL_ENABLED
+          : ALL_DISABLED);
         setError("");
       })
       .catch(() => {
@@ -72,50 +98,54 @@ export function NotificationSettingsScreen({
     };
   }, [isPreviewFixture, refreshState]);
 
-  async function handleEnable() {
-    if (busy || state === "denied" || state === "unsupported") return;
+  async function handleToggle(kind: PushPreferenceKind) {
+    if (busy || state === "checking" || state === "denied" || state === "unsupported") return;
+    const enabled = !preferences[kind];
     if (isPreviewFixture) {
-      setState("subscribed");
+      const nextPreferences = { ...preferences, [kind]: enabled };
+      setPreferences(nextPreferences);
+      setState(Object.values(nextPreferences).some(Boolean) ? "subscribed" : "granted-unsubscribed");
       return;
     }
     setBusy(true);
     setError("");
 
     try {
-      const result = await requestPushSubscription();
-      if (result.status === "subscribed") {
+      const activatedSubscription = enabled && state !== "subscribed";
+      if (enabled && state !== "subscribed") {
+        const result = await requestPushSubscription();
+        if (result.status !== "subscribed") {
+          setState(result.status);
+          setPreferences(ALL_DISABLED);
+          return;
+        }
         setState("subscribed");
+      }
+
+      if (activatedSubscription) {
+        await Promise.all(
+          SETTING_ITEMS.map((item) => updateCurrentPushPreference(item.kind, item.kind === kind)),
+        );
       } else {
-        setState(result.status);
+        await updateCurrentPushPreference(kind, enabled);
+      }
+      const serverPreferences = await getCurrentPushPreferences();
+      const nextPreferences = serverPreferences ?? { ...preferences, [kind]: enabled };
+      setPreferences(nextPreferences);
+
+      if (!Object.values(nextPreferences).some(Boolean)) {
+        await unsubscribeFromPush();
+        setState("granted-unsubscribed");
       }
     } catch {
-      setState(getPushPermissionState() === "granted" ? "granted-unsubscribed" : "default");
-      setError("알림을 켜지 못했어요. 잠시 후 다시 시도해주세요.");
+      setState(getPushPermissionState() === "granted" ? state : stateFromCurrentPermission());
+      setError("알림 설정을 변경하지 못했어요. 잠시 후 다시 시도해주세요.");
     } finally {
       setBusy(false);
     }
   }
 
-  async function handleDisable() {
-    if (busy || state !== "subscribed") return;
-    if (isPreviewFixture) {
-      setState("granted-unsubscribed");
-      return;
-    }
-    setBusy(true);
-    setError("");
-
-    try {
-      await unsubscribeFromPush();
-      setState("granted-unsubscribed");
-    } catch {
-      setError("알림을 끄지 못했어요. 잠시 후 다시 시도해주세요.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const canEnable = state === "default" || state === "granted-unsubscribed";
+  const controlsDisabled = busy || state === "checking" || state === "denied" || state === "unsupported";
 
   return (
     <MobileShell className="notification-settings-screen">
@@ -123,60 +153,48 @@ export function NotificationSettingsScreen({
         <Link href={backHref} aria-label="이전 화면">
           <Image src="/icons/back.svg" alt="" width={18} height={14} />
         </Link>
-        <h1>알림</h1>
+        <h1>알림 설정</h1>
       </header>
 
       <section className="notification-settings-content" aria-busy={busy}>
         <p className="sr-only" aria-live="polite">
           {state === "checking" ? "알림 상태를 확인하고 있어요." : ""}
         </p>
-        {state === "checking" ? null : (
-          <div className="notifications-off-state">
-            <span className="notifications-off-icon" aria-hidden="true">
-              <Image src="/icons/notification-off-bell.svg" alt="" width={43.2006} height={48.0597} priority />
-            </span>
-            <p className="notifications-off-copy">
-              {state === "subscribed" ? (
-                <span>알림을 받고 있어요.</span>
-              ) : state === "denied" ? (
-                <>
-                  <span>기기 설정에서 알림을 허용해주세요.</span>
-                  <span>브라우저의 사이트 설정에서 ADDI 알림을 켤 수 있어요.</span>
-                </>
-              ) : state === "unsupported" ? (
-                <span>이 브라우저에서는 푸시 알림을 사용할 수 없어요.</span>
-              ) : (
-                <>
-                  <span>받은 알림이 없어요.</span>
-                  <span>알림을 켜고 복용기록을 이어가세요.</span>
-                </>
-              )}
-            </p>
-            {canEnable ? (
-              <button
-                type="button"
-                className="notifications-off-enable"
-                onClick={() => void handleEnable()}
-                disabled={busy}
-                aria-busy={busy}
-              >
-                {busy ? "알림 켜는 중" : "알림 켜기"}
-              </button>
-            ) : null}
-            {state === "subscribed" ? (
-              <button
-                type="button"
-                className="notification-settings-disable"
-                onClick={() => void handleDisable()}
-                disabled={busy}
-                aria-busy={busy}
-              >
-                {busy ? "알림 끄는 중" : "알림 끄기"}
-              </button>
-            ) : null}
-            {error ? <p className="notification-settings-error" role="alert">{error}</p> : null}
-          </div>
-        )}
+        <div className="notification-settings-list">
+          {SETTING_ITEMS.map((item, index) => (
+            <div key={item.kind} className="notification-settings-item-group">
+              {index > 0 ? <div className="notification-settings-divider" /> : null}
+              <div className="notification-settings-item">
+                <span className="notification-settings-item-copy">
+                  <strong>{item.title}</strong>
+                  <span>{item.description}</span>
+                </span>
+                <button
+                  type="button"
+                  className="notification-settings-toggle"
+                  role="switch"
+                  aria-checked={preferences[item.kind]}
+                  aria-label={`${item.title} ${preferences[item.kind] ? "끄기" : "켜기"}`}
+                  onClick={() => void handleToggle(item.kind)}
+                  disabled={controlsDisabled}
+                  aria-busy={busy}
+                >
+                  {preferences[item.kind] ? (
+                    <span className="notification-settings-toggle-visual on" aria-hidden="true">
+                      <Image src="/icons/notification-toggle-on-track.svg" alt="" width={62} height={32} />
+                      <Image src="/icons/notification-toggle-on-thumb.svg" alt="" width={44} height={44} />
+                    </span>
+                  ) : (
+                    <span className="notification-settings-toggle-visual off" aria-hidden="true">
+                      <Image src="/icons/notification-toggle-off.svg" alt="" width={68} height={44} />
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+          ))}
+          {error ? <p className="notification-settings-error" role="alert">{error}</p> : null}
+        </div>
       </section>
     </MobileShell>
   );

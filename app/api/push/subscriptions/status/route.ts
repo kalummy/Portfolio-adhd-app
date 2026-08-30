@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase
     .from("push_subscriptions")
-    .select("id")
+    .select("id,medication_enabled,visit_day_enabled,mood_enabled")
     .eq("user_id", userData.user.id)
     .eq("endpoint", body.endpoint)
     .is("revoked_at", null)
@@ -31,7 +31,15 @@ export async function POST(request: Request) {
   if (error) return Response.json({ ok: false }, { status: 500 });
 
   return Response.json(
-    { ok: true, active: Boolean(data) },
+    {
+      ok: true,
+      active: Boolean(data),
+      preferences: data ? {
+        medication: data.medication_enabled,
+        visit_day: data.visit_day_enabled,
+        mood: data.mood_enabled,
+      } : null,
+    },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

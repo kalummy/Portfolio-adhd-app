@@ -13,6 +13,16 @@ export type PushNotificationPayload = {
   route: "/" | "/visits" | "/moods?tab=report";
 };
 
+export const PUSH_PREFERENCE_KINDS = ["medication", "visit_day", "mood"] as const;
+export type PushPreferenceKind = typeof PUSH_PREFERENCE_KINDS[number];
+
+export type PushPreferences = Record<PushPreferenceKind, boolean>;
+
+export function isPushPreferenceKind(value: unknown): value is PushPreferenceKind {
+  return typeof value === "string"
+    && (PUSH_PREFERENCE_KINDS as readonly string[]).includes(value);
+}
+
 function isBoundedString(value: unknown, minimum: number, maximum: number) {
   return typeof value === "string" && value.length >= minimum && value.length <= maximum;
 }

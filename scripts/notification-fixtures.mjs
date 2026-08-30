@@ -56,6 +56,7 @@ const home = read("components/home-screen.tsx");
 const repository = read("lib/notifications.ts");
 const migration = read("supabase/migrations/20260830052705_harden_app_notifications_phase1.sql");
 const pushMigration = read("supabase/migrations/20260830062111_create_push_subscriptions_phase2.sql");
+const pushPreferencesMigration = read("supabase/migrations/20260830083000_add_push_subscription_preferences.sql");
 const styles = read("app/globals.css");
 const serviceWorker = read("public/sw.js");
 const pushClient = read("lib/push/client.ts");
@@ -156,9 +157,9 @@ assert.match(styles, /\.notifications-actions[\s\S]*gap: 12px;/);
 assert.match(styles, /\.notification-visit-icon img:first-child[\s\S]*top: 16\.15%;[\s\S]*left: 9\.38%;/);
 assert.match(styles, /\.notification-visit-icon img:last-child[\s\S]*left: 34\.79%;/);
 assert.match(styles, /\.notifications-retention-note[\s\S]*position: fixed;[\s\S]*bottom: 80px;/);
-assert.match(styles, /\.notifications-off-state[\s\S]*position: fixed;[\s\S]*top: 50%;[\s\S]*transform: translate\(-50%, -50%\);[\s\S]*gap: 12px;/);
-assert.match(styles, /\.notifications-off-icon[\s\S]*width: 64px;[\s\S]*height: 64px;/);
-assert.match(styles, /\.notifications-off-enable[\s\S]*width: 148px;[\s\S]*height: 40px;[\s\S]*border-radius: 10px;/);
+assert.match(styles, /\.notification-settings-list[\s\S]*gap: 24px;/);
+assert.match(styles, /\.notification-settings-item[\s\S]*padding: 0 20px;[\s\S]*gap: 16px;/);
+assert.match(styles, /\.notification-settings-toggle[\s\S]*width: 62px;[\s\S]*height: 32px;/);
 
 assert.equal(sha256("public/icons/notification-bell-solid.svg"), "f992432adc926d43ec750c2caf365d8885f47f99b4820994859cdecb9e0a5ae2");
 assert.equal(sha256("public/icons/notification-red-dot.svg"), "bcde37d598a1b5141563c1148e371aec3f17fd6fec123df10fedc47367f5cfd5");
@@ -167,6 +168,9 @@ assert.equal(sha256("public/icons/notification-visit-building.svg"), "75fb7b921b
 assert.equal(sha256("public/icons/notification-visit-medication.svg"), "3cdc96ca5b500900605c02f32d5927687e4a45adf9c35592ce8269fcaedbadbd");
 assert.equal(sha256("public/icons/notification-mood.svg"), "365013287ed1a2277cc1d2856ef389d3380ff2769ea61d789c0e250393cd0fce");
 assert.equal(sha256("public/icons/notification-off-bell.svg"), "442794ff26dd0456c0ab768d1566c1997441fb0922fc758cd37cb3cc195cd0be");
+assert.equal(sha256("public/icons/notification-toggle-on-track.svg"), "8a8fb635138eeb63909ac5ca2c419e618b35ce49c2176715589758e2b25fc559");
+assert.equal(sha256("public/icons/notification-toggle-on-thumb.svg"), "ea3757748e0e42fd69aa31b55dc866f66473d14950e1307d720931a9f2377f7b");
+assert.equal(sha256("public/icons/notification-toggle-off.svg"), "37fe77445dc19498b0bcff553be5607287af30e4e4b07c14b316b9a15fbf1c34");
 
 assert.deepEqual(
   NOTIFICATION_PREVIEW_ITEMS.map(({ kind, title, body }) => ({ kind, title, body })),
@@ -202,20 +206,29 @@ assert.match(previewOffPage, /initialState="default"/);
 assert.match(pushStatusRoute, /\.eq\("user_id", userData\.user\.id\)/);
 assert.match(pushStatusRoute, /\.eq\("endpoint", body\.endpoint\)/);
 assert.match(pushStatusRoute, /\.is\("revoked_at", null\)/);
-assert.match(settingsScreen, /<h1>알림<\/h1>/);
+assert.match(settingsScreen, /<h1>알림 설정<\/h1>/);
 assert.match(settingsScreen, /requestPushSubscription\(\)/);
 assert.match(settingsScreen, /state === "denied"/);
-assert.match(settingsScreen, /기기 설정에서 알림을 허용해주세요\./);
 assert.match(settingsScreen, /unsubscribeFromPush\(\)/);
-assert.match(settingsScreen, /알림 켜기/);
-assert.match(settingsScreen, /알림 끄기/);
+assert.match(settingsScreen, /role="switch"/);
+assert.match(settingsScreen, /item\.kind === kind/);
+assert.match(settingsScreen, /복용 알림/);
+assert.match(settingsScreen, /내원일 알림/);
+assert.match(settingsScreen, /감정기록 알림/);
+assert.match(settingsScreen, /updateCurrentPushPreference\(kind, enabled\)/);
 assert.doesNotMatch(screen, /notification-off-bell\.svg/);
 assert.doesNotMatch(screen, /requestPushSubscription\(\)|getCurrentPushState\(\)/);
-assert.match(settingsScreen, /notification-off-bell\.svg/);
-assert.match(settingsScreen, /받은 알림이 없어요\./);
-assert.match(settingsScreen, /알림을 켜고 복용기록을 이어가세요\./);
+assert.match(settingsScreen, /notification-toggle-on-track\.svg/);
+assert.match(settingsScreen, /notification-toggle-on-thumb\.svg/);
+assert.match(settingsScreen, /notification-toggle-off\.svg/);
 assert.match(pushClient, /\/api\/push\/subscriptions\/status/);
-assert.match(pushClient, /result\?\.ok === true && result\.active === true/);
+assert.match(pushClient, /preferences: result\.preferences \?\? null/);
+assert.match(subscriptionsRoute, /export async function PATCH/);
+assert.match(subscriptionsRoute, /isPushPreferenceKind\(body\.kind\)/);
+assert.match(testPushRoute, /\.eq\("medication_enabled", true\)/);
+assert.match(pushPreferencesMigration, /add column if not exists medication_enabled boolean not null default true/);
+assert.match(pushPreferencesMigration, /add column if not exists visit_day_enabled boolean not null default true/);
+assert.match(pushPreferencesMigration, /add column if not exists mood_enabled boolean not null default true/);
 assert.match(testPushRoute, /isNotificationPushTestEnvironment\(\)/);
 assert.match(testPushRoute, /\.eq\("notification_id", notificationId\)/);
 assert.ok(
