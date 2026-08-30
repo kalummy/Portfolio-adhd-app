@@ -6549,7 +6549,7 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
 }
 
 .notification-row.unread .notification-icon {
-  background: var(--color-bg-base-01);
+  background: var(--color-bg-base-05);
 }
 
 .notification-icon > img {
