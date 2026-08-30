@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { isNotificationPreviewEnvironment } from "@/lib/preview-environment";
-import type { PushNotificationPayload, PushSubscriptionInput } from "@/lib/push/contracts";
+import { isNotificationPushTestEnvironment } from "@/lib/preview-environment";
+import {
+  isPushEndpoint,
+  type PushNotificationPayload,
+  type PushSubscriptionInput,
+} from "@/lib/push/contracts";
 import {
   assertWebPushConfigured,
   isExpiredPushSubscriptionError,
@@ -21,7 +25,7 @@ function isSameOriginRequest(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!isNotificationPreviewEnvironment()) {
+  if (!isNotificationPushTestEnvironment()) {
     return Response.json({ ok: false }, { status: 404 });
   }
   if (!isSameOriginRequest(request)) return Response.json({ ok: false }, { status: 403 });
@@ -30,6 +34,11 @@ export async function POST(request: Request) {
   const { data: userData, error: userError } = await sessionClient.auth.getUser();
   if (userError || !userData.user) return Response.json({ ok: false }, { status: 401 });
 
+  const input = await request.json().catch(() => null) as { endpoint?: unknown } | null;
+  if (!input || !isPushEndpoint(input.endpoint)) {
+    return Response.json({ ok: false }, { status: 400 });
+  }
+
   try {
     assertWebPushConfigured();
     const admin = createSupabaseAdminClient();
@@ -37,6 +46,7 @@ export async function POST(request: Request) {
       .from("push_subscriptions")
       .select("endpoint,p256dh,auth")
       .eq("user_id", userData.user.id)
+      .eq("endpoint", input.endpoint)
       .is("revoked_at", null);
     if (subscriptionsError) throw subscriptionsError;
     if (!subscriptions?.length) {
@@ -83,6 +93,15 @@ export async function POST(request: Request) {
         }
       }
     }));
+
+    if (delivered === 0) {
+      const { error: cleanupError } = await admin
+        .from("app_notifications")
+        .delete()
+        .eq("user_id", userData.user.id)
+        .eq("notification_id", notificationId);
+      if (cleanupError) throw cleanupError;
+    }
 
     return Response.json(
       { ok: delivered > 0, notificationId, delivered, failed },
