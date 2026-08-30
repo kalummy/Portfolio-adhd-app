@@ -3,6 +3,7 @@ export const LEGACY_HOME_SPLASH_SESSION_KEY = "addi:splash:shown:v1";
 
 const PUBLIC_PAGE_PATHS = ["/auth", "/privacy", "/terms", "/delete-account"] as const;
 const PUBLIC_METADATA_PATHS = [
+  "/.well-known/assetlinks.json",
   "/manifest.webmanifest",
   "/robots.txt",
   "/sitemap.xml",
