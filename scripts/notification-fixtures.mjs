@@ -70,6 +70,8 @@ assert.match(bell, /notification-red-dot\.svg/);
 assert.doesNotMatch(bell, /Notification\.permission|requestPermission|PushManager|serviceWorker/);
 assert.match(home, /<NotificationBellButton/);
 assert.match(home, /<BottomNavigation activeTab="home"/);
+assert.match(read("components/bottom-navigation.tsx"), /router\.prefetch\("\/moods"\)/);
+assert.match(read("components/bottom-navigation.tsx"), /navigator\.vibrate\(8\)/);
 
 assert.match(screen, /markNotificationRead\(notification\.id/);
 assert.match(screen, /markAllRecentNotificationsRead/);

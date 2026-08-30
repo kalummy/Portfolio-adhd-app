@@ -5653,7 +5653,7 @@ html[data-addi-member-splash="skip"] .member-splash {
 .mood-record-detail-screen button,
 .mood-record-detail-screen a,
 .bottom-navigation-tab[href] {
-  transition: transform 100ms ease-out;
+  transition: transform 60ms ease-out;
 }
 
 .appointment-row:active,

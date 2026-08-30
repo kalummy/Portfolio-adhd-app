@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getCurrentUser } from "@/lib/auth/client";
 import {
@@ -21,9 +22,14 @@ export function BottomNavigation({
   activeTab,
   profileId: initialProfileId = DEFAULT_ADDI_PROFILE_ID,
 }: BottomNavigationProps) {
+  const router = useRouter();
   const [profileId, setProfileId] = useState(initialProfileId);
 
   useEffect(() => {
+    router.prefetch("/");
+    router.prefetch("/moods");
+    router.prefetch("/my");
+
     let active = true;
     void getCurrentUser().then((user) => {
       if (active) setProfileId(getAddiProfileId(user));
@@ -38,7 +44,11 @@ export function BottomNavigation({
       active = false;
       window.removeEventListener("addi:profile-changed", handleProfileChanged);
     };
-  }, []);
+  }, [router]);
+
+  function handleTabPointerDown() {
+    if ("vibrate" in navigator) navigator.vibrate(8);
+  }
 
   return (
     <nav className="bottom-navigation" aria-label="주요 메뉴">
@@ -47,6 +57,7 @@ export function BottomNavigation({
           href="/"
           className={`bottom-navigation-tab${activeTab === "home" ? " active" : ""}`}
           aria-current={activeTab === "home" ? "page" : undefined}
+          onPointerDown={handleTabPointerDown}
         >
           <span className="bottom-navigation-icon bottom-navigation-home-icon" aria-hidden="true">
             <Image
@@ -62,6 +73,7 @@ export function BottomNavigation({
           href="/moods"
           className={`bottom-navigation-tab${activeTab === "moods" ? " active" : ""}`}
           aria-current={activeTab === "moods" ? "page" : undefined}
+          onPointerDown={handleTabPointerDown}
         >
           <span className="bottom-navigation-icon" aria-hidden="true">
             <Image
@@ -77,6 +89,7 @@ export function BottomNavigation({
           href="/my"
           className={`bottom-navigation-tab${activeTab === "my" ? " active" : ""}`}
           aria-current={activeTab === "my" ? "page" : undefined}
+          onPointerDown={handleTabPointerDown}
         >
           <span className="bottom-navigation-icon" aria-hidden="true">
             <Image src={getAddiProfileAsset(profileId)} alt="" width={28} height={28} />
