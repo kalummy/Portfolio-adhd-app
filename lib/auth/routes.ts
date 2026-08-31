@@ -10,6 +10,7 @@ const PUBLIC_METADATA_PATHS = [
   "/sw.js",
 ] as const;
 const SELF_AUTHENTICATING_API_PATHS = ["/api/account"] as const;
+const CRON_API_PATHS = ["/api/cron/reminders"] as const;
 const PUBLIC_VERSION_API_PATHS = ["/api/app-version"] as const;
 
 function matchesPathPrefix(pathname: string, prefix: string) {
@@ -26,6 +27,7 @@ export function isPublicRequestPath(pathname: string) {
     || SELF_AUTHENTICATING_API_PATHS.includes(
       pathname as (typeof SELF_AUTHENTICATING_API_PATHS)[number],
     )
+    || CRON_API_PATHS.includes(pathname as (typeof CRON_API_PATHS)[number])
     || PUBLIC_VERSION_API_PATHS.includes(
       pathname as (typeof PUBLIC_VERSION_API_PATHS)[number],
     );

@@ -3,6 +3,8 @@ import "server-only";
 import webpush from "web-push";
 import type { PushNotificationPayload, PushSubscriptionInput } from "@/lib/push/contracts";
 
+export const WEB_PUSH_TIMEOUT_MS = 5_000;
+
 export class WebPushConfigurationError extends Error {
   constructor() {
     super("web_push_not_configured");
@@ -26,6 +28,7 @@ export async function sendWebPush(
   return webpush.sendNotification(subscription, JSON.stringify(payload), {
     TTL: 60,
     urgency: "normal",
+    timeout: WEB_PUSH_TIMEOUT_MS,
   });
 }
 

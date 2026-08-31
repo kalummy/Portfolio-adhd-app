@@ -38,7 +38,7 @@ const sha256 = (path) => createHash("sha256").update(read(path)).digest("hex");
 assert.deepEqual(VISIBLE_NOTIFICATION_KINDS, ["medication", "visit_day", "mood"]);
 assert.equal(getNotificationTargetUrl("medication"), "/");
 assert.equal(getNotificationTargetUrl("visit_day"), "/visits");
-assert.equal(getNotificationTargetUrl("mood"), "/moods?tab=report");
+assert.equal(getNotificationTargetUrl("mood"), "/moods/new");
 
 const now = new Date("2026-08-30T05:00:00.000Z");
 assert.equal(getNotificationCutoff(now), "2026-06-01T05:00:00.000Z");
@@ -164,6 +164,9 @@ assert.equal(isPushSubscriptionInput({
   keys: { p256dh: "a".repeat(65), auth: "b".repeat(22) },
 }), false);
 assert.equal(isPushNotificationRoute("/"), true);
+assert.equal(isPushNotificationRoute("/visits"), true);
+assert.equal(isPushNotificationRoute("/moods/new"), true);
+assert.equal(isPushNotificationRoute("/moods?tab=report"), true);
 assert.equal(isPushNotificationRoute("//example.com"), false);
 assert.equal(isPushEndpoint("https://push.example.test/device"), true);
 assert.equal(isPushEndpoint("http://push.example.test/device"), false);
@@ -282,15 +285,17 @@ assert.equal(sha256("public/icons/notification-toggle-off.svg"), "37fe77445dc194
 assert.deepEqual(
   NOTIFICATION_PREVIEW_ITEMS.map(({ kind, title, body }) => ({ kind, title, body })),
   [
-    { kind: "medication", title: "복용 알림", body: "오늘 복용기록이 없어요." },
-    { kind: "visit_day", title: "내원 알림", body: "오늘은 내원일이에요." },
-    { kind: "mood", title: "감정기록 알림", body: "지금 리포트 결과를 확인해보세요." },
+    { kind: "medication", title: "복용 알림", body: "오늘의 복용 여부를 확인해보세요." },
+    { kind: "visit_day", title: "내원일 알림", body: "오늘은 병원 방문일이에요." },
+    { kind: "mood", title: "감정기록 알림", body: "오늘의 감정은 어떠셨나요?" },
   ],
 );
 assert.equal(formatNotificationTime(NOTIFICATION_PREVIEW_ITEMS[0].firedAt, new Date(NOTIFICATION_PREVIEW_NOW)), "1분 전");
 assert.equal(formatNotificationTime(NOTIFICATION_PREVIEW_ITEMS[1].firedAt, new Date(NOTIFICATION_PREVIEW_NOW)), "5시간 전");
 assert.equal(formatNotificationTime(NOTIFICATION_PREVIEW_ITEMS[2].firedAt, new Date(NOTIFICATION_PREVIEW_NOW)), "6월 4일");
 assert.equal(NOTIFICATION_PREVIEW_ITEMS.some(({ title }) => title === "공지사항"), false);
+assert.equal(NOTIFICATION_PREVIEW_ITEMS[2].targetUrl, "/moods/new");
+assert.equal(NOTIFICATION_PREVIEW_ITEMS[1].targetUrl, "/visits");
 assert.match(previewPage, /initialNotifications=\{NOTIFICATION_PREVIEW_ITEMS\}/);
 assert.match(previewPage, /settingsHref="\/preview\/notifications\/settings"/);
 assert.match(previewPage, /backHref="\/preview\/notifications\/home"/);
@@ -403,6 +408,8 @@ assert.ok(
   "server revoke must succeed before the current browser subscription is removed",
 );
 assert.match(serviceWorker, /self\.addEventListener\("push"/);
+assert.match(serviceWorker, /"\/moods\?tab=report"/);
+assert.match(serviceWorker, /"\/moods\/new"/);
 assert.match(serviceWorker, /stage: "push_received"/);
 assert.match(serviceWorker, /stage: "notification_shown"/);
 assert.match(serviceWorker, /stage: "notification_failed"/);

@@ -145,8 +145,8 @@ begin
       'must-be-blocked',
       'mood',
       '감정기록 알림',
-      '지금 리포트 결과를 확인해보세요.',
-      '/moods?tab=report',
+      '오늘의 감정은 어떠셨나요?',
+      '/moods/new',
       pg_catalog.now()
     );
     raise exception 'Authenticated users can create notifications.';
@@ -229,8 +229,8 @@ values (
   'phase1-fixture-service-role',
   'mood',
   '감정기록 알림',
-  '지금 리포트 결과를 확인해보세요.',
-  '/moods?tab=report'
+  '오늘의 감정은 어떠셨나요?',
+  '/moods/new'
 );
 
 update public.app_notifications
