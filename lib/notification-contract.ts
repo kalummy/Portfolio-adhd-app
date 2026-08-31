@@ -11,7 +11,7 @@ export type AppNotification = {
   kind: VisibleNotificationKind;
   title: string;
   body: string;
-  targetUrl: "/" | "/visits" | "/moods?tab=report";
+  targetUrl: "/" | "/visits" | "/moods/new";
   firedAt: string;
   readAt: string | null;
 };
@@ -32,7 +32,7 @@ export const NOTIFICATION_RETENTION_MS = NOTIFICATION_RETENTION_DAYS * 24 * 60 *
 const TARGET_URL_BY_KIND: Record<VisibleNotificationKind, AppNotification["targetUrl"]> = {
   medication: "/",
   visit_day: "/visits",
-  mood: "/moods?tab=report",
+  mood: "/moods/new",
 };
 
 export function isVisibleNotificationKind(value: string): value is VisibleNotificationKind {

@@ -10,7 +10,7 @@ export type PushNotificationPayload = {
   notificationId: string;
   title: string;
   body: string;
-  route: "/" | "/visits" | "/moods?tab=report";
+  route: "/" | "/visits" | "/moods?tab=report" | "/moods/new";
 };
 
 export const PUSH_PREFERENCE_KINDS = ["medication", "visit_day", "mood"] as const;
@@ -51,5 +51,8 @@ export function isPushSubscriptionInput(value: unknown): value is PushSubscripti
 export function isPushNotificationRoute(
   value: unknown,
 ): value is PushNotificationPayload["route"] {
-  return value === "/" || value === "/visits" || value === "/moods?tab=report";
+  return value === "/"
+    || value === "/visits"
+    || value === "/moods?tab=report"
+    || value === "/moods/new";
 }

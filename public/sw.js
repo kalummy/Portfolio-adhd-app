@@ -1,4 +1,4 @@
-const SAFE_NOTIFICATION_ROUTES = new Set(["/", "/visits", "/moods?tab=report"]);
+const SAFE_NOTIFICATION_ROUTES = new Set(["/", "/visits", "/moods?tab=report", "/moods/new"]);
 const UNREAD_NOTIFICATION_MESSAGE = "addi:notification-unread";
 const PUSH_DIAGNOSTIC_MESSAGE = "addi:push-diagnostic";
 
