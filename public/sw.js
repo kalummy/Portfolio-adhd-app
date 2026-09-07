@@ -36,7 +36,6 @@ self.addEventListener("push", (event) => {
       await self.registration.showNotification(title, {
         body,
         icon: "/icon.png",
-        badge: "/brand/addi-notification-badge.png",
         tag: notificationId ?? undefined,
         data: { notificationId, route },
       });

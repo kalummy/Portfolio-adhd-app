@@ -57,7 +57,10 @@ handlers.get("push")({ data: { json: () => ({ title: "fixture", body: "synthetic
   waitUntil: (promise) => { done = promise; } });
 await done;
 assert.equal(shown.length, 1);
-assert.equal(shown[0][1].badge, "/brand/addi-notification-badge.png");
+assert.equal(Object.hasOwn(shown[0][1], "badge"), false, "omit badge entirely for native TWA fallback");
+assert.equal(shown[0][0], "fixture");
+assert.equal(shown[0][1].body, "synthetic");
+assert.equal(shown[0][1].tag, "test");
 assert.equal(shown[0][1].icon, "/icon.png", "large/app icon is unchanged");
 assert.equal(shown[0][1].data.route, "/");
-console.log(`PASS transparent white AD badge: ${transparent} transparent / ${opaque} opaque pixels; mock showNotification=1; real Push=0`);
+console.log(`PASS badge omitted from Push payload; retained asset alpha: ${transparent} transparent / ${opaque} opaque pixels; mock showNotification=1; real Push=0`);
