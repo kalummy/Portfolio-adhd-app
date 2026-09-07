@@ -118,7 +118,7 @@ assert.match(localSource, /window\.sessionStorage/u);
 assert.match(localSource, /clearAddiIndexedDatabase\(\)/u);
 assert.match(indexedDbSource, /indexedDB\.deleteDatabase\(DB_NAME\)/u);
 assert.match(analyticsSource, /mixpanel\.reset\(\)/u);
-assert.match(authRoutesSource, /SELF_AUTHENTICATING_API_PATHS = \["\/api\/account"\]/u);
+assert.match(authRoutesSource, /SELF_AUTHENTICATING_API_PATHS = \[[^\]]*"\/api\/account"[^\]]*\]/u);
 assert.match(authRoutesSource, /PUBLIC_PAGE_PATHS = \[[^\]]*"\/delete-account"/u);
 assert.match(pageSource, /title: "ADDI 계정 삭제"/u);
 assert.match(pageSource, /await connection\(\)/u);

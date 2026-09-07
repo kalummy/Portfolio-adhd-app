@@ -9,7 +9,7 @@ const PUBLIC_METADATA_PATHS = [
   "/sitemap.xml",
   "/sw.js",
 ] as const;
-const SELF_AUTHENTICATING_API_PATHS = ["/api/account"] as const;
+const SELF_AUTHENTICATING_API_PATHS = ["/api/account", "/api/push/e2e"] as const;
 const CRON_API_PATHS = ["/api/cron/reminders"] as const;
 const PUBLIC_VERSION_API_PATHS = ["/api/app-version"] as const;
 
