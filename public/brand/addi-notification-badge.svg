@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <!-- Notification-only AD silhouette. No background; counters stay transparent. -->
+  <path fill="#ffffff" fill-rule="evenodd" d="M1.5 19 6.2 5H9.2L13.9 19H10.8L9.95 16.2H5.45L4.6 19ZM6.2 13.6H9.2L7.7 8.7Z"/>
+  <path fill="#ffffff" fill-rule="evenodd" d="M14.5 5H18C21.6 5 23 7.9 23 12S21.6 19 18 19H14.5ZM17.3 7.8V16.2H18C19.7 16.2 20.2 14.5 20.2 12S19.7 7.8 18 7.8Z"/>
+</svg>
