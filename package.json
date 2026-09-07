@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "push-e2e:ui-fixtures": "node --experimental-strip-types --experimental-loader=./scripts/ts-test-loader.mjs scripts/push-e2e-ui-fixtures.mjs",
     "push-e2e:fixtures": "node --experimental-strip-types --experimental-loader=./scripts/ts-test-loader.mjs scripts/push-e2e-fixtures.mjs",
     "app-version:fixtures": "node --experimental-strip-types --experimental-loader=./scripts/ts-test-loader.mjs scripts/app-version-fixtures.mjs",
     "account-deletion:fixtures": "node --experimental-strip-types scripts/account-deletion-fixtures.mjs",
