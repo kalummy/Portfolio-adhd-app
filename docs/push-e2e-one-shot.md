@@ -31,6 +31,38 @@ Success requires all three: provider 2xx; Galaxy shows ADDI app name/icon; tappi
 
 ## Production rollout: separate approvals required
 
+### Temporary settings button
+
+`/notifications/settings` renders **알림 테스트** only when the server switch is exactly `true`,
+the reminder switch is explicitly `false`, `auth.getUser()` identifies the run owner, and exactly
+one unexpired ready run targets the globally unique `dd60ebf0074ab465` subscription. The server
+also checks active state, subscription ID/owner, the full SHA-256 hash and the ten-minute lifetime.
+It returns only `runId` and `expiresAt` to the client. No migration or new run-creation API is needed.
+The read-only global uniqueness query is capped at 1,000 rows; a truncated/failed query hides the
+button rather than assuming uniqueness. OFF exits before any auth/admin query in this loader.
+
+The page is dynamic and does not share cached eligibility between users. After activation and
+run preparation, reopen/reload settings in Galaxy. A stale page is not send authorization: the
+existing POST revalidates the current cookie session, kill switch, target and atomic one-shot claim.
+The client disables the button immediately, expires it locally, and records the attempt in
+sessionStorage before one same-origin POST containing only `{runId}`. Failures, timeouts and
+reloads do not retry; separate tabs still share the server's atomic claim. No endpoint or user ID
+is provided by the button. The existing sender, scheduler, dispatches and notification history
+remain unchanged. Turn the switch OFF and redeploy immediately after the user's click/result;
+the UI does not itself change environment variables or promise automatic operational cleanup.
+
+`/preview/notifications/settings/e2e` is a Preview/development-only visual fixture. Its button
+shows a mock result without fetch/auth/DB/provider access, regardless of environment switches.
+It is blocked in Production. Validate server eligibility and click/retry behavior with
+`npm run push-e2e:ui-fixtures`, and retain `npm run push-e2e:fixtures` for sender/claim regressions.
+
+For the next approved live test: verify scheduler OFF and E2E OFF; deploy the reviewed UI;
+temporarily enable E2E and wait for the deployment to be ready; create one ten-minute run when
+Galaxy is ready; have the user reload settings and tap once; inspect the stored result, then
+immediately disable E2E and redeploy. Do not treat provider acceptance as device success: require
+ADDI name/icon, no Samsung Internet/Chrome attribution, and notification tap returning to a TWA
+without an address bar. The UI implementation/Preview phase does not authorize these Production steps.
+
 1. Review the branch, approve PR/merge and Production deployment **with the switch false**, and approve applying only `20260907032223_create_push_e2e_runs.sql` to Production `joffvlsyxivveqycjrio`. Verify exact migration/grants/schema and deployed commit. No other pending Dev migration should be applied opportunistically. No Production changes have been authorized for the current implementation phase.
 2. Approve preparation of **one** Production run. Reconfirm the expected account independently. In a privileged operation call `prepare_push_e2e_run(<approved user UUID>, 'dd60ebf0074ab465')`. The function counts fingerprint matches across all subscriptions before checking owner/active; zero or multiple matches raises an error and inserts no run. It stores the matching subscription ID and full 64-character hash, never a prefix or endpoint. Verify the returned run metadata against the approved account and Chrome target. Never substitute the account's other active subscription. No public run-creation API is provided. Do not create extra runs to recover from an ambiguous result.
 3. Approve temporary Production `PUSH_E2E_ENABLED=true` and **one** real POST from the logged-in Galaxy account with that approved runId. Account for deployment time: prepare the 10-minute run when the device and enabled deployment are ready; never extend an expired run. A replacement run after expiry/failure/ambiguity requires a new explicit approval and evidence that a new attempt is warranted. The consumed run itself cannot be reset.

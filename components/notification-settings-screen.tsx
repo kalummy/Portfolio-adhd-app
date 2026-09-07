@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { MobileShell } from "@/components/mobile-shell";
 import { Toast } from "@/components/toast";
 import {
@@ -39,6 +39,7 @@ type PushSettingsState = "checking" | CurrentPushState;
 type NotificationSettingsScreenProps = {
   backHref?: string;
   initialState?: PushSettingsState;
+  e2eAction?: ReactNode;
 };
 
 const SETTING_ITEMS: Array<{
@@ -69,6 +70,7 @@ function stateFromCurrentPermission(): CurrentPushState {
 export function NotificationSettingsScreen({
   backHref = "/notifications",
   initialState,
+  e2eAction,
 }: NotificationSettingsScreenProps = {}) {
   const router = useRouter();
   const isPreviewFixture = initialState !== undefined;
@@ -316,6 +318,7 @@ export function NotificationSettingsScreen({
             </div>
           ))}
         </div>
+        {e2eAction}
       </section>
       {error ? (
         <Toast message={error} onDismiss={() => setError("")} showIcon={false} />
