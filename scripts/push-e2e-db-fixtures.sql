@@ -120,9 +120,13 @@ do $$ declare denied boolean := false; begin
 end $$;
 reset role;
 set local role service_role;
-do $$ begin
+do $$ declare r uuid; fingerprint text; begin
   assert public.consume_push_e2e_run(gen_random_uuid(),gen_random_uuid()) is null, 'service RPC permitted';
-  perform count(*) from public.push_e2e_runs;
+  select encode(extensions.digest(convert_to(endpoint,'UTF8'),'sha256'),'hex') into fingerprint
+  from public.push_subscriptions where id='e2e10000-0000-4000-8000-000000000001';
+  r:=public.prepare_push_e2e_run('e2e00000-0000-4000-8000-000000000001',fingerprint);
+  assert public.consume_push_e2e_run(r,'e2e00000-0000-4000-8000-000000000001') is not null, 'service real consume permitted';
+  update public.push_e2e_runs set provider_status=201 where id=r;
 end $$;
 reset role;
 
