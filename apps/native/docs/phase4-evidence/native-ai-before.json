@@ -1,0 +1,35 @@
+{
+  "source": "unchanged APK 0.3.0 actual Android WebView UI",
+  "url": "https://ohobxicxchkaisxxswkk.supabase.co/functions/v1/native-api/moods/analyze",
+  "method": "POST",
+  "bearerPresent": true,
+  "cookiePresent": false,
+  "origin": "https://localhost",
+  "contentType": "application/json",
+  "requestBody": {
+    "keys": [
+      "input"
+    ],
+    "inputKeys": [
+      "date",
+      "recordedAt",
+      "hasMedicationIntake",
+      "evidence"
+    ],
+    "dateFormat": true,
+    "evidenceCount": 3,
+    "evidenceCategories": [
+      "medication_effect",
+      "emotion",
+      "relationship"
+    ],
+    "syntheticInput": true
+  },
+  "status": 503,
+  "body": {
+    "code": "AI_NOT_CONFIGURED",
+    "failure_type": "configuration_error"
+  },
+  "serverRequestId": "01a0a585-1414-7ba6-b2b3-cba2dfb034ff",
+  "at": "2026-09-15T14:42:37.417Z"
+}

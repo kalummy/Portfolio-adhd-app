@@ -1,0 +1,20 @@
+[
+  {
+    "timestamp": 1789484281485,
+    "deploymentId": "dpl_GqfSLsWqJq5YDshMCDspt4QMwE23",
+    "requestPath": "/api/native/moods/analyze",
+    "requestMethod": "POST",
+    "responseStatusCode": 200,
+    "environment": "preview",
+    "stages": [
+      {
+        "requestId": "11e25267-819c-44ad-aded-b061e9dcc5dd",
+        "stage": "provider_start"
+      },
+      {
+        "requestId": "11e25267-819c-44ad-aded-b061e9dcc5dd",
+        "stage": "provider_success"
+      }
+    ]
+  }
+]

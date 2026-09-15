@@ -1,0 +1,22 @@
+{
+  "fixture": true,
+  "liveOAuth": false,
+  "liveAI": false,
+  "liveDatabase": false,
+  "calls": [
+    "medications.listAll",
+    "medicationIntakes.listAll",
+    "moods.listAll",
+    "visitSchedules.getUpcoming",
+    "medications.createMany",
+    "medicationIntakes.setTaken",
+    "medications.listActive",
+    "medicationIntakes.listByDate",
+    "visitSchedules.saveUpcoming",
+    "moods.findByDate",
+    "moods.save"
+  ],
+  "analysisCalls": 2,
+  "errors": [],
+  "logoutCleared": true
+}

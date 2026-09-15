@@ -1,0 +1,20 @@
+{
+  "apk": "0.3.0-prototype-dev",
+  "mockApi": false,
+  "liveDatabase": true,
+  "liveOAuth": false,
+  "liveAI": false,
+  "checks": [
+    "Live Dev session restored through Android Keystore (synthetic account, no OAuth claim)",
+    "Native manual medication saved in Dev DB",
+    "Native intake and undo match Dev DB",
+    "Native upcoming visit create/edit matches Dev DB",
+    "Native profile update retains same Dev identity",
+    "Process stop/relaunch restores session and Dev medication",
+    "Native logout clears Keystore; signed-out relaunch; same-owner data on re-login",
+    "Native disposable-account deletion removes Auth/owned DB data and Keystore"
+  ],
+  "productionChanges": 0,
+  "fcmSends": 0,
+  "temporaryAccountsCleaned": true
+}

@@ -6,8 +6,8 @@ const LEGACY_COLUMNS = "user_id,mood_date,mood,recorded_at,summary";
 const COLUMNS = `${LEGACY_COLUMNS},details,clinic_phrase,cat_id,analysis_status,analysis_result,analysis_version,analysis_model,analysis_created_at`;
 function isMissingColumns(error: { message?: string } | null) { return Boolean(error?.message && /details|clinic_phrase|cat_id|analysis_/u.test(error.message)); }
 
-export function createSupabaseMoodRepository(userId: string): MoodRepository {
-  const supabase = createBrowserSupabaseClient();
+export function createSupabaseMoodRepository(userId: string, client?: ReturnType<typeof createBrowserSupabaseClient>): MoodRepository {
+  const supabase = client ?? createBrowserSupabaseClient();
   async function listAll() {
     const query = await supabase.from("mood_records").select(COLUMNS).eq("user_id", userId).order("mood_date", { ascending: true }).order("recorded_at", { ascending: true });
     if (query.error && isMissingColumns(query.error)) {

@@ -1,3 +1,4 @@
+import { fetchNativeApi } from '../api/client';
 import { signInNative, handleNativeAuthCallback, signOutNative } from '../auth/runtime';
 /** Auth and Push use native adapters; unrelated same-origin APIs remain unavailable. */
 export interface NativeAuthAdapter {
@@ -15,8 +16,8 @@ export interface NativePushAdapter {
 export class PhaseUnavailableError extends Error {
   constructor(public readonly phase: 2 | 3) { super(`Phase ${phase}에서 연결할 기능이에요.`); }
 }
-const authUnavailable = async (): Promise<never> => { throw new PhaseUnavailableError(2); };
+
 
 export const nativeAuth: NativeAuthAdapter = { signIn: signInNative, handleCallback: handleNativeAuthCallback, signOut: signOutNative };
-export const nativeApi: NativeApiAdapter = { request: authUnavailable };
+export const nativeApi: NativeApiAdapter = { async request<T>(path: string, init?: RequestInit): Promise<T> { const response = await fetchNativeApi(path, init); if (!response.ok) throw new Error('native_api_failed'); return response.json() as Promise<T>; } };
 export const nativePush: NativePushAdapter = { register: async () => { await (await import('../push/runtime')).requestPushSubscription(); }, unregister: async () => (await import('../push/runtime')).unsubscribeFromPush() };

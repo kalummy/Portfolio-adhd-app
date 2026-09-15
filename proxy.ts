@@ -16,6 +16,8 @@ function isRoutePrefetch(request: NextRequest) {
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  // This single Dev endpoint verifies Bearer auth itself and fails closed outside Preview.
+  if (pathname === '/api/native/moods/analyze') return NextResponse.next({request});
   const isNotificationPreview = (
     pathname === "/preview/notifications"
     || pathname.startsWith("/preview/notifications/")

@@ -11,8 +11,9 @@ const INTAKE_COLUMNS = "user_id,medication_id,intake_date,recorded_at";
 
 export function createSupabaseMedicationIntakeRepository(
   userId: string,
+  client?: ReturnType<typeof createBrowserSupabaseClient>,
 ): MedicationIntakeRepository {
-  const supabase = createBrowserSupabaseClient();
+  const supabase = client ?? createBrowserSupabaseClient();
 
   async function findByMedicationAndDate(medicationId: string, date: string) {
     const { data, error } = await supabase
