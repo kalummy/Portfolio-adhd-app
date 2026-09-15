@@ -91,3 +91,10 @@ test('real Supabase SDK: S256 verifier generated here, persisted, flow-matched e
   assert.equal((await sdk.auth.getSession()).data.session.user.id,user.id);
   await sdk.auth.signOut({scope:'local'}); assert.equal(memory.has('addi-native-test'),false);
 });
+test('real SDK failed logout revocation still removes the local session',async()=>{
+  const memory=new Map();const storage={getItem:async k=>memory.get(k)??null,setItem:async(k,v)=>{memory.set(k,v)},removeItem:async k=>{memory.delete(k)}};
+  const sdk=createClient(DEV_SUPABASE_URL,'sb_publishable_fixture',{auth:{storage,storageKey:'addi-native-offline',persistSession:true,detectSessionInUrl:false,autoRefreshToken:false},global:{fetch:async()=>Response.json({message:'synthetic server unavailable'},{status:503})}});
+  await sdk.auth.getSession();
+  memory.set('addi-native-offline',JSON.stringify({access_token:'SYNTHETIC_ACCESS',refresh_token:'SYNTHETIC_REFRESH',expires_at:Math.floor(Date.now()/1000)+3600,token_type:'bearer',user:{id:'synthetic-id',app_metadata:{},user_metadata:{},aud:'authenticated',created_at:'2026-01-01T00:00:00Z'}}));
+  const result=await sdk.auth.signOut({scope:'local'});assert.ok(result.error);assert.equal(memory.has('addi-native-offline'),false);
+});

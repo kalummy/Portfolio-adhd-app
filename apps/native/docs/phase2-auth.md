@@ -48,14 +48,14 @@ The live `https://addi-gamma.vercel.app/.well-known/assetlinks.json` was downloa
 - `76:2F:82:83:36:A5:16:12:38:48:1F:12:D0:82:40:12:49:CF:36:B5:C4:96:55:88:74:22:6B:43:0D:1C:E7:90`
 - `47:D7:85:98:D0:5A:77:6F:21:67:50:0F:16:26:38:06:27:9F:06:58:E6:E3:78:92:E0:61:E0:E9:96:A1:29:14`
 
-Their current Play Console signing-key identities were **not reverified**. A further Google DAL API check was rejected by automatic approval review due to model capacity, not a DAL response. Existing repository documentation also distinguishes upload certificates from Play app-signing certificates. No conclusion about a debug certificate's Production association follows from these entries.
+Their current Play Console signing-key identities were **not reverified**. Google's official DAL API returned **linked: true for both entries** after an initial transient approval-tool capacity error. Existing repository documentation also distinguishes upload certificates from Play app-signing certificates. No conclusion about a debug certificate's Production association follows from these entries.
 
 ## QA evidence
 
 | Check | Result |
 |---|---|
 | Native typecheck + Vite build/sync | PASS |
-| Node unit/integration/boundary tests | 27 PASS (including real Supabase SDK with synthetic HTTP) |
+| Node unit/integration/boundary tests | 28 PASS (including real Supabase SDK with synthetic HTTP) |
 | Original Next.js typecheck + production-mode build | PASS locally; no deployment |
 | Web Google/Kakao start functions, `/auth/callback`, cookie clients, CSS, DAL, TWA | Byte-preservation checks PASS; actual web OAuth not exercised |
 | Android `assembleDebug`, `testDebugUnitTest`, `lintDebug` | Compiled debug build PASS; lint PASS after API 27 theme resource separation; no authored Java unit tests |
@@ -63,14 +63,15 @@ Their current Play Console signing-key identities were **not reverified**. A fur
 | Login UI at 360 / 390 / 430 | PASS on emulator |
 | Google foreground callback, matching SDK verifier, profile, duplicate rejection | PASS with synthetic server responses on emulator |
 | Cancellation clears pending attempt | PASS on emulator |
-| Logout / Kakao / account switch / cold callback final regression | Pending rerun: testing exposed logout placeholder and completion-order bugs, fixed in source; automatic approval capacity error blocked final APK reinstall |
+| Kakao callback, logout, session restore, expired session refresh, account switch, fixture record requery | PASS with synthetic server responses on emulator |
+| Cold callback / offline logout / actual Browser surface final regression | NOT VERIFIED: emulator CDP stopped responding; the follow-up restart/QA command was rejected by approval-tool model capacity |
 | Real Google new/existing, real Kakao new/existing | NOT VERIFIED: Dev callback hosting/allowlist and account-owner login needed |
 | Existing real user_id / existing real records | NOT VERIFIED; synthetic identity assertions are not Production evidence |
 | Verified HTTPS App Link (cold/foreground), KakaoTalk return | NOT VERIFIED |
 | Real refresh/restart/logout/account switch | NOT VERIFIED; SDK refresh/persistence/logout behavior is covered with synthetic transport |
 | Physical Galaxy / other Android versions | NOT VERIFIED |
 
-The default build has no Dev callback credentials and does not enable OAuth. The experimental emulator APK was built with reserved `addi-auth-qa.example.com` and a synthetic publishable key; it is not a distributable auth build. Final source includes the logout completion ordering fix, which still needs the blocked emulator rerun. Raw test tokens and full callback URLs are not committed as evidence.
+The default build has no Dev callback credentials and does not enable OAuth. The experimental emulator APK was built with reserved `addi-auth-qa.example.com` and a synthetic publishable key; it is not a distributable auth build. The logout completion ordering fix passed the emulator rerun. Later busy-login/message/QA-harness refinements pass local typecheck/build/tests; final APK reassembly and the remaining emulator groups still need a rerun. The offline-logout timeout was not established as an application defect because the emulator debugging transport also stopped responding. SDK 503-revocation/local-removal behavior passes a separate integration test. Raw test tokens and full callback URLs are not committed as evidence.
 
 ## Remaining acceptance sequence
 

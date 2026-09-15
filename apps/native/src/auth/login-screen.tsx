@@ -15,8 +15,8 @@ export function NativeLoginScreen() {
         <img src={`/auth/${provider}.svg`} alt="" width={40} height={40} />
         <span>{provider === 'kakao' ? '카카오로 시작' : '구글로 시작'}</span>
       </button>)}
-      {auth.status === 'pending' && <button type="button" className="member-login-button" onClick={() => { void cancelNativeLogin(); }}>로그인 취소</button>}
-      {auth.status === 'completing' && <p role="status">로그인을 완료하고 있어요.</p>}
+      {auth.status === 'pending' && <button type="button" className="member-login-button" onClick={() => { void cancelNativeLogin().catch(() => undefined); }}>로그인 취소</button>}
+      {auth.status === 'completing' && !auth.message && <p role="status">로그인을 완료하고 있어요.</p>}
     </div>
   </MobileShell>;
 }

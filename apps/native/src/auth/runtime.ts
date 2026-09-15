@@ -123,7 +123,13 @@ export async function signInNative(provider: Provider) {
   if (!flow || state.user) throw new Error('native_auth_unavailable');
   update({ status: 'pending', message: '' });
   try { await flow.start(provider); await scheduleExpiry(); }
-  catch { failure(); throw new Error('login_start_failed'); }
+  catch (error) {
+    if (error instanceof AuthFlowError && error.reason === 'busy') {
+      update({ status: 'pending', message: '이미 로그인을 진행하고 있어요.' });
+      return;
+    }
+    failure(); throw new Error('login_start_failed');
+  }
 }
 export async function cancelNativeLogin() {
   clearTimeout(expiryTimer);
@@ -134,7 +140,7 @@ export async function cancelNativeLogin() {
 export async function signOutNative() {
   clearTimeout(expiryTimer);
   // Remove mounted account UI immediately, including in-flight repository results.
-  update({ status: 'completing', user: null, profile: null, message: '' });
+  update({ status: 'completing', user: null, profile: null, message: '로그아웃하고 있어요.' });
   const client = getNativeClient();
   client.auth.stopAutoRefresh();
   await flow?.cancel();
