@@ -5,7 +5,7 @@ Branch: `feature/capacitor-auth`. No merge, Production deployment, or Play opera
 
 ## Current verdict
 
-**Implementation prepared; live OAuth acceptance is NOT complete.** Live discovery found that the existing stable Preview alias requires Vercel SSO and no separate public Dev callback host exists. Account-owner login has not been performed. See [Dev setup requirements](phase2-dev-setup.ko.md). A debug build without local configuration deliberately disables login. Do not interpret a mock session or an explicit `adb -n` intent as a verified Android App Link or a real provider identity test.
+**Actual provider OAuth acceptance is NOT complete.** A separate static Dev callback project is now live at `https://addi-native-auth-dev.vercel.app`. Android reports this host as **verified**, and implicit HTTPS intents open ADDI in both cold and foreground cases without `-n` or manual link approval. The callback probe does not exchange an OAuth code. Dev redirect allowlist inspection/update still requires completion of the normal Supabase management login, followed by account-owner Google/Kakao login. No Production configuration was changed. See [live environment status](phase2-live-auth.md).
 
 ## Architecture
 
@@ -68,13 +68,14 @@ Their current Play Console signing-key identities were **not reverified**. Googl
 | Wrong host/path, expiry, provider denial and explicit cancel | PASS on emulator; durable pending attempt inspected and exchange count asserted |
 | Real Google new/existing, real Kakao new/existing | NOT VERIFIED: Dev callback hosting/allowlist and account-owner login needed |
 | Existing real user_id / existing real records | NOT VERIFIED; synthetic identity assertions are not Production evidence |
-| Verified HTTPS App Link (cold/foreground), KakaoTalk return | NOT VERIFIED |
+| Verified HTTPS App Link domain + implicit cold/foreground routing | PASS on the public Dev host; probe only, real provider code exchange pending |
+| KakaoTalk return | NOT VERIFIED |
 | Real refresh/restart/logout/account switch | NOT VERIFIED; SDK refresh/persistence/logout behavior is covered with synthetic transport |
 | Physical Galaxy / other Android versions | NOT VERIFIED |
 
 The default build has no Dev callback credentials and does not enable OAuth. The experimental emulator APK was built with reserved `addi-auth-qa.example.com` and a synthetic publishable key; it is not a distributable auth build. Final APK reassembly, signature/compiled manifest verification, and all 18 emulator Auth groups now PASS. The new run verified actual disconnected logout after disabling emulator Wi-Fi/data and observing a failed network probe. Earlier retries exposed QA harness issues: `am start -W` installed synthetic response interception too late; assigning `Browser.open` did not override the Capacitor Proxy and could leave Chrome first-run UI in front. The harness now connects immediately, stubs only Browser calls at the nativePromise bridge, foregrounds ADDI, and explicitly rejects Chrome FirstRunActivity as browser QA evidence. Keystore/App calls remain real native operations. No product Auth behavior changed during this QA follow-up. The earlier approval capacity error did not recur on the successful build/emulator run. Raw test tokens and full callback URLs are not committed as evidence.
 
-## 2026-09-15 Dev discovery and final APK
+## Earlier 2026-09-15 fixture APK and discovery (before public Dev hosting)
 
 - Vercel API (existing CLI authentication) confirms Preview/Development use ADDI Dev. The connected MCP returned permission errors; these were not treated as deployment failure.
 - The existing branch-stable Preview alias requires deployment authentication for both DAL and callback. No suitable public Dev-only host was found. Existing deployment protection remains unchanged.
@@ -87,6 +88,8 @@ The default build has no Dev callback credentials and does not enable OAuth. The
 - Source checkout: all 197 snapshotted file hashes and original short status remain unchanged. This follow-up changes only Native QA scripts and documentation/evidence. No merge, Production/Play, DB mutation, provider configuration, scheduler, Push, or Web Push operation.
 
 ## Remaining acceptance sequence
+
+Public Dev hosting and Android domain verification are now complete. See [App Link evidence](phase2-evidence/app-links-verified.json). Complete Dev allowlist verification and real provider authentication next.
 
 For each Google and Kakao test identity: first sign into the existing Dev web app, record the user ID privately, then sign into Native with the same provider identity and compare exact IDs. Requery an existing synthetic Dev record through the Native repository; do not copy Production users or compare IDs across different Supabase projects. A genuinely new test account needs separate first-login verification. Test cancellation/back, explicit cancel after Kakao external-app handoff, replay, expiry, bad host/path/query, cold and foreground links, process death, expiration/refresh, offline logout and switching accounts. Retest web login separately with its cookie callback.
 
