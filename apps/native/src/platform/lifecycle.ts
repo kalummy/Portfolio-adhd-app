@@ -35,6 +35,7 @@ export async function handleNativeBack() {
 export async function startNativeLifecycle() {
   if (!Capacitor.isNativePlatform()) return;
   await SystemBars.setStyle({ style: SystemBarsStyle.Light });
+  await SystemBars.show();
   await App.addListener('backButton', () => { void handleNativeBack(); });
   await App.addListener('appStateChange', ({ isActive }) => {
     shellState.active = isActive;

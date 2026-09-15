@@ -56,6 +56,9 @@
       ],
       "@/lib/mood-draft": [
         "./src/adapters/mood-draft.ts"
+      ],
+      "@/lib/supabase/client": [
+        "./src/auth/client.ts"
       ]
     }
   },

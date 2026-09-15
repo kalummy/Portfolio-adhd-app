@@ -11,7 +11,7 @@ await mkdir(output, { recursive: true });
 const results = [], errors = [], remoteRequests = [];
 let browser, page;
 async function connect() {
-  const pid = adb('shell', 'pidof', 'com.addi.app');
+  const pid = adb('shell', 'pidof', 'com.addi.app.dev');
   adb('forward', 'tcp:9223', `localabstract:webview_devtools_remote_${pid}`);
   browser = await chromium.connectOverCDP('http://127.0.0.1:9223', { noDefaults: true });
   page = browser.contexts()[0].pages()[0];
@@ -23,7 +23,7 @@ async function capture(name) {
 }
 async function foreground() {
   const activities = adb('shell', 'dumpsys', 'activity', 'activities');
-  assert.match(activities.split('\n').find(line => line.includes('topResumedActivity')) || '', /com.addi.app\/\.MainActivity/);
+  assert.match(activities.split('\n').find(line => line.includes('topResumedActivity')) || '', /com\.addi\.app\.dev\/com\.addi\.app\.MainActivity/);
 }
 async function back() { adb('shell', 'input', 'keyevent', '4'); await page.waitForTimeout(350); }
 try {
@@ -39,7 +39,7 @@ try {
       const state = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, scroll: document.documentElement.scrollWidth, top: getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-top'), bottom: getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom'), brokenImages: [...document.images].filter(image => !image.complete || image.naturalWidth === 0).map(image => image.src) }));
       assert.equal(state.width, width); assert.equal(state.scroll, width); assert.deepEqual(state.brokenImages, []);
       await foreground(); await capture(`${width}-${name}`);
-      results.push({ name, ...state, foreground: 'com.addi.app/.MainActivity', url: page.url() });
+      results.push({ name, ...state, foreground: 'com.addi.app.dev/com.addi.app.MainActivity', url: page.url() });
     }
   }
   adb('shell', 'wm', 'size', '1170x1920');
@@ -67,13 +67,13 @@ try {
   await back(); await page.waitForFunction(() => !window.__ADDI_SHELL_QA__.state.keyboardVisible); await capture('keyboard-closed');
   assert.equal(new URL(page.url()).pathname, '/moods/new');
   adb('shell', 'input', 'keyevent', '3');
-  const warmStart = adb('shell','am','start','-W','-n','com.addi.app/.MainActivity');
+  const warmStart = adb('shell','am','start','-W','-n','com.addi.app.dev/com.addi.app.MainActivity');
   await page.waitForFunction(() => window.__ADDI_SHELL_QA__.state.active && window.__ADDI_SHELL_QA__.state.resumes > 0);
   assert.equal(await page.getByRole('textbox').inputValue(), 'fixture keyboard test'); await foreground();
   results.push({ keyboard, warmStart, lifecycle: await page.evaluate(() => window.__ADDI_SHELL_QA__.state) });
   await browser.close();
-  adb('shell', 'am', 'force-stop', 'com.addi.app');
-  const coldStart = adb('shell','am','start','-W','-n','com.addi.app/.MainActivity');
+  adb('shell', 'am', 'force-stop', 'com.addi.app.dev');
+  const coldStart = adb('shell','am','start','-W','-n','com.addi.app.dev/com.addi.app.MainActivity');
   await new Promise(resolve => setTimeout(resolve, 1200));
   await connect(); await page.locator('.home-screen').waitFor(); await capture('cold-restart');
   await page.goto('https://localhost/moods/new'); await page.getByRole('textbox').waitFor();
@@ -81,11 +81,11 @@ try {
   results.push({ coldStart, restartDraft: 'PASS' });
   await page.goto('https://localhost/'); await page.locator('.home-screen').waitFor(); await back();
   const top = adb('shell','dumpsys','activity','activities').split('\n').find(line=>line.includes('topResumedActivity'));
-  assert.ok(!top?.includes('com.addi.app')); results.push({ rootBackExit: 'PASS' });
-  const beforeWarmPid = adb('shell', 'pidof', 'com.addi.app');
+  assert.ok(!top?.includes('com.addi.app.dev')); results.push({ rootBackExit: 'PASS' });
+  const beforeWarmPid = adb('shell', 'pidof', 'com.addi.app.dev');
   await browser.close();
-  const activityWarmStart = adb('shell','am','start','-W','-n','com.addi.app/.MainActivity');
-  assert.equal(adb('shell','pidof','com.addi.app'), beforeWarmPid);
+  const activityWarmStart = adb('shell','am','start','-W','-n','com.addi.app.dev/com.addi.app.MainActivity');
+  assert.equal(adb('shell','pidof','com.addi.app.dev'), beforeWarmPid);
   await new Promise(resolve => setTimeout(resolve, 700));
   await connect(); await page.locator('.home-screen').waitFor(); await capture('warm-start');
   results.push({ activityWarmStart, sameProcess: true });

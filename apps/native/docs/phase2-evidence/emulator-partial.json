@@ -1,0 +1,53 @@
+{
+  "results": [
+    {
+      "test": "Keystore ciphertext + process restart",
+      "pass": true
+    },
+    {
+      "test": "login UI 360/390/430",
+      "pass": true
+    },
+    {
+      "test": "cancel clears native pending attempt",
+      "pass": true
+    },
+    {
+      "test": "google foreground callback, profile, same ID, duplicate",
+      "pass": true,
+      "transport": "synthetic"
+    },
+    {
+      "test": "google logout secure session removal",
+      "pass": true
+    },
+    {
+      "test": "kakao foreground callback, profile, same ID, duplicate",
+      "pass": true,
+      "transport": "synthetic"
+    },
+    {
+      "test": "kakao logout secure session removal",
+      "pass": true
+    },
+    {
+      "test": "encrypted session restore after process death",
+      "pass": true,
+      "transport": "synthetic"
+    },
+    {
+      "test": "expired encrypted session refresh",
+      "pass": true,
+      "transport": "synthetic"
+    },
+    {
+      "test": "switch account replaces previous ID",
+      "pass": true,
+      "transport": "synthetic"
+    }
+  ],
+  "errors": [],
+  "realOAuth": false,
+  "verifiedHttpsAppLink": false,
+  "supersededBy": "emulator-final.json"
+}

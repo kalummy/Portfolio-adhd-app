@@ -1,0 +1,27 @@
+{
+  "framework": null,
+  "routes": [
+    {
+      "src": "/\\.well-known/assetlinks\\.json",
+      "dest": "/.well-known/assetlinks.json",
+      "headers": {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff"
+      }
+    },
+    {
+      "src": "/auth/native/callback",
+      "dest": "/auth/native/callback/index.html",
+      "headers": {
+        "Cache-Control": "no-store",
+        "Referrer-Policy": "no-referrer",
+        "Content-Security-Policy": "default-src 'none'; base-uri 'none'; form-action 'none'"
+      }
+    },
+    {
+      "src": "/.*",
+      "status": 404
+    }
+  ]
+}

@@ -9,12 +9,18 @@ export default defineConfig({
   plugins: [react(), {
     name: 'addi-native-boundary',
     enforce: 'pre',
+    resolveId(source, importer) {
+      // Only the bundled Home receives a separate body scrollport.
+      if (source === './mobile-shell' && importer === resolve(root, 'components/home-screen.tsx')) {
+        return fileURLToPath(new URL('./src/platform/home-shell.tsx', import.meta.url));
+      }
+    },
     transform(code, id) {
       // Adapt only CSS inset reads at build time; the web stylesheet stays byte-identical.
       if (id === resolve(root, 'app/globals.css')) return code.replace(/env\(safe-area-inset-(top|bottom|left|right)\)/g, 'var(--safe-area-inset-$1, env(safe-area-inset-$1, 0px))');
     },
     generateBundle() {
-      const forbidden = [...this.getModuleIds()].filter(id => /node_modules\/(?:next\/|@supabase\/|mixpanel-browser\/|web-push\/)|\/lib\/(?:supabase\/|auth\/client\.ts|push\/client\.ts|analytics\/mixpanel\.ts|indexed-db\.ts)|\/app\/api\//.test(id));
+      const forbidden = [...this.getModuleIds()].filter(id => /node_modules\/(?:next\/|mixpanel-browser\/|web-push\/)|\/lib\/(?:supabase\/|auth\/client\.ts|push\/client\.ts|analytics\/mixpanel\.ts|indexed-db\.ts)|\/app\/api\//.test(id));
       if (forbidden.length) this.error(`Native boundary violation:\n${forbidden.join('\n')}`);
     },
 

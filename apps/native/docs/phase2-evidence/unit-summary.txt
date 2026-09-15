@@ -1,0 +1,36 @@
+✔ google: start -> secure attempt -> exchange once (1.586042ms)
+✔ kakao: start -> secure attempt -> exchange once (0.274166ms)
+✔ concurrent duplicate callback exchanges exactly once (0.357666ms)
+✔ cold process restart retrieves original flow ID and verifier slot (0.306959ms)
+✔ overlapping login attempt cannot replace verifier (0.267416ms)
+✔ reject malformed callback u=>u.replace('https:','http:') (0.156917ms)
+✔ reject malformed callback u=>u.replace('addi-auth-qa.example.com','attacker.example.com') (0.138958ms)
+✔ reject malformed callback u=>u.replace('/auth/native/callback','/auth/callback') (0.177458ms)
+✔ reject malformed callback u=>u+'#access_token=synthetic' (0.69525ms)
+✔ reject malformed callback u=>u+'&code=duplicate' (0.456084ms)
+✔ reject malformed callback u=>u+'&attempt=duplicate' (0.228041ms)
+✔ reject malformed callback u=>u.replace('attempt=aaa','attempt=bbb') (0.084083ms)
+✔ reject malformed callback u=>u+'&access_token=synthetic' (0.080875ms)
+✔ reject malformed callback u=>u.replace('https://','https://name:password@') (0.119625ms)
+✔ reject malformed callback u=>u.replace('code=synthetic','code=') (0.129209ms)
+✔ reject malformed callback u=>u+'&next=https://attacker.example.com' (0.078791ms)
+✔ expired callback clears pending state and cannot exchange (0.079708ms)
+✔ clock rollback fails closed (0.06175ms)
+✔ explicit browser cancellation deletes attempt; callback after cancel rejected (0.062625ms)
+✔ provider cancellation clears only matched attempt (0.060334ms)
+✔ exchange/network failure is terminal; no retry with a consumed code (0.11225ms)
+✔ secure storage failure never opens browser (0.1395ms)
+✔ Production target and callback are rejected by build config (0.189125ms)
+✔ real Supabase SDK: S256 verifier generated here, persisted, flow-matched exchange and refresh (22.541458ms)
+✔ real SDK failed logout revocation still removes the local session (0.912583ms)
+✔ packaged shell stays bundled, with logging disabled and Dev-only transport (6.032875ms)
+✔ web Google/Kakao, cookie callback, DAL, TWA, CSS, API and DB byte-preserved (142.025709ms)
+✔ release disabled, exact HTTPS callback, no push, backup excluded (1.118167ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 212.703584

@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">ADDI Prototype</string>
-    <string name="title_activity_main">ADDI Prototype</string>
-    <string name="package_name">com.addi.app</string>
-    <string name="custom_url_scheme">com.addi.app</string>
+    <string name="app_name">아디</string>
+    <string name="title_activity_main">아디</string>
+    <string name="package_name">com.addi.app.dev</string>
+    <string name="custom_url_scheme">com.addi.app.dev</string>
 </resources>

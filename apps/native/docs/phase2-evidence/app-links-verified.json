@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-09-15",
+  "publicCallbackHost": "addi-native-auth-dev.vercel.app",
+  "surface": {
+    "/.well-known/assetlinks.json": 200,
+    "/auth/native/callback": 200,
+    "/": 404,
+    "/api/account": 404
+  },
+  "publicDalMatchesInstalledDebugApk": true,
+  "androidDomainState": "verified",
+  "implicitColdIntentActivity": "com.addi.app/.MainActivity",
+  "implicitForegroundIntentActivity": "com.addi.app/.MainActivity",
+  "explicitComponentUsed": false,
+  "manualLinkApprovalUsed": false,
+  "oauthCodeExchangeInThisProbe": false,
+  "actualProviderOAuth": "pending"
+}

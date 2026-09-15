@@ -1,0 +1,67 @@
+{
+  "checkedAt": "2026-09-15",
+  "implementationCommit": "93eabdc262b219c5aec6335e61613bd1e01c9fc7",
+  "realDeviceEvidenceSource": "user_reported_physical_galaxy",
+  "deviceBuildIndependentlyReported": false,
+  "realDevicePass": [
+    "google_existing_login",
+    "kakao_existing_login",
+    "system_browser_or_kakao_return",
+    "existing_dev_data",
+    "session_restore",
+    "session_refresh",
+    "logout",
+    "signed_out_relaunch",
+    "login_again",
+    "cold_callback",
+    "foreground_callback"
+  ],
+  "ownership": {
+    "devProject": "ADDI Dev",
+    "baselineProviderUserLinksPreserved": true,
+    "newProviderUserLinksSinceBaseline": 0,
+    "allProfilesPresent": true,
+    "providerResults": [
+      {
+        "provider": "google",
+        "baselineAccountsPresent": true,
+        "existingRecordCountsUnchanged": true
+      },
+      {
+        "provider": "kakao",
+        "baselineAccountsPresent": true,
+        "existingRecordCountsUnchanged": true
+      }
+    ]
+  },
+  "integrity": {
+    "duplicateProviderSubjectGroups": 0,
+    "orphanedSocialIdentities": 0,
+    "orphanedMedicationOwners": 0,
+    "orphanedMoodOwners": 0,
+    "orphanedVisitOwners": 0,
+    "ownerRlsEnabled": true,
+    "physicalSessionIdDirectlyExtracted": false
+  },
+  "regression": {
+    "nativeBuildTypecheck": "PASS",
+    "authSdkBoundaryTests": "28/28 PASS",
+    "androidAssembleDebugLint": "PASS",
+    "webBuildTypecheck": "PASS",
+    "webAuthCodeRegression": "PASS",
+    "manualWebOAuthThisPass": "NOT_RUN",
+    "diffCheck": "PASS"
+  },
+  "appLinks": {
+    "domain": "addi-galaxy-auth-dev.vercel.app",
+    "dalHttp": 200,
+    "callbackHttp": 200,
+    "devPackageAndCertificateMatch": true,
+    "emulatorVerified": true,
+    "galaxyReturn": "USER_REPORTED_PASS"
+  },
+  "phase2": "PASS",
+  "phase3DevImplementationReadiness": true,
+  "githubReviewRequirement": "one approving review required",
+  "productionChangesThisPass": 0
+}

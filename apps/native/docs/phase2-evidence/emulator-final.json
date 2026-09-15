@@ -1,0 +1,87 @@
+{
+  "results": [
+    {
+      "test": "Keystore ciphertext + process restart",
+      "pass": true
+    },
+    {
+      "test": "login UI 360/390/430",
+      "pass": true
+    },
+    {
+      "test": "cancel clears native pending attempt",
+      "pass": true
+    },
+    {
+      "test": "google foreground callback, profile, same ID, duplicate",
+      "pass": true,
+      "transport": "synthetic"
+    },
+    {
+      "test": "google logout secure session removal",
+      "pass": true
+    },
+    {
+      "test": "kakao foreground callback, profile, same ID, duplicate",
+      "pass": true,
+      "transport": "synthetic"
+    },
+    {
+      "test": "kakao logout secure session removal",
+      "pass": true
+    },
+    {
+      "test": "encrypted session restore after process death",
+      "pass": true,
+      "transport": "synthetic"
+    },
+    {
+      "test": "expired encrypted session refresh",
+      "pass": true,
+      "transport": "synthetic"
+    },
+    {
+      "test": "switch account replaces previous ID",
+      "pass": true,
+      "transport": "synthetic"
+    },
+    {
+      "test": "device Wi-Fi/data offline logout removes local session",
+      "pass": true
+    },
+    {
+      "test": "cold App Link intent -> SDK exchange -> profile",
+      "pass": true,
+      "transport": "synthetic",
+      "verifiedDomain": false
+    },
+    {
+      "test": "wrong host/path cannot consume a valid pending attempt",
+      "pass": true
+    },
+    {
+      "test": "expired callback clears attempt without exchange",
+      "pass": true
+    },
+    {
+      "test": "provider denial callback clears pending attempt",
+      "pass": true
+    },
+    {
+      "test": "actual Browser plugin opens Chrome system surface",
+      "pass": true,
+      "oauth": false
+    },
+    {
+      "test": "system browser back and explicit cancel return to login",
+      "pass": true
+    },
+    {
+      "test": "Production API and remote WebView navigation blocked",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "realOAuth": false,
+  "verifiedHttpsAppLink": false
+}

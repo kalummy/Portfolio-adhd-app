@@ -9,3 +9,9 @@ android/capacitor-cordova-android-plugins/
 android/app/src/main/assets/
 *.tsbuildinfo
 public/
+
+.env.local
+.env.*.local
+android/native-auth.properties
+dev-callback/.well-known/assetlinks.json
+dev-callback/.vercel/

@@ -1,0 +1,226 @@
+{
+  "package": "com.addi.app.dev",
+  "label": "아디",
+  "versionCode": 3,
+  "versionName": "0.1.2-prototype-dev",
+  "sha256": "cf75573c44241f5643b7c9b2bef8b08233c26cf5830b6369fcd1044c1d7eb936",
+  "signingCertificateUnchanged": true,
+  "iconInsetPercent": 18.906,
+  "splashIcon": "transparent",
+  "splashFadeMs": 0,
+  "desktop": {
+    "fixture": "actual shared HomeScreen + Native adapter + previewData, no live Auth",
+    "results": [
+      {
+        "width": 360,
+        "headerTop": 24,
+        "headerBottom": 88,
+        "bodyTop": 88,
+        "bodyBottom": 764,
+        "navTop": 764,
+        "scrollTop": 0,
+        "windowScroll": 0
+      },
+      {
+        "width": 360,
+        "headerTop": 24,
+        "headerBottom": 88,
+        "bodyTop": 88,
+        "bodyBottom": 764,
+        "navTop": 764,
+        "scrollTop": 300,
+        "windowScroll": 0
+      },
+      {
+        "width": 360,
+        "headerTop": 24,
+        "headerBottom": 88,
+        "bodyTop": 88,
+        "bodyBottom": 764,
+        "navTop": 764,
+        "scrollTop": 1544,
+        "windowScroll": 0
+      },
+      {
+        "width": 360,
+        "headerTop": 24,
+        "headerBottom": 88,
+        "bodyTop": 88,
+        "bodyBottom": 764,
+        "navTop": 764,
+        "scrollTop": 100,
+        "windowScroll": 0
+      },
+      {
+        "width": 360,
+        "headerTop": 24,
+        "headerBottom": 88,
+        "bodyTop": 88,
+        "bodyBottom": 764,
+        "navTop": 764,
+        "scrollTop": 0,
+        "windowScroll": 0
+      },
+      {
+        "width": 390,
+        "headerTop": 24,
+        "headerBottom": 88,
+        "bodyTop": 88,
+        "bodyBottom": 764,
+        "navTop": 764,
+        "scrollTop": 0,
+        "windowScroll": 0
+      },
+      {
+        "width": 390,
+        "headerTop": 24,
+        "headerBottom": 88,
+        "bodyTop": 88,
+        "bodyBottom": 764,
+        "navTop": 764,
+        "scrollTop": 300,
+        "windowScroll": 0
+      },
+      {
+        "width": 390,
+        "headerTop": 24,
+        "headerBottom": 88,
+        "bodyTop": 88,
+        "bodyBottom": 764,
+        "navTop": 764,
+        "scrollTop": 1544,
+        "windowScroll": 0
+      },
+      {
+        "width": 390,
+        "headerTop": 24,
+        "headerBottom": 88,
+        "bodyTop": 88,
+        "bodyBottom": 764,
+        "navTop": 764,
+        "scrollTop": 100,
+        "windowScroll": 0
+      },
+      {
+        "width": 390,
+        "headerTop": 24,
+        "headerBottom": 88,
+        "bodyTop": 88,
+        "bodyBottom": 764,
+        "navTop": 764,
+        "scrollTop": 0,
+        "windowScroll": 0
+      },
+      {
+        "width": 430,
+        "headerTop": 24,
+        "headerBottom": 88,
+        "bodyTop": 88,
+        "bodyBottom": 764,
+        "navTop": 764,
+        "scrollTop": 0,
+        "windowScroll": 0
+      },
+      {
+        "width": 430,
+        "headerTop": 24,
+        "headerBottom": 88,
+        "bodyTop": 88,
+        "bodyBottom": 764,
+        "navTop": 764,
+        "scrollTop": 300,
+        "windowScroll": 0
+      },
+      {
+        "width": 430,
+        "headerTop": 24,
+        "headerBottom": 88,
+        "bodyTop": 88,
+        "bodyBottom": 764,
+        "navTop": 764,
+        "scrollTop": 1544,
+        "windowScroll": 0
+      },
+      {
+        "width": 430,
+        "headerTop": 24,
+        "headerBottom": 88,
+        "bodyTop": 88,
+        "bodyBottom": 764,
+        "navTop": 764,
+        "scrollTop": 100,
+        "windowScroll": 0
+      },
+      {
+        "width": 430,
+        "headerTop": 24,
+        "headerBottom": 88,
+        "bodyTop": 88,
+        "bodyBottom": 764,
+        "navTop": 764,
+        "scrollTop": 0,
+        "windowScroll": 0
+      }
+    ],
+    "calendarModalAndEscape": true
+  },
+  "android": {
+    "fixture": "actual HomeScreen-rendered markup + final APK CSS, native touch swipes, no live account",
+    "results": [
+      {
+        "headerTop": 0,
+        "headerBottom": 64,
+        "bodyTop": 64,
+        "bodyBottom": 536,
+        "navTop": 536,
+        "scrollTop": 239,
+        "documentScroll": 0
+      },
+      {
+        "headerTop": 0,
+        "headerBottom": 64,
+        "bodyTop": 64,
+        "bodyBottom": 536,
+        "navTop": 536,
+        "scrollTop": 478.6666564941406,
+        "documentScroll": 0
+      },
+      {
+        "headerTop": 0,
+        "headerBottom": 64,
+        "bodyTop": 64,
+        "bodyBottom": 536,
+        "navTop": 536,
+        "scrollTop": 754,
+        "documentScroll": 0
+      },
+      {
+        "headerTop": 0,
+        "headerBottom": 64,
+        "bodyTop": 64,
+        "bodyBottom": 536,
+        "navTop": 536,
+        "scrollTop": 988.3333129882812,
+        "documentScroll": 0
+      },
+      {
+        "headerTop": 0,
+        "headerBottom": 64,
+        "bodyTop": 64,
+        "bodyBottom": 536,
+        "navTop": 536,
+        "scrollTop": 1227.3333740234375,
+        "documentScroll": 0
+      }
+    ]
+  },
+  "launcherVisualCheck": "whole logo visible in actual launcher circle",
+  "coldStartVisualCheck": "plain startup window then existing brand/login screen; no launcher logo overlay",
+  "checks": [
+    "native typecheck/build",
+    "28 tests",
+    "assembleDebug",
+    "lintDebug"
+  ],
+  "galaxyRetest": "pending"
+}
