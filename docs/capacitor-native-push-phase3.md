@@ -76,6 +76,23 @@ A service-role administrator must select exactly one known Galaxy registration i
 
 Migration `20260915115217_capacitor_native_push_dev.sql` was applied to ADDI Dev only. Its timestamp matches Dev migration history. Production migration requires a separate reviewed rollout.
 
+Validation commands from the repository root:
+
+```sh
+npm --prefix apps/native test
+node --experimental-strip-types --experimental-loader=./scripts/ts-test-loader.mjs --test scripts/native-push.test.mjs
+npm run typecheck
+npm run build
+npm run reminders:fixtures
+npm run notifications:fixtures
+npm run push-e2e:fixtures
+git diff --check
+```
+
+Android instrumentation uses `:app:assembleDebugAndroidTest` and `:app:connectedDebugAndroidTest` under `apps/native/android`, on an emulator with notification permission granted. The fixture deliberately rejects a physical device and the Production package. `scripts/native-push-db-qa.sql` is a rollback-only suite for ADDI Dev; never run it against Production.
+
+Final Galaxy APK: `apps/native/qa-artifacts/phase3/ADDI-Dev-0.2.1-native-push.apk` (ignored artifact), SHA-256 `f97d8aaea0b6195910fbfb49d6f3b02b1fdc0d82de6e0d421964a4f6f93de7c1`. APK signature verification passed. Debug signing certificate SHA-256: `98:C3:7A:ED:32:25:C5:B2:D3:DA:42:D8:24:9D:F1:46:57:4A:C0:DE:2C:FC:E8:32:4F:17:AF:88:6C:D4:3D:B5`.
+
 ## QA evidence
 
 ### Automated and emulator
@@ -94,9 +111,23 @@ Migration `20260915115217_capacitor_native_push_dev.sql` was applied to ADDI Dev
 - Existing web Auth, cookie callback, Supabase browser/server clients, Web Push sender/client, PWA manifest, Service Worker, CSS, Production DAL and TWA manifest: byte-preserved against the base commit.
 - Security advisor: Native tables are deliberately server-only with forced RLS and no public policies/grants (INFO); existing leaked-password protection warning was not changed.
 
-### Galaxy
+### Galaxy — completed 2026-09-15
 
-The user installed the initial Dev APK, logged into the Dev account and enabled all three preferences. A single real Galaxy FCM registration with a valid Auth owner was confirmed. The user installed v0.2.1, which fixes the registration acknowledgement issue. The selected Galaxy remains owned by its authenticated Dev user with all three settings ON. The first foreground medication FCM request was accepted (one request, no automatic retry). Physical receipt/taps and background/recents-dismissed results are being collected. Do not treat provider acceptance or emulator synthetic display as physical-device success.
+Evidence combines the user's physical Galaxy observations with the selected Dev registration and server send records. No Galaxy ADB connection or device trace was used. All physical results below use v0.2.1; v0.2.0 is superseded by the registration acknowledgement fix.
+
+| Check | Result and evidence |
+|---|---|
+| Permission, registration and three preferences ON | PASS: user enabled notification permission/settings; server confirmed an active, authenticated Dev registration with all three preferences ON. |
+| Foreground medication | PASS: one FCM request accepted; user confirmed receipt, **아디** attribution, status-bar icon and tap to Home without a browser. |
+| Background mood | PASS: one FCM request accepted; user confirmed receipt and tap to the mood entry screen without a browser. |
+| Recents-dismissed visit / cold tap | PASS: user dismissed the app from recent apps; one FCM request accepted; user confirmed receipt and tap to visits without a browser. This does not establish Android Settings Force Stop or a measured process-death state. |
+| Three preferences OFF | PASS: user confirmed OFF; server values were all false. Three kind-specific test requests returned HTTP 409, with no additional send record or FCM transmission. The registration was also revoked at that observation, so active-registration per-preference isolation is supported by the automated/API checks, not this device observation alone. |
+| Logout and restart | PASS: user confirmed the login screen remained after restarting. Local immediate deactivation and offline Auth removal also passed emulator QA. |
+| Re-login and restart | PASS: user enabled the three preferences after re-login and confirmed login/settings persisted across restart. Private comparisons confirmed the same installation and authenticated owner, a new account-binding value, and active/all-ON server state. |
+| Receipt after re-login | PASS: one additional mood FCM request accepted; user confirmed receipt and tap to the mood entry screen without a browser. |
+| FCM token rotation | Server rotation/stale-revision integration checks PASS. The Galaxy token was unchanged in the before/after comparison; spontaneous SDK token rotation was not observed and is not claimed as a physical-device PASS. |
+
+Exactly **four** actual FCM sends were made, all to the same explicitly selected Galaxy installation; all four have `sent` server results and user-confirmed receipt/routing. No automatic retries or other recipients were used. After QA, the singleton test target was expired to close the manual send window. Registration and user-selected preferences remain intact. No automated Dev scheduler was installed.
 
 No user IDs, emails, raw tokens, capability values, session values or health records are included in this report.
 
@@ -107,6 +138,6 @@ No user IDs, emails, raw tokens, capability values, session values or health rec
 - Decide approved multi-device limits (currently up to four eligible targets per transport), expiry/retention and abandoned-installation cleanup.
 - Approve Production Firebase/package/signing, server credentials, migration, scheduler cutover/rollback and duplicate-notification policy in a separate phase. None are part of this Dev change.
 - Android settings **Force stop** blocks FCM until a manual launch. Test recents dismissal/process death separately. OEM battery restrictions and FCM high-priority delivery remain real-device acceptance gates.
-- Data-only payloads are necessary to suppress an old account's delayed message locally. Verify Galaxy background/Doze behavior before Play rollout; do not substitute automatic notification payloads that bypass the binding checks.
+- Data-only payloads are necessary to suppress an old account's delayed message locally. Galaxy foreground/background/recents-dismissed delivery passed; prolonged Doze, OEM battery restrictions and spontaneous SDK token rotation remain Play validation cases. Do not substitute automatic notification payloads that bypass the binding checks.
 
-**Merge/Play gate:** implementation is reviewable; physical Galaxy FCM receipt and routing must pass before claiming Phase 3 complete or advancing to Play validation.
+**Phase 3 result:** Native FCM Dev implementation and the physical Galaxy receipt/routing/settings/logout/re-login gate PASS. Proceeding to planning and validation of a Capacitor Play update is possible; Production migration, credentials, scheduler activation, Play upload and release still require separate authorization. PR #91 remains Ready for review and unmerged; required GitHub review must pass before the owner merges it.
