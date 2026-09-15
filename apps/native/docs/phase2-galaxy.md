@@ -2,10 +2,10 @@
 
 ## Install identity
 
-- Debug application ID: `com.addi.app.dev`; label: **ADDI Dev**.
+- Debug application ID: `com.addi.app.dev`; label: **아디**.
 - Gradle keeps the base namespace/application ID for future work but applies `.dev` to every enabled debug variant. Release variants remain disabled.
 - Main activity: `com.addi.app.MainActivity`. Android app UID, private data and Keystore access are separate from the installed `com.addi.app` Play app.
-- Supabase: existing **ADDI Dev** only. PKCE, system browser, exact callback validation and Android Keystore storage are unchanged.
+- Supabase: existing **아디** only. PKCE, system browser, exact callback validation and Android Keystore storage are unchanged.
 - Callback: `https://addi-galaxy-auth-dev.vercel.app/auth/native/callback`.
 - The separate static Dev Vercel project serves only callback HTML and DAL. Its DAL now targets only `com.addi.app.dev`, with the certificate extracted from this APK. Production DAL is unchanged.
 - The Dev redirect allowlist preserves its seven existing entries and adds the Galaxy callback plus `?attempt=*`. All other Auth settings and provider consoles remain unchanged.
@@ -16,13 +16,13 @@ The delivered APK passed typecheck/build, 28 tests, Gradle assembleDebug/lintDeb
 
 ## Installation and manual test
 
-1. Transfer the provided APK to Galaxy and open it in **My Files**. The installer must show **ADDI Dev**. Keep the existing **ADDI** app installed. Allow this installation source if Android prompts, then restore that permission afterward.
-2. Stay online for Android's automatic link verification. In Settings → Apps → ADDI Dev → Set as default / Open supported links, confirm the Dev host is supported. Manually selecting a host is not evidence of OS verification.
-3. Open **ADDI Dev**, choose Google, and use the same Google account previously used in **ADDI Dev Supabase**. Complete login directly in the system browser within five minutes. The result should return to **ADDI Dev**, then Home. If an attempt expires, cancel and start again in the app.
+1. Transfer the provided APK to Galaxy and open it in **My Files**. The installer must show **아디**. Keep the existing **ADDI** app installed. Allow this installation source if Android prompts, then restore that permission afterward.
+2. Stay online for Android's automatic link verification. In Settings → Apps → 아디 → Set as default / Open supported links, confirm the Dev host is supported. Manually selecting a host is not evidence of OS verification.
+3. Open **아디**, choose Google, and use the same Google account previously used in **ADDI Dev Supabase**. Complete login directly in the system browser within five minutes. The result should return to **아디**, then Home. If an attempt expires, cancel and start again in the app.
 4. Check the existing medication, mood and visit screens. Do not create/edit/delete records for this read-only acceptance pass. An empty Dev account is not proof of lost Production data; Dev and Production are separate.
-5. Remove **ADDI Dev** from Recents, reopen it, and confirm that login and the same records remain. Do not clear app data or uninstall for this test.
+5. Remove **아디** from Recents, reopen it, and confirm that login and the same records remain. Do not clear app data or uninstall for this test.
 6. Log out from My, restart ADDI Dev and confirm it stays signed out.
-7. Choose Kakao and use the existing Dev Kakao identity. If KakaoTalk opens, continue there. Confirm return to **ADDI Dev**, existing records, restart persistence, and logout again.
+7. Choose Kakao and use the existing Dev Kakao identity. If KakaoTalk opens, continue there. Confirm return to **아디**, existing records, restart persistence, and logout again.
 8. Record provider, app-return YES/NO, visible existing-data YES/NO, and restart-persistence YES/NO. Do not share credentials, callback URLs, tokens, emails, raw user IDs or screenshots containing health records.
 
 ## Device-backed identity acceptance
@@ -40,3 +40,12 @@ adb -s "$GALAXY_SERIAL" shell am start -W -a android.intent.action.VIEW -c andro
 Require `verified` and resolution to `com.addi.app.dev/com.addi.app.MainActivity`; do not force a component or manually override verification. Run probes before OAuth, not during an active attempt. A harmless probe verifies routing only, not OAuth or code exchange.
 
 Real Galaxy OAuth, exact identity equality, real-session refresh, cancellation, duplicate/expired callbacks and cold callback acceptance remain unverified until performed. Do not merge PR #90 based on APK preparation alone. No Production, Play, TWA, Push or scheduler changes are included.
+
+## Header, icon and Korean label update (0.1.1)
+
+- Launcher label is now **아디**; the isolated package remains `com.addi.app.dev`.
+- Android 8+ adaptive icons retain the original artwork and let the launcher apply its rounded mask. Legacy bitmap fallback remains for Android 7.
+- Native Home uses a sticky header in normal flow, replacing the former fixed-header spacer with the same 64px header. Native overscroll is disabled. Shared web CSS is unchanged.
+- Version code 2, signed with the same Dev certificate: install as an update without uninstalling or clearing app data.
+- Verified: compiled CSS layout at 360/390/430; actual Android WebView touch swipes with synthetic Home DOM; rounded icon and Korean label in Android app info; build/typecheck, 28 tests and Gradle assembleDebug/lintDebug.
+- This is fixture-based UI verification. The reported Galaxy scroll symptom still requires a check on the updated APK; exact live Auth identity acceptance is unchanged.

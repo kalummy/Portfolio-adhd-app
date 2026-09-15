@@ -3,3 +3,17 @@ html, body { background: var(--surface); }
 html { color-scheme: light; }
 body { padding-left: var(--safe-area-inset-left, 0px); padding-right: var(--safe-area-inset-right, 0px); }
 html[data-keyboard="open"] .bottom-navigation { display: none; }
+
+/* Keep the native Home header in the document's scroll layer. Its normal-flow
+   height replaces the shared fixed-header spacer without changing the layout. */
+html { overscroll-behavior-y: none; }
+.home-screen {
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+}
+.home-screen > .home-header {
+  position: sticky;
+  top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  left: auto;
+  width: 100%;
+  transform: none;
+}

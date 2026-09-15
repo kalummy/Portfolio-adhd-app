@@ -4,7 +4,7 @@ A separate static Vercel project hosts `https://addi-native-auth-dev.vercel.app`
 
 ## Galaxy Dev package update
 
-The current debug build is `com.addi.app.dev` / `ADDI Dev`, with a new fixed Galaxy callback host, `addi-galaxy-auth-dev.vercel.app`. Both public Dev DAL files target that package exclusively. The Galaxy host has its own static Dev project to avoid inherited Preview protection and the old host's cached DAL. See [Galaxy installation and acceptance](phase2-galaxy.md). The new package passed verified implicit cold/foreground App Link routing and Keystore round-trip; see `phase2-evidence/galaxy-dev-build.json`. The `com.addi.app` results below are historical.
+The current debug build is `com.addi.app.dev` / `아디`, with a new fixed Galaxy callback host, `addi-galaxy-auth-dev.vercel.app`. Both public Dev DAL files target that package exclusively. The Galaxy host has its own static Dev project to avoid inherited Preview protection and the old host's cached DAL. See [Galaxy installation and acceptance](phase2-galaxy.md). The new package passed verified implicit cold/foreground App Link routing and Keystore round-trip; see `phase2-evidence/galaxy-dev-build.json`. The `com.addi.app` results below are historical.
 
 ## Public surface
 

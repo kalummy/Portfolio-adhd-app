@@ -90,7 +90,7 @@ npm run android:debug
 
 APK: `android/app/build/outputs/apk/debug/app-debug.apk`.
 
-`applicationId` 기본값은 `com.addi.app`이며 debug 빌드는 `.dev` 접미사를 적용해 `com.addi.app.dev` / `ADDI Dev`로 설치됩니다. 기존 Play/TWA와 동시에 설치할 수 있고 저장소도 분리됩니다. Galaxy 수동 QA는 [설치 안내](docs/phase2-galaxy.md)를 따릅니다. Production upload signing은 연결하지 않았고 **app release variant를 비활성화**했습니다. 앱 release AAB를 생성하거나 Play에 올리는 흐름은 제공하지 않습니다.
+`applicationId` 기본값은 `com.addi.app`이며 debug 빌드는 `.dev` 접미사를 적용해 `com.addi.app.dev` / `아디`로 설치됩니다. 기존 Play/TWA와 동시에 설치할 수 있고 저장소도 분리됩니다. Galaxy 수동 QA는 [설치 안내](docs/phase2-galaxy.md)를 따릅니다. Production upload signing은 연결하지 않았고 **app release variant를 비활성화**했습니다. 앱 release AAB를 생성하거나 Play에 올리는 흐름은 제공하지 않습니다.
 
 ## QA
 

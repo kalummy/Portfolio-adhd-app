@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.addi.app.dev',
-  appName: 'ADDI Dev',
+  appName: '아디',
   webDir: 'dist',
   loggingBehavior: 'none',
   android: { backgroundColor: '#fafafb' },

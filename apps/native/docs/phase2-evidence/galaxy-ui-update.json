@@ -1,0 +1,124 @@
+{
+  "package": "com.addi.app.dev",
+  "label": "아디",
+  "versionCode": 2,
+  "versionName": "0.1.1-prototype-dev",
+  "sha256": "a62ebd47205d56304aade53525fd65ebb142530d1b07c9cc75abb7e299d4b111",
+  "signingCertificateUnchanged": true,
+  "adaptiveIcon": true,
+  "headerLayout": {
+    "fixture": "compiled native CSS, synthetic DOM, no account data",
+    "results": [
+      {
+        "width": 360,
+        "scrollY": 200,
+        "headerTop": 24,
+        "headerHeight": 64
+      },
+      {
+        "width": 360,
+        "scrollY": 800,
+        "headerTop": 24,
+        "headerHeight": 64
+      },
+      {
+        "width": 360,
+        "scrollY": 1328,
+        "headerTop": 24,
+        "headerHeight": 64
+      },
+      {
+        "width": 360,
+        "scrollY": 0,
+        "headerTop": 24,
+        "headerHeight": 64
+      },
+      {
+        "width": 390,
+        "scrollY": 200,
+        "headerTop": 24,
+        "headerHeight": 64
+      },
+      {
+        "width": 390,
+        "scrollY": 800,
+        "headerTop": 24,
+        "headerHeight": 64
+      },
+      {
+        "width": 390,
+        "scrollY": 1328,
+        "headerTop": 24,
+        "headerHeight": 64
+      },
+      {
+        "width": 390,
+        "scrollY": 0,
+        "headerTop": 24,
+        "headerHeight": 64
+      },
+      {
+        "width": 430,
+        "scrollY": 200,
+        "headerTop": 24,
+        "headerHeight": 64
+      },
+      {
+        "width": 430,
+        "scrollY": 800,
+        "headerTop": 24,
+        "headerHeight": 64
+      },
+      {
+        "width": 430,
+        "scrollY": 1328,
+        "headerTop": 24,
+        "headerHeight": 64
+      },
+      {
+        "width": 430,
+        "scrollY": 0,
+        "headerTop": 24,
+        "headerHeight": 64
+      }
+    ]
+  },
+  "androidHeader": {
+    "fixture": "real Android WebView, compiled APK CSS, synthetic Home DOM, adb touch swipes",
+    "pass": true,
+    "results": [
+      {
+        "top": 0,
+        "y": 479,
+        "height": 64,
+        "position": "sticky"
+      },
+      {
+        "top": 0,
+        "y": 953.6666870117188,
+        "height": 64,
+        "position": "sticky"
+      },
+      {
+        "top": 0,
+        "y": 1427.6666259765625,
+        "height": 64,
+        "position": "sticky"
+      },
+      {
+        "top": 0,
+        "y": 1556,
+        "height": 64,
+        "position": "sticky"
+      }
+    ]
+  },
+  "checks": [
+    "native typecheck/build",
+    "28 tests",
+    "assembleDebug",
+    "lintDebug",
+    "rounded icon and Korean label visual check"
+  ],
+  "galaxyRetest": "pending"
+}
