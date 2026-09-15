@@ -20,12 +20,13 @@ public class MainActivity extends BridgeActivity {
     private boolean isDevApi(Uri uri) {
         return "https".equals(uri.getScheme()) && "ohobxicxchkaisxxswkk.supabase.co".equals(uri.getHost())
             && uri.getPort() == -1 && uri.getUserInfo() == null
-            && (uri.getPath().startsWith("/auth/v1/") || uri.getPath().startsWith("/rest/v1/"));
+            && (uri.getPath().startsWith("/auth/v1/") || uri.getPath().startsWith("/rest/v1/") || uri.getPath().matches("/functions/v1/native-push/(register|status|test|revoke|rotate)"));
     }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(AddiSecureStoragePlugin.class);
+        registerPlugin(NativePushPlugin.class);
         super.onCreate(savedInstanceState);
         bridge.getWebView().setWebViewClient(new BridgeWebViewClient(bridge) {
             @Override

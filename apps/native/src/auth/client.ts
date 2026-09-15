@@ -6,7 +6,7 @@ export const nativeConfig = readNativeConfig(import.meta.env);
 let client: SupabaseClient | undefined;
 export function permittedNativeRequest(url: URL) {
   return url.origin === DEV_SUPABASE_URL && !url.username && !url.password
-    && (url.pathname.startsWith('/auth/v1/') || url.pathname.startsWith('/rest/v1/'));
+    && (url.pathname.startsWith('/auth/v1/') || url.pathname.startsWith('/rest/v1/') || /^\/functions\/v1\/native-push\/(register|status|test|revoke|rotate)$/.test(url.pathname));
 }
 export function getNativeClient(): SupabaseClient {
   if (!nativeConfig || Capacitor.getPlatform() !== 'android') throw new Error('native_auth_not_configured');

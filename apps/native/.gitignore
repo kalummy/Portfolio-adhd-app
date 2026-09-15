@@ -15,3 +15,5 @@ public/
 android/native-auth.properties
 dev-callback/.well-known/assetlinks.json
 dev-callback/.vercel/
+
+android/app/google-services.json

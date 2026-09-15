@@ -6,6 +6,7 @@ export const nativeAliases = {
   '@/lib/repositories': 'src/adapters/repositories.ts',
   '@/lib/supabase/client': 'src/auth/client.ts',
   '@/lib/auth/client': 'src/adapters/auth.ts',
+  '@/lib/push/preferences': 'src/adapters/push-preferences.ts',
   '@/lib/push/client': 'src/adapters/push.ts',
   '@/lib/notifications': 'src/adapters/notifications.ts',
   '@/lib/analytics/events': 'src/adapters/analytics.ts',

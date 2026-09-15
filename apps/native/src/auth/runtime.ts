@@ -7,6 +7,7 @@ import { getNativeClient, nativeConfig } from './client';
 import { clearNativeStorage, clearVerifiers, secureStorage } from './storage';
 import { NativeAuthFlow, AuthFlowError, type Provider } from './flow';
 import { router } from '../platform/router';
+import { clearNativePushBinding } from '../push/bridge';
 
 export type NativeAuthState = {
   status: 'starting' | 'signed_out' | 'pending' | 'completing' | 'signed_in' | 'unavailable';
@@ -138,6 +139,7 @@ export async function cancelNativeLogin() {
   await Browser.close().catch(() => undefined);
 }
 export async function signOutNative() {
+  await clearNativePushBinding();
   clearTimeout(expiryTimer);
   // Remove mounted account UI immediately, including in-flight repository results.
   update({ status: 'completing', user: null, profile: null, message: '로그아웃하고 있어요.' });
