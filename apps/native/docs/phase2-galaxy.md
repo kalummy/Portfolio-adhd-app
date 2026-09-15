@@ -61,3 +61,12 @@ Real Galaxy OAuth, exact identity equality, real-session refresh, cancellation, 
 Validation: real shared HomeScreen with previewData at 360/390/430, OS inset/header/body/nav geometry, calendar modal + Escape, final APK WebView touch swipes using rendered Home markup, actual launcher icon, cold-start frame capture, native typecheck/build, 28 tests, assembleDebug/lintDebug. Device-specific Galaxy retest remains required; these checks do not constitute live OAuth identity verification.
 
 References: [Android adaptive icon safe region](https://developer.android.com/develop/ui/compose/system/icon_design_adaptive), [Android system starting window](https://developer.android.com/develop/ui/views/launch/splash-screen).
+
+## Figma launcher source update (0.1.3)
+
+- Source: [specified AppIcon board](https://www.figma.com/design/5KktX2hQpkxIPgaLSe34dD/ADDI?node-id=83-732), master `83:781` and Android exports `83:769`–`83:777`. Exact exported PNG bytes are committed; no logo redrawing, recoloring, distortion, or bitmap padding.
+- The master has the same logo geometry as the previous artwork. Android density fallbacks now use Figma's actual rounded exports rather than square resizes. Android 8+ retains the minimum safe-circle scale; the launcher controls the outer mask.
+- Version code 4 / `0.1.3-prototype-dev`; package `com.addi.app.dev`, label **아디**, same Dev signing certificate and callback. Header and splash corrections from 0.1.2 are preserved.
+- PASS: typecheck/Vite build, 28 tests, Gradle assembleDebug/lintDebug, final APK package/certificate/Dev-only environment checks, emulator in-place update and actual launcher display (whole logo, Korean label, no added border).
+- Galaxy appearance remains a manual device check. Install the new APK over the existing Dev app; do not uninstall or clear its data. Production, Play, TWA, OAuth configuration, DAL and backend were not modified.
+- Exact source hashes and APK verification: `phase2-evidence/figma-launcher-source.json`.
