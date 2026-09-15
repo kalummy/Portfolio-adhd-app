@@ -53,9 +53,11 @@ try {
  const changed=await clients[0].auth.updateUser({data:{addi_profile:'duck'}});assert.ifError(changed.error);
  const restored=await clients[0].auth.getUser();assert.ifError(restored.error);assert.equal(restored.data.user.id,ids[0]);assert.equal(restored.data.user.user_metadata.addi_profile,'duck');
  const refreshed=await clients[0].auth.refreshSession();assert.ifError(refreshed.error);assert.equal(refreshed.data.user.id,ids[0]);mark('Profile metadata, identity and real session refresh');
- if(process.env.ADDI_NATIVE_QA_EXTERNAL === '1') {
+ if(process.env.ADDI_NATIVE_QA_MFDS === '1' || process.env.ADDI_NATIVE_QA_EXTERNAL === '1') {
   const found=await api(b,'medications/search?q='+encodeURIComponent('콘서타'));
   assert.ok(found.medications.length>0);mark('Live MFDS search');
+ }
+ if(process.env.ADDI_NATIVE_QA_EXTERNAL === '1') {
   const input={date,recordedAt:now,hasMedicationIntake:false,evidence:[
    {id:'focus:good',category:'concentration',label:'집중이 잘 되었어요'},
    {id:'relationship:none',category:'relationship',label:'특별한 문제는 없었어요'},

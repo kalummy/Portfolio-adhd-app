@@ -1,6 +1,6 @@
 # Phase 4 — Native core feature parity (Dev)
 
-Status: implementation and local regression complete; live Dev and Galaxy QA pending.
+Status: implementation, local regression and live Dev CRUD/ownership/deletion integration pass; real AI and Galaxy QA pending.
 No Production or Play deployment is authorized by this change.
 
 ## Architecture
@@ -65,12 +65,24 @@ Values belong only in Dev Edge Secrets. They must not appear in the APK, reposit
 | Web Google/Kakao cookie Auth, DAL, TWA, CSS, Web Push byte regression | PASS |
 | Shared AI safety/provider retry, mood flow/ownership, deletion, reminder and Push fixtures | PASS |
 | Emulator UI wiring fixture: manual medication/intake, visit create/edit, mood failure/retry/save, profile | PASS; synthetic API/AI responses, not live DB evidence |
-| Live Dev repository/ownership/deletion integration | Pending Keychain access |
-| Live official medicine search | Pending Dev server secret configuration |
-| Real Dev OpenAI analysis | Pending Dev server secret configuration |
-| Galaxy flows + Dev DB comparison | Pending Dev server secrets and user device testing |
+| Live Dev repository/ownership/deletion integration | PASS: 8 groups including live search; disposable Dev accounts only |
+| Emulator existing APK against live Dev API | PASS: 8 groups, no API mocks; synthetic Dev account, not Google/Kakao OAuth evidence |
+| Live official medicine search | PASS: Dev server MFDS secrets registered and actual search returned results |
+| Real Dev OpenAI analysis | Pending: `ADDI_DEV_OPENAI_API_KEY` is absent |
+| Galaxy flows + Dev DB comparison | Pending user device testing with the existing APK 0.3.0 |
 
 A pre-existing mood source assertion expected a literal `저장` child even though the current UI renders saving/retry/save states. The assertion was updated to cover those existing states; web UI behavior did not change.
+
+## Resumed live QA (2026-09-15)
+
+- Existing Supabase CLI credentials were read through the Mac Keychain with local user approval. No new login was started and no credential was printed.
+- With explicit user authorization, the two existing MFDS keys were copied into the two Dev-only Edge Secret names above. Source values and Production configuration were unchanged. No existing Dev OpenAI secret was found.
+- Real hosted QA exposed two adapter compatibility issues: the Edge gateway forwards `/native-api/*` after stripping `/functions/v1`, and it can supply an empty stream for a bodyless DELETE. Only those server checks were corrected. Unknown paths and non-empty deletion payloads remain rejected. Added fixtures cover both cases.
+- Dev `native-api` version 5 contains those corrections. APK 0.3.0 and its SHA-256 remain unchanged; no app rebuild or feature refactor was performed.
+- The live integration creates two disposable Dev accounts. Medication schedules/edit/deactivation, intake/idempotence/undo/time changes, visit CRUD, mood save/date/range/duplicate handling, owner isolation, profile identity, session refresh, MFDS search and account deletion pass. Admin DB readback confirms the expected owner and rows; deletion removes the Auth user and four owned health-data sets, and a stale session is rejected. The test accounts are cleaned afterward.
+- Native/Web typechecks, all 28 Native tests, deletion, reminder and notification fixtures pass again. Protected Web Auth/API, TWA, Native/Web Push paths are unchanged. No FCM messages were sent.
+- Existing APK 0.3.0 also passed live Dev emulator UI QA: manual medication/save, intake/undo, upcoming visit create/edit, profile, process-stop/relaunch session and data restore, logout/Keystore clearing, signed-out relaunch, same-account data on re-login, and disposable-account deletion. No API responses were mocked. The QA waits for asynchronous Keystore cleanup completion before checking the signed-out state. The synthetic account was deleted after testing.
+- Real AI remains blocked on a Dev OpenAI secret. Emulator fixtures and real API integration do not substitute for Galaxy acceptance.
 
 ## Galaxy acceptance matrix (do not delete the real Dev account)
 

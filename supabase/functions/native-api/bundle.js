@@ -1463,7 +1463,8 @@ function createNativeApiHandler(deps) {
     if (origin && origin !== "https://localhost") return json({ code: "ORIGIN_DENIED" }, 403);
     if (origin) headers["Access-Control-Allow-Origin"] = origin;
     const url = new URL(request.url);
-    const path = url.pathname.startsWith(NATIVE_API_PREFIX + "/") ? "/api/" + url.pathname.slice(NATIVE_API_PREFIX.length + 1) : "";
+    const prefix = [NATIVE_API_PREFIX, "/native-api"].find((value) => url.pathname.startsWith(value + "/"));
+    const path = prefix ? "/api/" + url.pathname.slice(prefix.length + 1) : "";
     if (!nativeApiPath(path)) return json({ code: "NOT_FOUND" }, 404);
     const expectedMethod = path === "/api/account" ? "DELETE" : ["/api/repository", "/api/moods/analyze"].includes(path) ? "POST" : "GET";
     if (request.method === "OPTIONS") {
@@ -1495,7 +1496,16 @@ function createNativeApiHandler(deps) {
         return json({ data: await fn(...args) ?? null });
       }
       if (path === "/api/account") {
-        if (request.body || url.search) throw new NativeRequestError();
+        if (url.search) throw new NativeRequestError();
+        const reader = request.body?.getReader();
+        if (reader) for (; ; ) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value.byteLength) {
+            await reader.cancel();
+            throw new NativeRequestError();
+          }
+        }
         const admin = deps.admin();
         await deleteAuthenticatedAccount({
           getCurrentUser: async () => ({ user, error: null }),

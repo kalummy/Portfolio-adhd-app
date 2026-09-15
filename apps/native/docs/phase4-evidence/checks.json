@@ -14,10 +14,19 @@
   "reminderPushFixtures": true,
   "accountDeletionFixtures": true,
   "emulatorUiFixture": true,
-  "liveDevCrud": false,
+  "liveDevCrud": true,
   "realAi": false,
   "galaxyParity": false,
   "productionChanges": 0,
   "fcmSends": 0,
-  "devMigrations": 0
+  "devMigrations": 0,
+  "liveMfdsSearch": true,
+  "keychainAuthentication": true,
+  "devMfdsSecretsConfigured": 2,
+  "devOpenaiSecretConfigured": false,
+  "liveDevAccountDeletion": true,
+  "liveDevIntegrationGroups": 8,
+  "devEdgeVersion": 5,
+  "liveDevEmulator": true,
+  "liveDevEmulatorGroups": 8
 }
