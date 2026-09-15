@@ -1,5 +1,7 @@
 # Galaxy: isolated ADDI Dev Auth QA
 
+**Final status (2026-09-15): existing-account Native Auth PASS.** The user completed physical Galaxy OAuth/session/callback QA. Read [final acceptance and evidence limits](phase2-final-qa.md) before interpreting the earlier build records below.
+
 ## Install identity
 
 - Debug application ID: `com.addi.app.dev`; label: **아디**.
@@ -12,7 +14,7 @@
 
 ## Build verification
 
-The delivered APK passed typecheck/build, 28 tests, Gradle assembleDebug/lintDebug, certificate inspection, coexistence with the previous emulator package, verified implicit cold/foreground App Links, Google/Kakao login UI rendering and a Keystore round-trip. These are emulator results, not completed Galaxy OAuth acceptance. See `phase2-evidence/galaxy-dev-build.json`.
+The delivered APK passed typecheck/build, 28 tests, Gradle assembleDebug/lintDebug, certificate inspection, coexistence with the previous emulator package, verified implicit cold/foreground App Links, Google/Kakao login UI rendering and a Keystore round-trip. These describe the original emulator build checks; the subsequent user-reported Galaxy acceptance is recorded in the final report. See `phase2-evidence/galaxy-dev-build.json`.
 
 ## Installation and manual test
 
@@ -27,7 +29,7 @@ The delivered APK passed typecheck/build, 28 tests, Gradle assembleDebug/lintDeb
 
 ## Device-backed identity acceptance
 
-Visual data checks alone cannot prove exact `auth.users.id` equality. A read-only USB QA check must compare the server-validated session ID against the pre-login Dev identity baseline and query own-user records with that session. Report equality/read results only. A local helper is prepared with the delivery APK; it reads only `com.addi.app.dev` and sends authenticated reads only to ADDI Dev. No password or token is requested from the user.
+Final ownership acceptance combines the user-confirmed existing-data reads, a private baseline comparison of unchanged Dev provider/user mappings and row counts, and owner-only RLS. A fresh direct readback of the physical session ID was not performed. The optional read-only USB helper can provide that extra evidence in a future test; it reads only `com.addi.app.dev` and ADDI Dev, without publishing credentials or identifiers.
 
 With the Galaxy explicitly selected, the OS routing checks are:
 
@@ -39,7 +41,7 @@ adb -s "$GALAXY_SERIAL" shell am start -W -a android.intent.action.VIEW -c andro
 
 Require `verified` and resolution to `com.addi.app.dev/com.addi.app.MainActivity`; do not force a component or manually override verification. Run probes before OAuth, not during an active attempt. A harmless probe verifies routing only, not OAuth or code exchange.
 
-Real Galaxy OAuth, exact identity equality, real-session refresh, cancellation, duplicate/expired callbacks and cold callback acceptance remain unverified until performed. Do not merge PR #90 based on APK preparation alone. No Production, Play, TWA, Push or scheduler changes are included.
+Google/Kakao real Galaxy OAuth, session refresh/restore/logout/relogin, existing data and cold/foreground callbacks are now user-confirmed PASS. Cancellation, duplicate/expired callbacks and offline local logout have earlier emulator/automatic evidence. See the final report for coverage limits. PR #90 remains unmerged and requires an approving review. No Production, Play, TWA, Push or scheduler changes are included.
 
 ## Superseded: initial header, icon and Korean label update (0.1.1)
 

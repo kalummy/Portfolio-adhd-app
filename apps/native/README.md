@@ -1,6 +1,6 @@
 # Phase 2 Native Auth
 
-The current branch adds isolated Native Auth. Read [Phase 2 architecture, setup and QA](docs/phase2-auth.md) first. Live Google/Kakao acceptance is pending; no Production or Play changes are authorized. The Phase 1 notes below describe the original fixture shell baseline.
+The current branch adds isolated Native Auth. Read [Phase 2 architecture, setup and QA](docs/phase2-auth.md) first. Existing-account Google/Kakao Galaxy acceptance and current Native/Web regression pass; see [final Phase 2 QA](docs/phase2-final-qa.md). PR #90 remains unmerged and requires an approving review. No Production or Play changes are authorized. The Phase 1 notes below describe the original fixture shell baseline.
 
 # ADDI Phase 1 — Capacitor shell prototype
 

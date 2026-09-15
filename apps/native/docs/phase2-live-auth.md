@@ -17,8 +17,8 @@ The current debug build is `com.addi.app.dev` / `아디`, with a new fixed Galax
 
 `pm verify-app-links --re-verify com.addi.app` followed by `pm get-app-links com.addi.app` reports the Dev host as **verified**. Without an explicit component or manual link override, both a process-dead and foreground HTTPS intent resolve to `com.addi.app/.MainActivity`. The harmless probe has no OAuth code; this proves verified link routing, not provider authentication.
 
-## Pending real OAuth acceptance
+## Final real OAuth acceptance
 
-Existing CLI authentication successfully listed projects and read Dev Auth configuration. Only the Dev redirect allowlist was updated: its existing five web entries were preserved and the public Native callback plus its attempt-query form were appended. Site URL and every other Auth setting were verified unchanged. Real Google login has reached the system Custom Tab; account-owner UI input is pending. Verify actual Google/Kakao login, existing identity equality and record reads, restore/refresh/logout/account switch, cancellation and cold/foreground callbacks. Credentials must be entered directly in the login UI and never published in test evidence.
+The user subsequently completed Google/Kakao OAuth and session/callback QA on a physical Galaxy using the isolated Dev app. The existing Dev CLI session was reused during environment setup; no fresh CLI login is required. Current acceptance adds read-only Dev DB ownership checks and Native/Web regression, with no remote configuration changes.
 
-PR #90 must remain unmerged. Real provider OAuth and Phase 2 acceptance are still incomplete. Production, Play, TWA, Push and scheduler remain unchanged.
+See [final acceptance](phase2-final-qa.md) for the exact evidence sources and limits. Phase 2 passes for the tested existing Dev accounts. PR #90 remains Ready and unmerged; GitHub currently requires an approving review. Production, Play, TWA, Push and scheduler remain unchanged.
