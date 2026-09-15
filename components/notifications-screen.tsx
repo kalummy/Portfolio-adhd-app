@@ -341,11 +341,11 @@ export function NotificationsScreen({
         ) : null}
 
         {showNotificationList ? (
-          <div className="notifications-retention-note">
-            <i />
+          <footer className="notifications-retention-note">
+            <i aria-hidden="true" />
             <span>90일 전 알림까지 확인할 수 있어요</span>
-            <i />
-          </div>
+            <i aria-hidden="true" />
+          </footer>
         ) : null}
       </section>
     </MobileShell>

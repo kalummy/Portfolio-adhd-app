@@ -1,0 +1,19 @@
+{
+  "base": "archived v12 source, not origin/main Android v4",
+  "sourceArchiveSha256": "09375bcf4e9a5b58b514a1162ff45d7373312dfe1783b0dcc2b3d33de7917f95",
+  "changedFiles": [
+    "android/app/src/main/AndroidManifest.xml",
+    "android/app/src/main/java/com/addi/app/LauncherActivity.java",
+    "android/app/src/main/res/values/addi_launch.xml",
+    "android/app/src/main/res/values-v31/addi_launch.xml",
+    "android/app/src/main/res/drawable-v31/addi_launch_brand.xml"
+  ],
+  "baseFileSha256": {
+    "android/app/src/main/AndroidManifest.xml": "8163d2568c548d1173eb7bbb2e4d58f27c5d6b95a5c7fae62ae325322cd67780",
+    "android/app/src/main/java/com/addi/app/LauncherActivity.java": "1615ca62605cfb48309674b43900ba3ac835a06dd1ec120fb1f4c5671aba78f2"
+  },
+  "unchangedVersionCode": 12,
+  "unchangedVersionName": "1.0.2",
+  "aabBuilt": false,
+  "launcherImagesChanged": false
+}
