@@ -4,6 +4,7 @@ import '../../../app/globals.css';
 import './shell.css';
 import { permittedNativeRequest } from './auth/client';
 import { startNativeAuth } from './auth/runtime';
+import { startNativePush } from './push/runtime';
 import { NativeApp } from './app';
 import { startNativeLifecycle, handleNativeBack, shellState } from './platform/lifecycle';
 import { PhaseUnavailableError } from './adapters/boundaries';
@@ -19,7 +20,7 @@ window.fetch = (input, init) => {
   return assetFetch(input, init);
 };
 void startNativeLifecycle().then(() => {
-  void startNativeAuth();
+  void startNativePush().then(() => startNativeAuth());
   createRoot(document.getElementById('root')!).render(<NativeApp />);
 }).catch(() => {
   document.getElementById('root')!.textContent = '앱을 시작하지 못했어요. 앱을 다시 실행해주세요.';

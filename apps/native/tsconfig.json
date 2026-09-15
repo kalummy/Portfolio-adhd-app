@@ -33,6 +33,7 @@
       "@/lib/auth/client": [
         "./src/adapters/auth.ts"
       ],
+      "@/lib/push/preferences": ["./src/adapters/push-preferences.ts"],
       "@/lib/push/client": [
         "./src/adapters/push.ts"
       ],
