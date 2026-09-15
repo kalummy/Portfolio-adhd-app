@@ -1,0 +1,13 @@
+import type { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
+  appId: 'com.addi.app',
+  appName: 'ADDI Prototype',
+  webDir: 'dist',
+  android: { backgroundColor: '#fafafb' },
+  plugins: {
+    SplashScreen: { launchAutoHide: false, launchFadeOutDuration: 200, backgroundColor: '#fafafb', showSpinner: false },
+    SystemBars: { insetsHandling: 'css', style: 'LIGHT', hidden: false, initialViewportFitValueHint: 'cover' },
+  },
+};
+export default config;

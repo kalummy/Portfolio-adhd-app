@@ -1,0 +1,243 @@
+{
+  "results": [
+    {
+      "name": "home",
+      "width": 360,
+      "height": 592,
+      "scroll": 360,
+      "top": "0px",
+      "bottom": "0px",
+      "brokenImages": [],
+      "foreground": "com.addi.app/.MainActivity",
+      "url": "https://localhost/"
+    },
+    {
+      "name": "medications",
+      "width": 360,
+      "height": 592,
+      "scroll": 360,
+      "top": "0px",
+      "bottom": "0px",
+      "brokenImages": [],
+      "foreground": "com.addi.app/.MainActivity",
+      "url": "https://localhost/medications"
+    },
+    {
+      "name": "moods",
+      "width": 360,
+      "height": 592,
+      "scroll": 360,
+      "top": "0px",
+      "bottom": "0px",
+      "brokenImages": [],
+      "foreground": "com.addi.app/.MainActivity",
+      "url": "https://localhost/moods"
+    },
+    {
+      "name": "visits",
+      "width": 360,
+      "height": 592,
+      "scroll": 360,
+      "top": "0px",
+      "bottom": "0px",
+      "brokenImages": [],
+      "foreground": "com.addi.app/.MainActivity",
+      "url": "https://localhost/visits"
+    },
+    {
+      "name": "notifications",
+      "width": 360,
+      "height": 592,
+      "scroll": 360,
+      "top": "0px",
+      "bottom": "0px",
+      "brokenImages": [],
+      "foreground": "com.addi.app/.MainActivity",
+      "url": "https://localhost/notifications"
+    },
+    {
+      "name": "my",
+      "width": 360,
+      "height": 592,
+      "scroll": 360,
+      "top": "0px",
+      "bottom": "0px",
+      "brokenImages": [],
+      "foreground": "com.addi.app/.MainActivity",
+      "url": "https://localhost/my"
+    },
+    {
+      "name": "home",
+      "width": 390,
+      "height": 592,
+      "scroll": 390,
+      "top": "0px",
+      "bottom": "0px",
+      "brokenImages": [],
+      "foreground": "com.addi.app/.MainActivity",
+      "url": "https://localhost/"
+    },
+    {
+      "name": "medications",
+      "width": 390,
+      "height": 592,
+      "scroll": 390,
+      "top": "0px",
+      "bottom": "0px",
+      "brokenImages": [],
+      "foreground": "com.addi.app/.MainActivity",
+      "url": "https://localhost/medications"
+    },
+    {
+      "name": "moods",
+      "width": 390,
+      "height": 592,
+      "scroll": 390,
+      "top": "0px",
+      "bottom": "0px",
+      "brokenImages": [],
+      "foreground": "com.addi.app/.MainActivity",
+      "url": "https://localhost/moods"
+    },
+    {
+      "name": "visits",
+      "width": 390,
+      "height": 592,
+      "scroll": 390,
+      "top": "0px",
+      "bottom": "0px",
+      "brokenImages": [],
+      "foreground": "com.addi.app/.MainActivity",
+      "url": "https://localhost/visits"
+    },
+    {
+      "name": "notifications",
+      "width": 390,
+      "height": 592,
+      "scroll": 390,
+      "top": "0px",
+      "bottom": "0px",
+      "brokenImages": [],
+      "foreground": "com.addi.app/.MainActivity",
+      "url": "https://localhost/notifications"
+    },
+    {
+      "name": "my",
+      "width": 390,
+      "height": 592,
+      "scroll": 390,
+      "top": "0px",
+      "bottom": "0px",
+      "brokenImages": [],
+      "foreground": "com.addi.app/.MainActivity",
+      "url": "https://localhost/my"
+    },
+    {
+      "name": "home",
+      "width": 430,
+      "height": 592,
+      "scroll": 430,
+      "top": "0px",
+      "bottom": "0px",
+      "brokenImages": [],
+      "foreground": "com.addi.app/.MainActivity",
+      "url": "https://localhost/"
+    },
+    {
+      "name": "medications",
+      "width": 430,
+      "height": 592,
+      "scroll": 430,
+      "top": "0px",
+      "bottom": "0px",
+      "brokenImages": [],
+      "foreground": "com.addi.app/.MainActivity",
+      "url": "https://localhost/medications"
+    },
+    {
+      "name": "moods",
+      "width": 430,
+      "height": 592,
+      "scroll": 430,
+      "top": "0px",
+      "bottom": "0px",
+      "brokenImages": [],
+      "foreground": "com.addi.app/.MainActivity",
+      "url": "https://localhost/moods"
+    },
+    {
+      "name": "visits",
+      "width": 430,
+      "height": 592,
+      "scroll": 430,
+      "top": "0px",
+      "bottom": "0px",
+      "brokenImages": [],
+      "foreground": "com.addi.app/.MainActivity",
+      "url": "https://localhost/visits"
+    },
+    {
+      "name": "notifications",
+      "width": 430,
+      "height": 592,
+      "scroll": 430,
+      "top": "0px",
+      "bottom": "0px",
+      "brokenImages": [],
+      "foreground": "com.addi.app/.MainActivity",
+      "url": "https://localhost/notifications"
+    },
+    {
+      "name": "my",
+      "width": 430,
+      "height": 592,
+      "scroll": 430,
+      "top": "0px",
+      "bottom": "0px",
+      "brokenImages": [],
+      "foreground": "com.addi.app/.MainActivity",
+      "url": "https://localhost/my"
+    },
+    {
+      "back": "native keyevent: date sheet, delete modal, route, profile sheet, period sheet PASS"
+    },
+    {
+      "keyboard": {
+        "state": {
+          "starts": 1,
+          "resumes": 0,
+          "active": true,
+          "keyboardVisible": true,
+          "lastBack": ""
+        },
+        "viewport": 272,
+        "inputBottom": 162
+      },
+      "warmStart": "Starting: Intent { cmp=com.addi.app/.MainActivity }\nWarning: Activity not started, its current task has been brought to the front\nStatus: ok\nLaunchState: UNKNOWN (0)\nActivity: com.addi.app/.MainActivity\nWaitTime: 50\nComplete",
+      "lifecycle": {
+        "starts": 1,
+        "resumes": 1,
+        "active": true,
+        "keyboardVisible": false,
+        "lastBack": ""
+      }
+    },
+    {
+      "coldStart": "Starting: Intent { cmp=com.addi.app/.MainActivity }\nStatus: ok\nLaunchState: COLD\nActivity: com.addi.app/.MainActivity\nTotalTime: 885\nWaitTime: 893\nComplete",
+      "restartDraft": "PASS"
+    },
+    {
+      "rootBackExit": "PASS"
+    },
+    {
+      "activityWarmStart": "Starting: Intent { cmp=com.addi.app/.MainActivity }\nStatus: ok\nLaunchState: WARM\nActivity: com.addi.app/.MainActivity\nTotalTime: 324\nWaitTime: 326\nComplete",
+      "sameProcess": true
+    },
+    {
+      "externalNavigationBlocked": true,
+      "apiBlocked": true
+    }
+  ],
+  "errors": [],
+  "remoteRequests": []
+}
