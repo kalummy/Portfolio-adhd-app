@@ -41,7 +41,7 @@ Require `verified` and resolution to `com.addi.app.dev/com.addi.app.MainActivity
 
 Real Galaxy OAuth, exact identity equality, real-session refresh, cancellation, duplicate/expired callbacks and cold callback acceptance remain unverified until performed. Do not merge PR #90 based on APK preparation alone. No Production, Play, TWA, Push or scheduler changes are included.
 
-## Header, icon and Korean label update (0.1.1)
+## Superseded: initial header, icon and Korean label update (0.1.1)
 
 - Launcher label is now **아디**; the isolated package remains `com.addi.app.dev`.
 - Android 8+ adaptive icons retain the original artwork and let the launcher apply its rounded mask. Legacy bitmap fallback remains for Android 7.
@@ -49,3 +49,15 @@ Real Galaxy OAuth, exact identity equality, real-session refresh, cancellation, 
 - Version code 2, signed with the same Dev certificate: install as an update without uninstalling or clearing app data.
 - Verified: compiled CSS layout at 360/390/430; actual Android WebView touch swipes with synthetic Home DOM; rounded icon and Korean label in Android app info; build/typecheck, 28 tests and Gradle assembleDebug/lintDebug.
 - This is fixture-based UI verification. The reported Galaxy scroll symptom still requires a check on the updated APK; exact live Auth identity acceptance is unchanged.
+
+## Current layout and launch correction (0.1.2)
+
+- Native Vite substitutes only HomeScreen's `MobileShell` import. The adapter keeps the shared header and body content, places the body/footer in a bounded scrollport, and leaves navigation/overlays outside it. No shared React screen or web stylesheet changes.
+- Home is a fixed viewport frame with OS inset, 64px header, body scrollport, and bottom navigation. Body clipping is independent of the header; the document does not scroll. The calendar dialog locks the body scrollport and remains outside its clip. System bars are explicitly shown at startup.
+- Icon foreground inset is proportional (`18.906%`) instead of absolute dp. It is derived from the existing 1024px artwork's maximum logo radius (503.133px) and Android's 66/108 safe circle. Original bitmap and full-bleed background are unchanged; no bitmap padding or border was added. The actual emulator launcher shows the whole mark inside its circular mask.
+- System launch icon is transparent, legacy fallback is plain, and splash fade is zero. The OS starting window remains, then the existing brand/login UI appears without the extra launcher-logo overlay.
+- Version code 3 / `0.1.2-prototype-dev`, same package and signing certificate. Update the existing Dev app without uninstalling.
+
+Validation: real shared HomeScreen with previewData at 360/390/430, OS inset/header/body/nav geometry, calendar modal + Escape, final APK WebView touch swipes using rendered Home markup, actual launcher icon, cold-start frame capture, native typecheck/build, 28 tests, assembleDebug/lintDebug. Device-specific Galaxy retest remains required; these checks do not constitute live OAuth identity verification.
+
+References: [Android adaptive icon safe region](https://developer.android.com/develop/ui/compose/system/icon_design_adaptive), [Android system starting window](https://developer.android.com/develop/ui/views/launch/splash-screen).

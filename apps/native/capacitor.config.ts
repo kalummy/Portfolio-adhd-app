@@ -7,7 +7,7 @@ const config: CapacitorConfig = {
   loggingBehavior: 'none',
   android: { backgroundColor: '#fafafb' },
   plugins: {
-    SplashScreen: { launchAutoHide: false, launchFadeOutDuration: 200, backgroundColor: '#fafafb', showSpinner: false },
+    SplashScreen: { launchAutoHide: false, launchFadeOutDuration: 0, backgroundColor: '#fafafb', showSpinner: false },
     SystemBars: { insetsHandling: 'css', style: 'LIGHT', hidden: false, initialViewportFitValueHint: 'cover' },
   },
 };
