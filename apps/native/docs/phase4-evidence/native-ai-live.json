@@ -1,0 +1,33 @@
+{
+  "apk": "0.3.1-prototype-dev",
+  "emulator": true,
+  "liveOAuth": false,
+  "mockApi": false,
+  "mockAi": false,
+  "productionChanges": 0,
+  "fcmSends": 0,
+  "offlineRetryVisible": true,
+  "request": {
+    "url": "https://ohobxicxchkaisxxswkk.supabase.co/functions/v1/native-api/moods/analyze",
+    "method": "POST",
+    "bearerPresent": true,
+    "cookiePresent": false,
+    "origin": "https://localhost",
+    "requestBodyKeys": [
+      "date",
+      "recordedAt",
+      "hasMedicationIntake",
+      "evidence"
+    ],
+    "evidenceCount": 3,
+    "status": 200,
+    "requestId": "11e25267-819c-44ad-aded-b061e9dcc5dd"
+  },
+  "realAi": true,
+  "model": "gpt-5-mini",
+  "savedAnalysisMatchesDevDb": true,
+  "savedDetailMatches": true,
+  "coldRestoreMatches": true,
+  "passed": true,
+  "disposableAccountAndRowsRemoved": true
+}

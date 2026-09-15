@@ -15,7 +15,7 @@
   "accountDeletionFixtures": true,
   "emulatorUiFixture": true,
   "liveDevCrud": true,
-  "realAi": false,
+  "realAi": true,
   "galaxyParity": false,
   "productionChanges": 0,
   "fcmSends": 0,
@@ -28,5 +28,8 @@
   "liveDevIntegrationGroups": 8,
   "devEdgeVersion": 5,
   "liveDevEmulator": true,
-  "liveDevEmulatorGroups": 8
+  "liveDevEmulatorGroups": 8,
+  "nativeAiSaveReadColdRestore": true,
+  "nativeAiPreviewRelay": true,
+  "nativePushTests": 10
 }

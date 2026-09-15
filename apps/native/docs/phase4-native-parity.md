@@ -1,6 +1,6 @@
 # Phase 4 — Native core feature parity (Dev)
 
-Status: implementation, local regression and live Dev CRUD/ownership/deletion integration pass; real AI and Galaxy QA pending.
+Status: implementation, live Dev CRUD and actual Native AI/save/detail/cold restore pass; Galaxy acceptance pending. See [AI 503 resolution and Galaxy handoff](phase4-ai-503.md).
 No Production or Play deployment is authorized by this change.
 
 ## Architecture
@@ -21,13 +21,13 @@ No Production or Play deployment is authorized by this change.
 | Supabase | ADDI Dev `ohobxicxchkaisxxswkk` |
 | API | `https://ohobxicxchkaisxxswkk.supabase.co/functions/v1/native-api` |
 | Android package | `com.addi.app.dev` |
-| Version | `0.3.0-prototype-dev` / code 7 |
+| Version | `0.3.1-prototype-dev` / code 8 |
 | OAuth callback | `https://addi-galaxy-auth-dev.vercel.app/auth/native/callback` |
 | Firebase | existing Dev `addi-503b5` |
 
 The server adapter explicitly rejects any other Supabase project. Existing Native build guards continue to disable release and reject non-Dev Firebase/callback inputs.
 
-## Local artifact
+## Previous 0.3.0 artifact (preserved)
 
 `apps/native/qa-artifacts/phase4/ADDI-Dev-0.3.0-native-parity.apk` (ignored build output)
 
@@ -44,6 +44,8 @@ This debug APK updates only ADDI Dev; it cannot replace the Play package. Final 
 - Native unsaved medication/mood drafts are cleared on account changes. Saved data lives in Supabase; no browser guest dataset is imported.
 
 ## Server secrets (Dev only)
+
+Current AI transport uses `ADDI_DEV_AI_PREVIEW_BYPASS` only in Dev Edge Secrets. OpenAI executes with the existing Vercel Preview `OPENAI_API_KEY`; the direct Edge OpenAI variables below remain optional, unused in the verified relay path. See `phase4-ai-503.md` for scope and safeguards.
 
 - `ADDI_DEV_MFDS_SERVICE_KEY`
 - `ADDI_DEV_MFDS_PILL_IDENTIFICATION_SERVICE_KEY`
@@ -68,7 +70,7 @@ Values belong only in Dev Edge Secrets. They must not appear in the APK, reposit
 | Live Dev repository/ownership/deletion integration | PASS: 8 groups including live search; disposable Dev accounts only |
 | Emulator existing APK against live Dev API | PASS: 8 groups, no API mocks; synthetic Dev account, not Google/Kakao OAuth evidence |
 | Live official medicine search | PASS: Dev server MFDS secrets registered and actual search returned results |
-| Real Dev OpenAI analysis | Pending: `ADDI_DEV_OPENAI_API_KEY` is absent |
+| Real Dev OpenAI analysis | PASS through authenticated Dev Edge → existing Preview Secret; actual APK 0.3.1 |
 | Galaxy flows + Dev DB comparison | Pending user device testing with the existing APK 0.3.0 |
 
 A pre-existing mood source assertion expected a literal `저장` child even though the current UI renders saving/retry/save states. The assertion was updated to cover those existing states; web UI behavior did not change.
@@ -82,7 +84,7 @@ A pre-existing mood source assertion expected a literal `저장` child even thou
 - The live integration creates two disposable Dev accounts. Medication schedules/edit/deactivation, intake/idempotence/undo/time changes, visit CRUD, mood save/date/range/duplicate handling, owner isolation, profile identity, session refresh, MFDS search and account deletion pass. Admin DB readback confirms the expected owner and rows; deletion removes the Auth user and four owned health-data sets, and a stale session is rejected. The test accounts are cleaned afterward.
 - Native/Web typechecks, all 28 Native tests, deletion, reminder and notification fixtures pass again. Protected Web Auth/API, TWA, Native/Web Push paths are unchanged. No FCM messages were sent.
 - Existing APK 0.3.0 also passed live Dev emulator UI QA: manual medication/save, intake/undo, upcoming visit create/edit, profile, process-stop/relaunch session and data restore, logout/Keystore clearing, signed-out relaunch, same-account data on re-login, and disposable-account deletion. No API responses were mocked. The QA waits for asynchronous Keystore cleanup completion before checking the signed-out state. The synthetic account was deleted after testing.
-- Real AI remains blocked on a Dev OpenAI secret. Emulator fixtures and real API integration do not substitute for Galaxy acceptance.
+- At that earlier checkpoint, real AI was blocked on the missing Edge secret. This is now resolved through the existing Preview key; see `phase4-ai-503.md`. Galaxy acceptance remains separate.
 
 ## Galaxy acceptance matrix (do not delete the real Dev account)
 

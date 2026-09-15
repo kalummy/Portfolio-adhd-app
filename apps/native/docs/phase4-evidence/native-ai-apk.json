@@ -1,0 +1,12 @@
+{
+  "versionName": "0.3.1-prototype-dev",
+  "versionCode": 8,
+  "package": "com.addi.app.dev",
+  "sha256": "a79168e6c9186364c3df3b64f420e9262cff7a0197ca3b72b474ec8396e48a40",
+  "sameDebugSigner": true,
+  "serverCredentialsAbsentFromJs": true,
+  "devApiTargetPresent": true,
+  "androidBuild": true,
+  "androidLint": true,
+  "galaxyTested": false
+}

@@ -1,0 +1,20 @@
+[
+  {
+    "timestamp": 1789483113912,
+    "deploymentId": "dpl_6Abk8TYaBGjYFESo8uxXEFuXarhh",
+    "requestPath": "/api/moods/analyze",
+    "requestMethod": "POST",
+    "responseStatusCode": 200,
+    "environment": "preview",
+    "source": "serverless-middleware"
+  },
+  {
+    "timestamp": 1789483110086,
+    "deploymentId": "dpl_6Abk8TYaBGjYFESo8uxXEFuXarhh",
+    "requestPath": "/api/moods/analyze",
+    "requestMethod": "POST",
+    "responseStatusCode": 400,
+    "environment": "preview",
+    "source": "serverless-middleware"
+  }
+]
