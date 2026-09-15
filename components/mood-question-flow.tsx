@@ -139,11 +139,15 @@ function normalizeRestoredAnswers(answers: MoodAnswerDraft[]) {
 
 export function MoodQuestionFlow({
   targetDateKey,
+  analysisRecovery = false,
 }: {
   targetDateKey: string;
+  /** Opt-in for the Native API adapter; web keeps its existing behavior. */
+  analysisRecovery?: boolean;
   lottieAvailability: { complete: boolean };
 }) {
   const restoredRequestStarted = useRef(false);
+  const analysisRequestPending = useRef(false);
   const completionHandled = useRef(false);
   const saveInFlight = useRef(false);
   const saveStage = useRef<MoodSaveStage | null>(null);
@@ -280,7 +284,11 @@ export function MoodQuestionFlow({
     timestamp = recordedAt,
     reward = catId,
   ) => {
-    if (!timestamp) return;
+    if (!timestamp || (analysisRecovery && analysisRequestPending.current)) return;
+    if (analysisRecovery) {
+      analysisRequestPending.current = true;
+      restoredRequestStarted.current = true;
+    }
     setAnalysisFailed(false);
     setPhase("summarizing");
     persistDraft({
@@ -338,8 +346,10 @@ export function MoodQuestionFlow({
         recordedAt: timestamp,
         analysisFailed: true,
       });
+    } finally {
+      analysisRequestPending.current = false;
     }
-  }, [answers, catId, intakeMedicationIds, persistDraft, recordedAt, stepOneKind, targetDateKey]);
+  }, [analysisRecovery, answers, catId, intakeMedicationIds, persistDraft, recordedAt, stepOneKind, targetDateKey]);
 
   useEffect(() => {
     if (!ready || phase !== "summarizing" || analysis || restoredRequestStarted.current) return;
@@ -561,6 +571,21 @@ export function MoodQuestionFlow({
     return (
       <MobileShell className="flow-screen mood-question-screen" aria-busy="true">
         <span className="visually-hidden">감정 기록 확인 중</span>
+      </MobileShell>
+    );
+  }
+
+  if (phase === "summarizing" && analysisRecovery && analysisFailed) {
+    return (
+      <MobileShell className="flow-screen mood-question-screen">
+        <FlowHeader title="감정 기록하기" onBack={() => setPhase("questions")} />
+        <section className="mood-question-heading" role="alert">
+          <h1>분석을 완료하지 못했어요</h1>
+          <p>선택한 기록은 유지돼요. 잠시 후 다시 시도해주세요.</p>
+        </section>
+        <BottomActions>
+          <PrimaryButton type="button" onClick={() => void requestAnalysis()}>다시 시도</PrimaryButton>
+        </BottomActions>
       </MobileShell>
     );
   }

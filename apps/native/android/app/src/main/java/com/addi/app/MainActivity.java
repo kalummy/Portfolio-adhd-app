@@ -20,7 +20,7 @@ public class MainActivity extends BridgeActivity {
     private boolean isDevApi(Uri uri) {
         return "https".equals(uri.getScheme()) && "ohobxicxchkaisxxswkk.supabase.co".equals(uri.getHost())
             && uri.getPort() == -1 && uri.getUserInfo() == null
-            && (uri.getPath().startsWith("/auth/v1/") || uri.getPath().startsWith("/rest/v1/") || uri.getPath().matches("/functions/v1/native-push/(register|status|test|revoke|rotate)"));
+            && (uri.getPath().startsWith("/auth/v1/") || uri.getPath().startsWith("/rest/v1/") || uri.getPath().matches("/functions/v1/native-api/(repository|account|moods/analyze|medications/(search|manual-match|[0-9]{9}|image/[0-9]{9}))") || uri.getPath().matches("/functions/v1/native-push/(register|status|test|revoke|rotate)"));
     }
 
     @Override

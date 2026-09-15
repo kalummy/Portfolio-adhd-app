@@ -1,0 +1,23 @@
+{
+  "base": "95ede527370d76f2d011553dc20d56740231739a",
+  "nativeTypecheck": true,
+  "nativeBuild": true,
+  "androidDebugBuild": true,
+  "androidLint": true,
+  "nativeTests": 28,
+  "webTypecheck": true,
+  "webBuild": true,
+  "webAuthTwaPushByteRegression": true,
+  "apiInputFixtures": true,
+  "sharedAiProviderFixtures": true,
+  "moodFixtures": true,
+  "reminderPushFixtures": true,
+  "accountDeletionFixtures": true,
+  "emulatorUiFixture": true,
+  "liveDevCrud": false,
+  "realAi": false,
+  "galaxyParity": false,
+  "productionChanges": 0,
+  "fcmSends": 0,
+  "devMigrations": 0
+}

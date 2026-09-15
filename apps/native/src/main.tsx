@@ -8,17 +8,20 @@ import { startNativePush } from './push/runtime';
 import { NativeApp } from './app';
 import { startNativeLifecycle, handleNativeBack, shellState } from './platform/lifecycle';
 import { PhaseUnavailableError } from './adapters/boundaries';
+import { installNativeApiFetch } from './api/client';
+import { startNativeAccountBoundary } from './api/account-boundary';
 
 // Prototype-only QA bridge; exposes shell state, never record contents.
 Object.assign(window, { __ADDI_SHELL_QA__: { back: handleNativeBack, state: shellState } });
 
 // Local assets only. Shared screen fetches cannot accidentally contact Production.
 const assetFetch = window.fetch.bind(window);
-window.fetch = (input, init) => {
+window.fetch = installNativeApiFetch((input, init) => {
   const url = new URL(input instanceof Request ? input.url : String(input), location.origin);
   if ((url.origin !== location.origin && !permittedNativeRequest(url)) || (url.origin === location.origin && url.pathname.startsWith('/api/'))) return Promise.reject(new PhaseUnavailableError(2));
   return assetFetch(input, init);
-};
+});
+startNativeAccountBoundary();
 void startNativeLifecycle().then(() => {
   void startNativePush().then(() => startNativeAuth());
   createRoot(document.getElementById('root')!).render(<NativeApp />);

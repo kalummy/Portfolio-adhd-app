@@ -15,3 +15,5 @@ export async function updateAddiProfile(profileId: AddiProfileId) {
 export const signInWithGoogle = () => signInNative('google');
 export const signInWithKakao = () => signInNative('kakao');
 export const signOut = signOutNative;
+
+export const clearDeletedAccountSession = signOutNative;

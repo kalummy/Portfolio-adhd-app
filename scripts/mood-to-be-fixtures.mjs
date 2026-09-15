@@ -273,7 +273,7 @@ assert.doesNotMatch(flowSource, /OPENAI_API_KEY|api\.openai/u);
 assert.match(resultSource, /오늘의 감정기록을 확인해주세요\./);
 assert.match(resultSource, /오늘 내 감정/);
 assert.match(resultSource, /병원에서 이렇게 이야기 해보세요/);
-assert.match(resultSource, />\s*저장\s*</);
+assert.match(resultSource, /saving \? "저장 중\.\.\." : saveError \? "다시 시도" : "저장"/);
 assert.doesNotMatch(resultSource, /분석 결과를 만들지 못했어요|분석 다시 시도|오늘도 감정을 기록해줘서 고마워요/u);
 assert.match(resultSource, /mood-check-card/);
 assert.match(resultSource, /mood-clinic-card/);
