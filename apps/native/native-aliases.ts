@@ -4,6 +4,7 @@ export const nativeAliases = {
   'next/image': 'src/platform/image.tsx',
   'next/navigation': 'src/platform/router.ts',
   '@/lib/repositories': 'src/adapters/repositories.ts',
+  '@/lib/supabase/client': 'src/auth/client.ts',
   '@/lib/auth/client': 'src/adapters/auth.ts',
   '@/lib/push/client': 'src/adapters/push.ts',
   '@/lib/notifications': 'src/adapters/notifications.ts',

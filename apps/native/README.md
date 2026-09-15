@@ -1,3 +1,7 @@
+# Phase 2 Native Auth
+
+The current branch adds isolated Native Auth. Read [Phase 2 architecture, setup and QA](docs/phase2-auth.md) first. Live Google/Kakao acceptance is pending; no Production or Play changes are authorized. The Phase 1 notes below describe the original fixture shell baseline.
+
 # ADDI Phase 1 — Capacitor shell prototype
 
 로컬 React 번들을 Android 내부 WebView에서 실행하는 **fixture 전용 prototype**입니다. 현재 웹/TWA와 별도 패키지이며, Production 연결과 Play 배포 용도가 아닙니다.

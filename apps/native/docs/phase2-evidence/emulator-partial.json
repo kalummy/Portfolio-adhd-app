@@ -1,0 +1,24 @@
+{
+  "results": [
+    {
+      "test": "Keystore ciphertext + process restart",
+      "pass": true
+    },
+    {
+      "test": "login UI 360/390/430",
+      "pass": true
+    },
+    {
+      "test": "cancel clears native pending attempt",
+      "pass": true
+    },
+    {
+      "test": "google foreground callback, profile, same ID, duplicate",
+      "pass": true,
+      "transport": "synthetic"
+    }
+  ],
+  "errors": [],
+  "realOAuth": false,
+  "verifiedHttpsAppLink": false
+}

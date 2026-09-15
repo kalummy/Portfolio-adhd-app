@@ -9,29 +9,33 @@
     "typecheck": "tsc --noEmit",
     "sync": "npm run build && cap sync android",
     "android:debug": "npm run sync && cd android && ./gradlew assembleDebug",
-    "test": "node --test scripts/*.test.mjs",
+    "test": "node --experimental-transform-types --test scripts/*.test.mjs",
     "qa:web": "node scripts/qa-web.mjs",
     "predev": "node scripts/copy-assets.mjs",
-    "prebuild": "node scripts/copy-assets.mjs",
-    "qa:android": "node scripts/qa-android.mjs"
+    "prebuild": "node scripts/copy-assets.mjs && node scripts/configure-auth.mjs",
+    "qa:android": "node scripts/qa-android.mjs",
+    "test:auth": "node --experimental-transform-types --test scripts/auth.test.mjs",
+    "qa:auth:android": "node scripts/qa-auth-android.mjs"
   },
   "dependencies": {
-    "@capacitor/core": "^8.0.0",
     "@capacitor/android": "^8.0.0",
     "@capacitor/app": "^8.0.0",
-    "@capacitor/splash-screen": "^8.0.0",
+    "@capacitor/browser": "8.0.2",
+    "@capacitor/core": "^8.0.0",
     "@capacitor/keyboard": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
+    "@supabase/supabase-js": "2.112.3",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.0.0",
-    "vite": "^7.0.0",
-    "@vitejs/plugin-react": "^4.5.0",
-    "typescript": "^5.9.0",
+    "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@types/node": "^22.0.0",
-    "playwright": "^1.55.0"
+    "@vitejs/plugin-react": "^4.5.0",
+    "playwright": "^1.55.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.0.0"
   }
 }

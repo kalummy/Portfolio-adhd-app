@@ -1,10 +1,18 @@
 apply plugin: 'com.android.application'
 
+def nativeAuthProperties = new Properties()
+def nativeAuthFile = rootProject.file('native-auth.properties')
+if (nativeAuthFile.exists()) nativeAuthFile.withInputStream { nativeAuthProperties.load(it) }
+def callbackHost = nativeAuthProperties.getProperty('authCallbackHost', 'native-auth-disabled.invalid')
+if (callbackHost == 'addi-gamma.vercel.app' || !(callbackHost ==~ /[a-zA-Z0-9.-]+/)) throw new GradleException('Dev callback host required')
+
 android {
     namespace = "com.addi.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.addi.app"
+        manifestPlaceholders = [nativeAuthHost: callbackHost]
+        buildConfigField "String", "NATIVE_AUTH_HOST", "\"${callbackHost}\""
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -16,6 +24,7 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    buildFeatures { buildConfig true }
     buildTypes {
         release {
             minifyEnabled false

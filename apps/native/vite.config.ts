@@ -14,7 +14,7 @@ export default defineConfig({
       if (id === resolve(root, 'app/globals.css')) return code.replace(/env\(safe-area-inset-(top|bottom|left|right)\)/g, 'var(--safe-area-inset-$1, env(safe-area-inset-$1, 0px))');
     },
     generateBundle() {
-      const forbidden = [...this.getModuleIds()].filter(id => /node_modules\/(?:next\/|@supabase\/|mixpanel-browser\/|web-push\/)|\/lib\/(?:supabase\/|auth\/client\.ts|push\/client\.ts|analytics\/mixpanel\.ts|indexed-db\.ts)|\/app\/api\//.test(id));
+      const forbidden = [...this.getModuleIds()].filter(id => /node_modules\/(?:next\/|mixpanel-browser\/|web-push\/)|\/lib\/(?:supabase\/|auth\/client\.ts|push\/client\.ts|analytics\/mixpanel\.ts|indexed-db\.ts)|\/app\/api\//.test(id));
       if (forbidden.length) this.error(`Native boundary violation:\n${forbidden.join('\n')}`);
     },
 

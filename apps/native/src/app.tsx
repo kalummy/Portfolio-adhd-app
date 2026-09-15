@@ -1,19 +1,17 @@
-import { useEffect } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { HomeScreen } from '@/components/home-screen';
 import MedicationListPage from '../../../app/medications/page';
 import VisitListPage from '../../../app/visits/page';
-import { VisitCalendarScreen } from '@/components/visit-calendar-screen';
 import { MoodHistory } from '@/components/mood-history';
-import { MoodQuestionFlow } from '@/components/mood-question-flow';
 import { MoodRecordDetail } from '@/components/mood-record-detail';
-import { NOTIFICATION_PREVIEW_ITEMS, NOTIFICATION_PREVIEW_NOW } from '@/lib/preview-notifications-fixture';
 import { NotificationsScreen } from '@/components/notifications-screen';
 import { MyHomeScreen } from '@/components/my-home-screen';
-import { MedicationScheduleEditor } from '@/components/medication-schedule-editor';
 import { FlowHeader } from '@/components/flow-ui';
 import { MobileShell } from '@/components/mobile-shell';
-import { DEFAULT_ADDI_PROFILE_ID } from '@/lib/profile';
-import { getKstDateKey, isValidDateKey } from '@/lib/kst-date';
+import { getAddiProfileId } from '@/lib/profile';
+import { getUserDisplayName } from '@/lib/auth/display-name';
+import { getNativeAuthSnapshot, subscribeNativeAuth } from './auth/runtime';
+import { NativeLoginScreen } from './auth/login-screen';
 import { useLocation } from './platform/router';
 import { dismissNativeSplash } from './platform/lifecycle';
 
@@ -22,21 +20,18 @@ function Placeholder({ phase }: { phase: number }) {
 }
 export function NativeApp() {
   const current = useLocation();
-  const [path, query] = current.split('?');
-  const requested = new URLSearchParams(query).get('date') ?? undefined;
-  const date = isValidDateKey(requested) ? requested : getKstDateKey();
+  const path = current.split('?')[0];
   useEffect(() => { void dismissNativeSplash(); }, []);
+  const auth = useSyncExternalStore(subscribeNativeAuth, getNativeAuthSnapshot);
+  if (!auth.user || auth.status !== 'signed_in') return <NativeLoginScreen />;
   let screen;
   if (path === '/') screen = <HomeScreen enableLaunchSplash={false} />;
   else if (path === '/medications') screen = <MedicationListPage />;
-  else if (/^\/medications\/[^/]+\/schedule$/.test(path)) screen = <MedicationScheduleEditor medicationId={decodeURIComponent(path.split('/')[2])} targetDateKey={date} />;
   else if (path === '/moods') screen = <MoodHistory />;
-  else if (path === '/moods/new') screen = <MoodQuestionFlow targetDateKey={date} lottieAvailability={{ complete: true }} />;
   else if (/^\/moods\/\d{4}-\d{2}-\d{2}$/.test(path)) screen = <MoodRecordDetail dateKey={path.split('/')[2]} />;
   else if (path === '/visits') screen = <VisitListPage />;
-  else if (path === '/visits/new' || path === '/visits/edit') screen = <VisitCalendarScreen mode={path.endsWith('/new') ? 'new' : 'edit'} />;
-  else if (path === '/notifications') screen = <NotificationsScreen initialNotifications={NOTIFICATION_PREVIEW_ITEMS} referenceNow={NOTIFICATION_PREVIEW_NOW} initialPushState="subscribed" />;
-  else if (path === '/my') screen = <MyHomeScreen displayName="프로토타입" userId="native-fixture-user" initialProfileId={DEFAULT_ADDI_PROFILE_ID} />;
+  else if (path === '/notifications') screen = <NotificationsScreen initialNotifications={[]} initialPushState="unsupported" />;
+  else if (path === '/my') screen = <MyHomeScreen displayName={getUserDisplayName(auth.user)} userId={auth.user.id} initialProfileId={getAddiProfileId(auth.user)} />;
   else screen = <Placeholder phase={path.startsWith('/notifications') ? 3 : 2} />;
-  return <div key={path} data-native-route={path}>{screen}</div>;
+  return <div key={`${auth.user.id}:${path}`} data-native-route={path}>{screen}</div>;
 }

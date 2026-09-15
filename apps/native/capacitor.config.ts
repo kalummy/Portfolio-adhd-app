@@ -4,6 +4,7 @@ const config: CapacitorConfig = {
   appId: 'com.addi.app',
   appName: 'ADDI Prototype',
   webDir: 'dist',
+  loggingBehavior: 'none',
   android: { backgroundColor: '#fafafb' },
   plugins: {
     SplashScreen: { launchAutoHide: false, launchFadeOutDuration: 200, backgroundColor: '#fafafb', showSpinner: false },
