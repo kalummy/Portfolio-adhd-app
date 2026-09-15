@@ -5,7 +5,7 @@ Branch: `feature/capacitor-auth`. No merge, Production deployment, or Play opera
 
 ## Current verdict
 
-**Implementation prepared; live OAuth acceptance is NOT complete.** The Dev HTTPS callback host and test-account interaction have not been provided. A debug build without local configuration deliberately disables login. Do not interpret a mock session or an explicit `adb -n` intent as a verified Android App Link or a real provider identity test.
+**Implementation prepared; live OAuth acceptance is NOT complete.** Live discovery found that the existing stable Preview alias requires Vercel SSO and no separate public Dev callback host exists. Account-owner login has not been performed. See [Dev setup requirements](phase2-dev-setup.ko.md). A debug build without local configuration deliberately disables login. Do not interpret a mock session or an explicit `adb -n` intent as a verified Android App Link or a real provider identity test.
 
 ## Architecture
 
@@ -28,7 +28,7 @@ Native authenticates directly to the **existing ADDI Dev Supabase** Data API usi
 
 Phase 1 synthetic member/data are removed from the Auth path. Mood entry/edit routes are unavailable in this read-only Auth verification phase, so fixture drafts do not become authenticated health records. The existing web guest cleanup hook is a Native no-op: Native has no claimed web IndexedDB dataset to restore. Push remains an unavailable Phase 3 boundary.
 
-## Dev setup (not performed remotely)
+## Dev setup (remote settings unchanged)
 
 1. Use the existing ADDI Dev project `ohobxicxchkaisxxswkk`. Its public settings were read: **Google enabled, Kakao enabled**. Production project is never accepted by Native config or transport.
 2. Provision/select a dedicated **public HTTPS Dev host**. Serve `apps/native/dev-callback/` there; the native callback is `/auth/native/callback`. This directory is a standalone static host, not an alteration of web `/auth/callback`. Callback HTML does not exchange tokens, reflect query parameters, run scripts, or load trackers.
@@ -64,14 +64,27 @@ Their current Play Console signing-key identities were **not reverified**. Googl
 | Google foreground callback, matching SDK verifier, profile, duplicate rejection | PASS with synthetic server responses on emulator |
 | Cancellation clears pending attempt | PASS on emulator |
 | Kakao callback, logout, session restore, expired session refresh, account switch, fixture record requery | PASS with synthetic server responses on emulator |
-| Cold callback / offline logout / actual Browser surface final regression | NOT VERIFIED: emulator CDP stopped responding; the follow-up restart/QA command was rejected by approval-tool model capacity |
+| Cold callback / offline logout / actual Browser surface final regression | PASS on final APK: explicit cold intent, Wi-Fi/data disabled logout, actual Chrome Custom Tab/back; synthetic Auth responses, no verified domain |
+| Wrong host/path, expiry, provider denial and explicit cancel | PASS on emulator; durable pending attempt inspected and exchange count asserted |
 | Real Google new/existing, real Kakao new/existing | NOT VERIFIED: Dev callback hosting/allowlist and account-owner login needed |
 | Existing real user_id / existing real records | NOT VERIFIED; synthetic identity assertions are not Production evidence |
 | Verified HTTPS App Link (cold/foreground), KakaoTalk return | NOT VERIFIED |
 | Real refresh/restart/logout/account switch | NOT VERIFIED; SDK refresh/persistence/logout behavior is covered with synthetic transport |
 | Physical Galaxy / other Android versions | NOT VERIFIED |
 
-The default build has no Dev callback credentials and does not enable OAuth. The experimental emulator APK was built with reserved `addi-auth-qa.example.com` and a synthetic publishable key; it is not a distributable auth build. The logout completion ordering fix passed the emulator rerun. Later busy-login/message/QA-harness refinements pass local typecheck/build/tests; final APK reassembly and the remaining emulator groups still need a rerun. The offline-logout timeout was not established as an application defect because the emulator debugging transport also stopped responding. SDK 503-revocation/local-removal behavior passes a separate integration test. Raw test tokens and full callback URLs are not committed as evidence.
+The default build has no Dev callback credentials and does not enable OAuth. The experimental emulator APK was built with reserved `addi-auth-qa.example.com` and a synthetic publishable key; it is not a distributable auth build. Final APK reassembly, signature/compiled manifest verification, and all 18 emulator Auth groups now PASS. The new run verified actual disconnected logout after disabling emulator Wi-Fi/data and observing a failed network probe. Earlier retries exposed QA harness issues: `am start -W` installed synthetic response interception too late; assigning `Browser.open` did not override the Capacitor Proxy and could leave Chrome first-run UI in front. The harness now connects immediately, stubs only Browser calls at the nativePromise bridge, foregrounds ADDI, and explicitly rejects Chrome FirstRunActivity as browser QA evidence. Keystore/App calls remain real native operations. No product Auth behavior changed during this QA follow-up. The earlier approval capacity error did not recur on the successful build/emulator run. Raw test tokens and full callback URLs are not committed as evidence.
+
+## 2026-09-15 Dev discovery and final APK
+
+- Vercel API (existing CLI authentication) confirms Preview/Development use ADDI Dev. The connected MCP returned permission errors; these were not treated as deployment failure.
+- The existing branch-stable Preview alias requires deployment authentication for both DAL and callback. No suitable public Dev-only host was found. Existing deployment protection remains unchanged.
+- Existing Dev identity/data discovery used read-only queries. Results and environment details are kept in a local private report. Live Native identity equality/data access remains unverified.
+- Dev redirect allowlist contents remain unverified; the dashboard UI tool failed to start and the available Supabase connector does not expose Auth configuration. No allowlist/provider settings were changed.
+- Debug APK SHA-256: `5f3359c1834a4cc5cf503f22b2a549bff4002d102b42773933e1585a79fb839d`.
+- `apksigner verify` PASS; compiled package `com.addi.app`, target 36, min 24, backup disabled, cleartext disabled, exact synthetic HTTPS callback path.
+- Emulator `pm get-app-links`: synthetic host state `1024`, **not verified**. Never use a manual link override to call this PASS.
+- Public evidence: [18 emulator groups](phase2-evidence/emulator-final.json), [Custom Tab screenshot](phase2-evidence/system-browser.png). Exact Dev settings and certificate JSON remain in the local report.
+- Source checkout: all 197 snapshotted file hashes and original short status remain unchanged. This follow-up changes only Native QA scripts and documentation/evidence. No merge, Production/Play, DB mutation, provider configuration, scheduler, Push, or Web Push operation.
 
 ## Remaining acceptance sequence
 
