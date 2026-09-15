@@ -5,10 +5,12 @@ import { createSupabaseMoodRepository } from '../repositories/moods/supabase';
 import { DuplicateMoodRecordError } from '../repositories/moods/types';
 import { createSupabaseVisitScheduleRepository } from '../repositories/visit-schedules/supabase';
 import { deleteAuthenticatedAccount } from '../account-deletion';
-import { validateMoodAnalysisInput } from '../mood-analysis';
+import { validateMoodAnalysisInput, type MoodAnalysisInput } from '../mood-analysis';
 import { requestOpenAIMoodAnalysis, DEFAULT_OPENAI_MOOD_MODEL, getMoodAnalysisFailureDiagnostic } from '../openai-mood-provider';
 import { classifyMoodAnalysisDiagnostic } from '../analytics/mood-contract';
 import { searchMfdsMedications, getMfdsMedication, matchMfdsManualMedication, getMfdsImageCandidates, fetchVerifiedMfdsImage } from '../mfds-medications';
+import type { AnalysisStage } from './preview-ai';
+export { requestPreviewMoodAnalysis } from './preview-ai';
 import { MAX_BODY_BYTES, NATIVE_API_ORIGIN, NATIVE_API_PREFIX, NativeRequestError, nativeApiPath, validateRepositoryRequest } from './contracts';
 
 export type NativeApiDependencies = {
@@ -17,6 +19,8 @@ export type NativeApiDependencies = {
   admin: () => SupabaseClient;
   openaiKey?: string;
   openaiModel?: string;
+  analyzeMood?: (input: MoodAnalysisInput, token: string) => Promise<Response>;
+  auditAnalysis?: (stage: AnalysisStage) => void;
 };
 async function readBody(request: Request) {
   if (!request.headers.get('content-type')?.startsWith('application/json')) throw new NativeRequestError();
@@ -95,10 +99,23 @@ export function createNativeApiHandler(deps: NativeApiDependencies) {
         const body = await readBody(request);
         let input;
         try { input = validateMoodAnalysisInput(body?.input); } catch { throw new NativeRequestError(); }
-        if (!deps.openaiKey) return json({code:'AI_NOT_CONFIGURED',failure_type:'configuration_error'},503);
+        if (deps.analyzeMood) {
+          deps.auditAnalysis?.('relay_start');
+          const response = await deps.analyzeMood(input,match[1]);
+          if (response.ok) deps.auditAnalysis?.('relay_success');
+          return json(await response.json(),response.status);
+        }
+        if (!deps.openaiKey) {
+          deps.auditAnalysis?.('configuration_missing');
+          return json({code:'AI_NOT_CONFIGURED',failure_type:'configuration_error'},503);
+        }
         try {
-          return json(await requestOpenAIMoodAnalysis({input,apiKey:deps.openaiKey,model:deps.openaiModel || DEFAULT_OPENAI_MOOD_MODEL}));
+          deps.auditAnalysis?.('provider_start');
+          const analysis = await requestOpenAIMoodAnalysis({input,apiKey:deps.openaiKey,model:deps.openaiModel || DEFAULT_OPENAI_MOOD_MODEL});
+          deps.auditAnalysis?.('provider_success');
+          return json(analysis);
         } catch (error) {
+          deps.auditAnalysis?.('provider_failure');
           return json({code:'ANALYSIS_FAILED',failure_type:classifyMoodAnalysisDiagnostic(getMoodAnalysisFailureDiagnostic(error))},422);
         }
       }

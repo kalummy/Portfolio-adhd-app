@@ -1316,6 +1316,54 @@ async function fetchVerifiedMfdsImage(candidate) {
   return null;
 }
 
+// lib/native-api/preview-ai.ts
+var DEV_AI_PREVIEW_ORIGIN = "https://addi-git-codex-capacitor-nati-5faccb-kalummy0427-2332s-projects.vercel.app";
+var DEV_AI_PREVIEW_PATH = "/api/native/moods/analyze";
+async function requestPreviewMoodAnalysis(input, token, bypass, requestId, fetchImpl = fetch) {
+  const failure = (code, status) => Response.json({ code, failure_type: "provider_error" }, { status });
+  if (!bypass.trim()) return failure("AI_NOT_CONFIGURED", 503);
+  let response;
+  try {
+    response = await fetchImpl(DEV_AI_PREVIEW_ORIGIN + DEV_AI_PREVIEW_PATH, {
+      method: "POST",
+      redirect: "error",
+      cache: "no-store",
+      signal: AbortSignal.timeout(45e3),
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "x-vercel-protection-bypass": bypass, "x-addi-ai-request-id": requestId },
+      body: JSON.stringify({ input })
+    });
+  } catch {
+    return failure("AI_PREVIEW_UNAVAILABLE", 502);
+  }
+  if (!response.ok) {
+    if (response.status === 401) return Response.json({ code: "UNAUTHORIZED" }, { status: 401 });
+    return failure("AI_PREVIEW_FAILED", response.status === 422 ? 422 : 502);
+  }
+  try {
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error();
+    let text2 = "";
+    let bytes = 0;
+    const decoder = new TextDecoder();
+    for (; ; ) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > 32768) {
+        await reader.cancel();
+        throw new Error();
+      }
+      text2 += decoder.decode(value, { stream: true });
+    }
+    text2 += decoder.decode();
+    const result = JSON.parse(text2);
+    if (result.version !== MOOD_ANALYSIS_VERSION || typeof result.model !== "string" || !/^gpt-[a-z0-9.-]{1,64}$/.test(result.model) || typeof result.createdAt !== "string" || !Number.isFinite(Date.parse(result.createdAt))) throw new Error();
+    return Response.json({ model: result.model, version: result.version, createdAt: result.createdAt, result: validateMoodAnalysisResult(result.result, input) });
+  } catch {
+    return failure("AI_PREVIEW_INVALID_RESULT", 502);
+  }
+}
+
 // lib/kst-date.ts
 var KST_TIME_ZONE = "Asia/Seoul";
 var KST_DATE_FORMATTER = new Intl.DateTimeFormat("en-CA", {
@@ -1522,10 +1570,23 @@ function createNativeApiHandler(deps) {
         } catch {
           throw new NativeRequestError();
         }
-        if (!deps.openaiKey) return json({ code: "AI_NOT_CONFIGURED", failure_type: "configuration_error" }, 503);
+        if (deps.analyzeMood) {
+          deps.auditAnalysis?.("relay_start");
+          const response = await deps.analyzeMood(input, match[1]);
+          if (response.ok) deps.auditAnalysis?.("relay_success");
+          return json(await response.json(), response.status);
+        }
+        if (!deps.openaiKey) {
+          deps.auditAnalysis?.("configuration_missing");
+          return json({ code: "AI_NOT_CONFIGURED", failure_type: "configuration_error" }, 503);
+        }
         try {
-          return json(await requestOpenAIMoodAnalysis({ input, apiKey: deps.openaiKey, model: deps.openaiModel || DEFAULT_OPENAI_MOOD_MODEL }));
+          deps.auditAnalysis?.("provider_start");
+          const analysis = await requestOpenAIMoodAnalysis({ input, apiKey: deps.openaiKey, model: deps.openaiModel || DEFAULT_OPENAI_MOOD_MODEL });
+          deps.auditAnalysis?.("provider_success");
+          return json(analysis);
         } catch (error) {
+          deps.auditAnalysis?.("provider_failure");
           return json({ code: "ANALYSIS_FAILED", failure_type: classifyMoodAnalysisDiagnostic(getMoodAnalysisFailureDiagnostic(error)) }, 422);
         }
       }
@@ -1558,5 +1619,6 @@ function createNativeApiHandler(deps) {
   };
 }
 export {
-  createNativeApiHandler
+  createNativeApiHandler,
+  requestPreviewMoodAnalysis
 };
