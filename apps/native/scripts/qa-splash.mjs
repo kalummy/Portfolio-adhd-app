@@ -6,11 +6,11 @@ const out = 'qa-artifacts/android';
 await mkdir(out, {recursive:true});
 const adb = (...args) => execFileSync('adb',['-s',serial,...args], { maxBuffer: 16 * 1024 * 1024 });
 if (!adb('emu', 'avd', 'name').toString().startsWith('addi_phase1_')) throw new Error('Expected a Phase 1 disposable AVD');
-adb('shell','am','force-stop','com.addi.app');
+adb('shell','am','force-stop','com.addi.app.dev');
 const recording = spawn('adb',['-s',serial,'shell','screenrecord','--time-limit','6','/sdcard/addi-phase1-cold-start.mp4']);
 const finished = new Promise((resolve,reject)=>{ recording.once('exit',code=>code===0?resolve():reject(new Error(`recording ${code}`))); });
 await new Promise(r=>setTimeout(r,300));
-const launch = spawn('adb',['-s',serial,'shell','am','start','-W','-n','com.addi.app/.MainActivity']);
+const launch = spawn('adb',['-s',serial,'shell','am','start','-W','-n','com.addi.app.dev/com.addi.app.MainActivity']);
 let launchText='';launch.stdout.on('data',d=>{launchText+=d;});
 const launched = new Promise(r=>launch.once('exit',r));
 for(let frame=0;frame<8;frame++) {

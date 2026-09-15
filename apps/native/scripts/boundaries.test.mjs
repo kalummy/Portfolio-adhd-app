@@ -5,7 +5,8 @@ import { execFileSync } from 'node:child_process';
 const base='77efdd9f8d3761ebc210238a09409dbefc618b7a';
 test('packaged shell stays bundled, with logging disabled and Dev-only transport', async () => {
   const config=JSON.parse(await readFile('android/app/src/main/assets/capacitor.config.json','utf8'));
-  assert.equal(config.appId,'com.addi.app'); assert.equal(config.server?.url,undefined);
+  assert.match(await readFile('android/app/build.gradle','utf8'), /debug \{[\s\S]*applicationIdSuffix \"\.dev\"/);
+  assert.equal(config.appId,'com.addi.app.dev'); assert.equal(config.server?.url,undefined);
   assert.equal(config.server?.allowNavigation,undefined); assert.equal(config.loggingBehavior,'none');
   const assets=await readdir('dist'); assert.ok(!assets.includes('sw.js')); assert.ok(!assets.includes('manifest.webmanifest'));
   for(const file of await readdir('dist/assets')) {

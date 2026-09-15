@@ -25,7 +25,7 @@ Existing Next.js API / AI / medication search / account deletion
 - `src/adapters/repositories.ts`: 기존 repository 인터페이스를 구현하는 fixture 저장소. `storageBackend: indexeddb`는 기존 화면의 discriminator를 만족시키는 값이며, 실제 저장은 native origin의 별도 localStorage key.
 - `src/adapters/mood-draft.ts`: 기존 초안 검증/정규화 로직을 재사용하며 `native-prototype` namespace에 fixture 초안 저장. 프로세스 종료 후 복원 가능.
 - `src/adapters/boundaries.ts`: Phase 2 Auth/API, Phase 3 Push 인터페이스. 현재는 명시적으로 unavailable error를 반환.
-- `capacitor.config.ts`: `webDir: dist`, `appId: com.addi.app`. `server.url`/remote navigation 없음.
+- `capacitor.config.ts`: `webDir: dist`, `appId: com.addi.app.dev`. `server.url`/remote navigation 없음.
 - `android/`: 기존 repository 루트의 TWA `android/`와 독립된 Capacitor 프로젝트.
 - 루트 변경은 `tsconfig.json`의 `apps/native` 제외 한 줄뿐. 웹/앱은 각각 typecheck.
 
@@ -90,7 +90,7 @@ npm run android:debug
 
 APK: `android/app/build/outputs/apk/debug/app-debug.apk`.
 
-`applicationId`는 `com.addi.app`이고 version은 `1 / 0.1.0-prototype`입니다. 기존 앱이 없는 별도 emulator에만 설치합니다. 기존 Play/TWA 설치본 위에 설치하지 않습니다. Production upload signing은 연결하지 않았고 **app release variant를 비활성화**했습니다. 앱 release AAB를 생성하거나 Play에 올리는 흐름은 제공하지 않습니다.
+`applicationId` 기본값은 `com.addi.app`이며 debug 빌드는 `.dev` 접미사를 적용해 `com.addi.app.dev` / `ADDI Dev`로 설치됩니다. 기존 Play/TWA와 동시에 설치할 수 있고 저장소도 분리됩니다. Galaxy 수동 QA는 [설치 안내](docs/phase2-galaxy.md)를 따릅니다. Production upload signing은 연결하지 않았고 **app release variant를 비활성화**했습니다. 앱 release AAB를 생성하거나 Play에 올리는 흐름은 제공하지 않습니다.
 
 ## QA
 
@@ -102,7 +102,7 @@ npm run qa:web
 npm test
 
 # disposable AVD name must start with addi_phase1_
-# install debug APK and launch com.addi.app/.MainActivity first
+# install debug APK and launch com.addi.app.dev/com.addi.app.MainActivity first
 ANDROID_SERIAL=emulator-5554 npm run qa:android
 ANDROID_SERIAL=emulator-5554 node scripts/qa-splash.mjs
 ```

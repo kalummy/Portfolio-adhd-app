@@ -1,0 +1,21 @@
+{
+  "package": "com.addi.app.dev",
+  "domain": "addi-galaxy-auth-dev.vercel.app",
+  "verifiedAppLink": true,
+  "implicitColdReturn": true,
+  "implicitForegroundReturn": true,
+  "googleAndKakaoButtons": true,
+  "keystorePluginRoundTrip": true,
+  "bundledOrigin": true,
+  "actualGalaxyOAuth": "NOT_RUN",
+  "label": "ADDI Dev",
+  "certificateSha256": "98:C3:7A:ED:32:25:C5:B2:D3:DA:42:D8:24:9D:F1:46:57:4A:C0:DE:2C:FC:E8:32:4F:17:AF:88:6C:D4:3D:B5",
+  "apkSha256": "a453fd0d508cd72ea0b7842d2a2edf4dee9cfe50371de373478fe6b2e7d2e5c7",
+  "callback": "https://addi-galaxy-auth-dev.vercel.app/auth/native/callback",
+  "build": "assembleDebug + lintDebug PASS",
+  "tests": "28 PASS",
+  "coinstalledPackages": [
+    "com.addi.app",
+    "com.addi.app.dev"
+  ]
+}

@@ -26,6 +26,11 @@ android {
     }
     buildFeatures { buildConfig true }
     buildTypes {
+        debug {
+            // Install beside the Play app; never replace com.addi.app.
+            applicationIdSuffix ".dev"
+            versionNameSuffix "-dev"
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'

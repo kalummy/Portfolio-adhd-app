@@ -17,6 +17,6 @@ if (fingerprint) {
   await mkdir('dev-callback/.well-known', { recursive: true });
   await writeFile('dev-callback/.well-known/assetlinks.json', JSON.stringify([{
     relation: ['delegate_permission/common.handle_all_urls'], target: { namespace: 'android_app',
-      package_name: 'com.addi.app', sha256_cert_fingerprints: [fingerprint] },
+      package_name: 'com.addi.app.dev', sha256_cert_fingerprints: [fingerprint] },
   }], null, 2) + '\n');
 }

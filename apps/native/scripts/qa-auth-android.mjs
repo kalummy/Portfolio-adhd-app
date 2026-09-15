@@ -19,7 +19,7 @@ function user() { return { id:currentId,aud:'authenticated',role:'authenticated'
 function session() {return {access_token:`SYNTHETIC_ACCESS_${++tokenCounter}`,refresh_token:`SYNTHETIC_REFRESH_${tokenCounter}`,expires_in:3600,expires_at:Math.floor(Date.now()/1000)+3600,token_type:'bearer',user:user()};}
 async function connect() {
   browser=undefined;
-  let pid; for(let retry=0;retry<50;retry++){try{pid=adb('shell','pidof','com.addi.app');if(pid)break;}catch{}await new Promise(r=>setTimeout(r,50));}
+  let pid; for(let retry=0;retry<50;retry++){try{pid=adb('shell','pidof','com.addi.app.dev');if(pid)break;}catch{}await new Promise(r=>setTimeout(r,50));}
   assert.ok(pid,'App process did not start');adb('forward','tcp:9223',`localabstract:webview_devtools_remote_${pid}`);
   for(let retry=0;retry<30;retry++) {try{browser=await chromium.connectOverCDP('http://127.0.0.1:9223',{noDefaults:true,timeout:1000});break;}catch{await new Promise(r=>setTimeout(r,100));}}
   assert.ok(browser, 'WebView CDP did not become available');
@@ -58,7 +58,7 @@ async function mockBrowser(){await page.evaluate(()=>{
   cap.nativePromise=(plugin,method,...args)=>plugin==='Browser'&&['open','close'].includes(method)
     ? Promise.resolve() : window.__qaNativePromise(plugin,method,...args);
 });}
-async function intent(url){adb('shell','am','start','-a','android.intent.action.VIEW','-c','android.intent.category.BROWSABLE','-d',url.replaceAll('&','\\&'),'-n','com.addi.app/.MainActivity');}
+async function intent(url){adb('shell','am','start','-a','android.intent.action.VIEW','-c','android.intent.category.BROWSABLE','-d',url.replaceAll('&','\\&'),'-n','com.addi.app.dev/com.addi.app.MainActivity');}
 async function login(selected) {
   provider=selected;await mockBrowser();await page.getByRole('button',{name:selected==='google'?'구글로 시작':'카카오로 시작'}).click();
   await page.getByRole('button',{name:'로그인 취소'}).waitFor();
@@ -74,7 +74,7 @@ async function login(selected) {
 async function navigate(path){await page.evaluate(path=>{history.pushState({},'',path);window.dispatchEvent(new PopStateEvent('popstate'));},path);}
 async function logout(){await navigate('/my');await page.locator('.my-home-screen').waitFor();await page.getByRole('button',{name:'로그아웃',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.member-login-button.google')?.disabled===false);assert.equal(await read('addi-native-dev-auth'),null);}
 try {
-  adb('shell','am','start','-n','com.addi.app/.MainActivity');
+  adb('shell','am','start','-n','com.addi.app.dev/com.addi.app.MainActivity');
   await connect();
   assert.equal(await page.evaluate(async()=>{
     const entry=document.querySelector('script[type=module]');
@@ -87,21 +87,21 @@ try {
   if (!process.argv.includes('--callbacks-only')) {
   // Real AndroidKeyStore operation; ciphertext-at-rest canary and process restart.
   await put('addi-native-canary','SYNTHETIC_REFRESH_CANARY');assert.equal(await read('addi-native-canary'),'SYNTHETIC_REFRESH_CANARY');
-  const disk=adb('shell','run-as','com.addi.app','cat','shared_prefs/addi_native_auth.xml');assert.ok(!disk.includes('SYNTHETIC_REFRESH_CANARY'));assert.ok(disk.includes('v1:'));
-  await browser.close();adb('shell','am','force-stop','com.addi.app');adb('shell','am','start','-n','com.addi.app/.MainActivity');await connect();assert.equal(await read('addi-native-canary'),'SYNTHETIC_REFRESH_CANARY');record({test:'Keystore ciphertext + process restart',pass:true});
+  const disk=adb('shell','run-as','com.addi.app.dev','cat','shared_prefs/addi_native_auth.xml');assert.ok(!disk.includes('SYNTHETIC_REFRESH_CANARY'));assert.ok(disk.includes('v1:'));
+  await browser.close();adb('shell','am','force-stop','com.addi.app.dev');adb('shell','am','start','-n','com.addi.app.dev/com.addi.app.MainActivity');await connect();assert.equal(await read('addi-native-canary'),'SYNTHETIC_REFRESH_CANARY');record({test:'Keystore ciphertext + process restart',pass:true});
   for(const width of [360,390,430]) {adb('shell','wm','size',`${width*3}x1920`);adb('shell','wm','density','480');await page.waitForFunction(expected=>innerWidth===expected,width,{timeout:5000});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);await capture(`login-${width}`);}
   record({test:'login UI 360/390/430',pass:true});
   await mockBrowser();await page.getByRole('button',{name:'구글로 시작'}).click();await page.getByRole('button',{name:'로그인 취소'}).click();await page.getByRole('button',{name:'구글로 시작'}).waitFor({state:'visible'});assert.equal(await read('addi-native-attempt'),null);record({test:'cancel clears native pending attempt',pass:true});
   for(const selected of ['google','kakao']) {
     const before=exchanges;const url=await login(selected);assert.equal(exchanges,before+1);
-    const disk=adb('shell','run-as','com.addi.app','cat','shared_prefs/addi_native_auth.xml');assert.ok(!disk.includes('SYNTHETIC_REFRESH_'));assert.ok(!disk.includes('synthetic-code'));
+    const disk=adb('shell','run-as','com.addi.app.dev','cat','shared_prefs/addi_native_auth.xml');assert.ok(!disk.includes('SYNTHETIC_REFRESH_'));assert.ok(!disk.includes('synthetic-code'));
     await intent(url);await page.waitForTimeout(200);assert.equal(exchanges,before+1);
     await navigate('/visits');await page.locator('.visit-card').waitFor();assert.ok((await page.locator('.visit-card').innerText()).includes('20'));
     await capture(`${selected}-fixture-authenticated`);
     record({test:`${selected} foreground callback, profile, same ID, duplicate`,pass:true,transport:'synthetic'});
     await logout();record({test:`${selected} logout secure session removal`,pass:true});
   }
-  await login('google');await browser.close();adb('shell','am','force-stop','com.addi.app');adb('shell','am','start','-n','com.addi.app/.MainActivity');await connect();await page.locator('.home-screen').waitFor({timeout:20000});record({test:'encrypted session restore after process death',pass:true,transport:'synthetic'});
+  await login('google');await browser.close();adb('shell','am','force-stop','com.addi.app.dev');adb('shell','am','start','-n','com.addi.app.dev/com.addi.app.MainActivity');await connect();await page.locator('.home-screen').waitFor({timeout:20000});record({test:'encrypted session restore after process death',pass:true,transport:'synthetic'});
   const stored=JSON.parse(await read('addi-native-dev-auth'));stored.expires_at=Math.floor(Date.now()/1000)-120;await put('addi-native-dev-auth',JSON.stringify(stored));const beforeRefresh=refreshes;await page.reload();await page.locator('.home-screen').waitFor({timeout:20000});assert.ok(refreshes>beforeRefresh);record({test:'expired encrypted session refresh',pass:true,transport:'synthetic'});
   await logout();currentId='22222222-2222-4222-8222-222222222222';await login('kakao');record({test:'switch account replaces previous ID',pass:true,transport:'synthetic'});
   adb('shell','svc','wifi','disable');adb('shell','svc','data','disable');
@@ -114,7 +114,7 @@ try {
   const id='c'.repeat(64),flowId='d'.repeat(32);
   await put('addi-native-attempt',JSON.stringify({id,flowId,provider:'google',createdAt:Date.now()}));
   await put(`addi-native-dev-auth-flow-${flowId}-code-verifier`,JSON.stringify('e'.repeat(64)));
-  await browser.close();adb('shell','am','force-stop','com.addi.app');await intent(`${callback}?attempt=${id}&code=synthetic-cold-code`);await connect();
+  await browser.close();adb('shell','am','force-stop','com.addi.app.dev');await intent(`${callback}?attempt=${id}&code=synthetic-cold-code`);await connect();
   await page.locator('.home-screen').waitFor({timeout:20000});record({test:'cold App Link intent -> SDK exchange -> profile',pass:true,transport:'synthetic',verifiedDomain:false});
   await logout();
   }
@@ -142,7 +142,7 @@ try {
   await page.evaluate(()=>window.__qaNativePromise('Browser','open',{url:'https://example.com'}));await page.waitForTimeout(1500);
   const top=adb('shell','dumpsys','activity','activities').split('\n').find(x=>x.includes('topResumedActivity'))||'';
   assert.match(top,/com.android.chrome/);assert.ok(!top.includes('FirstRunActivity'),'Complete Chrome first-run UI on the disposable emulator before browser QA');await capture('system-browser');record({test:'actual Browser plugin opens Chrome system surface',pass:true,oauth:false});
-  adb('shell','input','keyevent','4');adb('shell','am','start','-n','com.addi.app/.MainActivity');await page.waitForTimeout(500);
+  adb('shell','input','keyevent','4');adb('shell','am','start','-n','com.addi.app.dev/com.addi.app.MainActivity');await page.waitForTimeout(500);
   assert.ok(await read('addi-native-attempt'));await page.getByRole('button',{name:'로그인 취소'}).click();
   assert.equal(await read('addi-native-attempt'),null);record({test:'system browser back and explicit cancel return to login',pass:true});
   assert.equal(await page.evaluate(async()=>{try{await fetch('https://addi-gamma.vercel.app/api/account');return false;}catch{return true;}}),true);
