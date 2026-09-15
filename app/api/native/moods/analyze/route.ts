@@ -26,7 +26,10 @@ export async function POST(request: Request) {
     auditAnalysis:stage=>console.info('native_ai_preview',JSON.stringify({requestId,stage})),
   });
   const url=new URL(request.url);url.pathname='/native-api/moods/analyze';
-  const response=await handler(new Request(url,new Request(request)));
+  // NextRequest and the platform Request may use different private internal state.
+  // Pass explicit init fields instead of using a Request object as RequestInit.
+  const init: RequestInit & {duplex:'half'} = {method:'POST',headers:new Headers(request.headers),body:request.body,duplex:'half'};
+  const response=await handler(new Request(url,init));
   response.headers.set('x-addi-ai-request-id',requestId);
   return response;
 }
