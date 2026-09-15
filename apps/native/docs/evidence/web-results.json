@@ -1,0 +1,156 @@
+{
+  "results": [
+    {
+      "width": 360,
+      "name": "home",
+      "scroll": 360,
+      "brokenImages": [],
+      "font": "\"Pretendard Variable\", Pretendard, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    {
+      "width": 360,
+      "name": "medications",
+      "scroll": 360,
+      "brokenImages": [],
+      "font": "\"Pretendard Variable\", Pretendard, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    {
+      "width": 360,
+      "name": "moods",
+      "scroll": 360,
+      "brokenImages": [],
+      "font": "\"Pretendard Variable\", Pretendard, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    {
+      "width": 360,
+      "name": "visits",
+      "scroll": 360,
+      "brokenImages": [],
+      "font": "\"Pretendard Variable\", Pretendard, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    {
+      "width": 360,
+      "name": "notifications",
+      "scroll": 360,
+      "brokenImages": [],
+      "font": "\"Pretendard Variable\", Pretendard, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    {
+      "width": 360,
+      "name": "my",
+      "scroll": 360,
+      "brokenImages": [],
+      "font": "\"Pretendard Variable\", Pretendard, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    {
+      "width": 360,
+      "interactions": "sheet/modal/back/draft restart",
+      "safeArea": {
+        "header": 24,
+        "navPadding": "24px"
+      }
+    },
+    {
+      "width": 390,
+      "name": "home",
+      "scroll": 390,
+      "brokenImages": [],
+      "font": "\"Pretendard Variable\", Pretendard, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    {
+      "width": 390,
+      "name": "medications",
+      "scroll": 390,
+      "brokenImages": [],
+      "font": "\"Pretendard Variable\", Pretendard, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    {
+      "width": 390,
+      "name": "moods",
+      "scroll": 390,
+      "brokenImages": [],
+      "font": "\"Pretendard Variable\", Pretendard, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    {
+      "width": 390,
+      "name": "visits",
+      "scroll": 390,
+      "brokenImages": [],
+      "font": "\"Pretendard Variable\", Pretendard, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    {
+      "width": 390,
+      "name": "notifications",
+      "scroll": 390,
+      "brokenImages": [],
+      "font": "\"Pretendard Variable\", Pretendard, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    {
+      "width": 390,
+      "name": "my",
+      "scroll": 390,
+      "brokenImages": [],
+      "font": "\"Pretendard Variable\", Pretendard, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    {
+      "width": 390,
+      "interactions": "sheet/modal/back/draft restart",
+      "safeArea": {
+        "header": 24,
+        "navPadding": "24px"
+      }
+    },
+    {
+      "width": 430,
+      "name": "home",
+      "scroll": 430,
+      "brokenImages": [],
+      "font": "\"Pretendard Variable\", Pretendard, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    {
+      "width": 430,
+      "name": "medications",
+      "scroll": 430,
+      "brokenImages": [],
+      "font": "\"Pretendard Variable\", Pretendard, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    {
+      "width": 430,
+      "name": "moods",
+      "scroll": 430,
+      "brokenImages": [],
+      "font": "\"Pretendard Variable\", Pretendard, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    {
+      "width": 430,
+      "name": "visits",
+      "scroll": 430,
+      "brokenImages": [],
+      "font": "\"Pretendard Variable\", Pretendard, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    {
+      "width": 430,
+      "name": "notifications",
+      "scroll": 430,
+      "brokenImages": [],
+      "font": "\"Pretendard Variable\", Pretendard, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    {
+      "width": 430,
+      "name": "my",
+      "scroll": 430,
+      "brokenImages": [],
+      "font": "\"Pretendard Variable\", Pretendard, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif"
+    },
+    {
+      "width": 430,
+      "interactions": "sheet/modal/back/draft restart",
+      "safeArea": {
+        "header": 24,
+        "navPadding": "24px"
+      }
+    }
+  ],
+  "errors": [],
+  "remoteRequests": []
+}

@@ -1,0 +1,5 @@
+/* Only native viewport integration. Shared colors, typography and spacing are unchanged. */
+html, body { background: var(--surface); }
+html { color-scheme: light; }
+body { padding-left: var(--safe-area-inset-left, 0px); padding-right: var(--safe-area-inset-right, 0px); }
+html[data-keyboard="open"] .bottom-navigation { display: none; }
