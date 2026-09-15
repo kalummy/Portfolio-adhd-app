@@ -15,6 +15,6 @@ A separate static Vercel project hosts `https://addi-native-auth-dev.vercel.app`
 
 ## Pending real OAuth acceptance
 
-The next required input is the account owner's normal Supabase CLI/browser login to read the Dev redirect allowlist before making a minimal addition. No Auth settings have been changed yet. Once that is complete, verify real Google/Kakao login, existing identity equality and record reads, restore/refresh/logout/account switch, cancellation and cold/foreground callbacks. Credentials must be entered directly in the login UI and never published in test evidence.
+Existing CLI authentication successfully listed projects and read Dev Auth configuration. Only the Dev redirect allowlist was updated: its existing five web entries were preserved and the public Native callback plus its attempt-query form were appended. Site URL and every other Auth setting were verified unchanged. Real Google login has reached the system Custom Tab; account-owner UI input is pending. Verify actual Google/Kakao login, existing identity equality and record reads, restore/refresh/logout/account switch, cancellation and cold/foreground callbacks. Credentials must be entered directly in the login UI and never published in test evidence.
 
 PR #90 must remain unmerged. Real provider OAuth and Phase 2 acceptance are still incomplete. Production, Play, TWA, Push and scheduler remain unchanged.

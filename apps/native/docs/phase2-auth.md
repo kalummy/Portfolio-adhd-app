@@ -5,7 +5,7 @@ Branch: `feature/capacitor-auth`. No merge, Production deployment, or Play opera
 
 ## Current verdict
 
-**Actual provider OAuth acceptance is NOT complete.** A separate static Dev callback project is now live at `https://addi-native-auth-dev.vercel.app`. Android reports this host as **verified**, and implicit HTTPS intents open ADDI in both cold and foreground cases without `-n` or manual link approval. The callback probe does not exchange an OAuth code. Dev redirect allowlist inspection/update still requires completion of the normal Supabase management login, followed by account-owner Google/Kakao login. No Production configuration was changed. See [live environment status](phase2-live-auth.md).
+**Actual provider OAuth acceptance is NOT complete.** A separate static Dev callback project is now live at `https://addi-native-auth-dev.vercel.app`. Android reports this host as **verified**, and implicit HTTPS intents open ADDI in both cold and foreground cases without `-n` or manual link approval. The callback probe does not exchange an OAuth code. Existing CLI authentication has now read Dev Auth settings and added only the two Native redirect entries while preserving the five existing web entries and all other settings. Account-owner Google/Kakao UI login is pending. No Production configuration was changed. See [live environment status](phase2-live-auth.md).
 
 ## Architecture
 
@@ -89,7 +89,7 @@ The default build has no Dev callback credentials and does not enable OAuth. The
 
 ## Remaining acceptance sequence
 
-Public Dev hosting and Android domain verification are now complete. See [App Link evidence](phase2-evidence/app-links-verified.json). Complete Dev allowlist verification and real provider authentication next.
+Public Dev hosting and Android domain verification are now complete. See [App Link evidence](phase2-evidence/app-links-verified.json). Dev allowlist verification is complete; continue with account-owner provider authentication.
 
 For each Google and Kakao test identity: first sign into the existing Dev web app, record the user ID privately, then sign into Native with the same provider identity and compare exact IDs. Requery an existing synthetic Dev record through the Native repository; do not copy Production users or compare IDs across different Supabase projects. A genuinely new test account needs separate first-login verification. Test cancellation/back, explicit cancel after Kakao external-app handoff, replay, expiry, bad host/path/query, cold and foreground links, process death, expiration/refresh, offline logout and switching accounts. Retest web login separately with its cookie callback.
 
