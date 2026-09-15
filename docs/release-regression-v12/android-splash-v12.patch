@@ -1,0 +1,117 @@
+--- a/android/app/src/main/AndroidManifest.xml
++++ b/android/app/src/main/AndroidManifest.xml
+@@ -81,6 +81,7 @@
+
+         <activity android:name="LauncherActivity"
+             android:alwaysRetainTaskState="true"
++            android:theme="@style/AddiLaunchTheme"
+             android:label="@string/launcherName"
+             android:exported="true">
+             <meta-data android:name="android.support.customtabs.trusted.DEFAULT_URL"
+@@ -113,7 +114,7 @@
+                 android:resource="@color/navigationDividerColorDark" />
+
+             <meta-data android:name="android.support.customtabs.trusted.SPLASH_IMAGE_DRAWABLE"
+-                android:resource="@drawable/splash"/>
++                android:resource="@drawable/addi_launch_brand"/>
+
+             <meta-data android:name="android.support.customtabs.trusted.SPLASH_SCREEN_BACKGROUND_COLOR"
+                 android:resource="@color/backgroundColor"/>
+--- a/android/app/src/main/java/com/addi/app/LauncherActivity.java
++++ b/android/app/src/main/java/com/addi/app/LauncherActivity.java
+@@ -6,10 +6,7 @@
+ import android.os.Bundle;
+ import android.os.Handler;
+ import android.os.Looper;
+-import android.view.Gravity;
+-import android.widget.LinearLayout;
+-import android.widget.ProgressBar;
+-import android.widget.TextView;
++import android.widget.ImageView;
+ import androidx.browser.customtabs.CustomTabsCallback;
+ import androidx.browser.customtabs.CustomTabsClient;
+ import androidx.browser.customtabs.CustomTabsService;
+@@ -76,15 +73,11 @@
+     protected void onCreate(Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+         if (isFinishing()) return;
+-        LinearLayout loading = new LinearLayout(this);
+-        loading.setOrientation(LinearLayout.VERTICAL);
+-        loading.setGravity(Gravity.CENTER);
+-        loading.setBackgroundColor(0xFFFAFAFB);
+-        loading.addView(new ProgressBar(this));
+-        TextView message = new TextView(this);
+-        message.setText(R.string.twa_opening);
+-        message.setTextColor(0xFF444948);
+-        loading.addView(message);
++        ImageView loading = new ImageView(this);
++        loading.setImageResource(R.drawable.addi_launch_brand);
++        loading.setScaleType(ImageView.ScaleType.CENTER);
++        loading.setBackgroundColor(getColor(R.color.backgroundColor));
++        loading.setContentDescription(getString(R.string.appName));
+         setContentView(loading);
+         handler.postDelayed(timeout, VERIFICATION_TIMEOUT_MS);
+         bound = CustomTabsClient.bindCustomTabsService(this, PROVIDER, verificationConnection);
+--- /dev/null
++++ b/android/app/src/main/res/values/addi_launch.xml
+@@ -0,0 +1,4 @@
++<resources>
++    <style name="AddiLaunchTheme" parent="android:style/Theme.Translucent.NoTitleBar" />
++    <item type="drawable" name="addi_launch_brand">@drawable/splash</item>
++</resources>
+--- /dev/null
++++ b/android/app/src/main/res/values-v31/addi_launch.xml
+@@ -0,0 +1,13 @@
++<resources>
++    <style name="AddiLaunchTheme" parent="android:style/Theme.Material.Light.NoActionBar">
++        <item name="android:windowBackground">@color/backgroundColor</item>
++        <item name="android:windowSplashScreenBackground">@color/backgroundColor</item>
++        <item name="android:windowSplashScreenAnimatedIcon">@drawable/addi_launch_brand</item>
++        <item name="android:windowSplashScreenIconBackgroundColor">@color/backgroundColor</item>
++        <item name="android:statusBarColor">@color/backgroundColor</item>
++        <item name="android:navigationBarColor">@color/backgroundColor</item>
++        <item name="android:windowLightStatusBar">true</item>
++        <item name="android:windowLightNavigationBar">true</item>
++        <item name="android:forceDarkAllowed">false</item>
++    </style>
++</resources>
+--- /dev/null
++++ b/android/app/src/main/res/drawable-v31/addi_launch_brand.xml
+@@ -0,0 +1,37 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt" android:width="288dp" android:height="288dp" android:viewportWidth="288" android:viewportHeight="288">
++    <!-- Exact paths and gradients from public/auth/addi-logo.svg; 154 x 62 dp, inside the system mask. -->
++    <group android:translateX="67" android:translateY="113">
++        <path android:pathData="M42.1312 49.2122C43.4402 53.1383 40.4105 57.1581 36.1422 57.1581C33.3058 57.1581 30.8201 55.3242 30.0724 52.68L28.4669 47.0019H13.8031L12.1783 52.7482C11.4421 55.3521 8.99414 57.1581 6.20095 57.1581C2.00922 57.1581 -0.973103 53.2199 0.294585 49.3586L13.4365 9.32952C14.5363 6.02286 18.0189 4.42857 21.3183 4.42857C24.4344 4.42857 27.7949 6.14095 28.8335 9.32952L42.1312 49.2122ZM21.135 20.8438L16.6137 37.0229H25.6564L21.135 20.8438Z">
++            <aapt:attr name="android:fillColor">
++                <gradient android:type="linear" android:startX="-122.937" android:startY="-112.19" android:endX="148.028" android:endY="65.952">
++                    <item android:offset="0" android:color="#FFCDF6E9" />
++                    <item android:offset="1" android:color="#FF2BD9B6" />
++                </gradient>
++            </aapt:attr>
++        </path>
++        <path android:pathData="M56.7633 5.37334H65.8671C76.4373 5.37334 87.5574 10.8057 87.5574 27.221V35.3105C87.5574 51.7257 76.4373 57.1581 65.8671 57.1581H56.7633C49.4314 57.1581 47.2318 54.6191 47.2318 47.8286V14.7029C47.2318 7.91238 49.4314 5.37334 56.7633 5.37334ZM75.0932 36.2552V26.2762C75.0932 19.3676 71.2439 15.5886 65.5005 15.5886H61.468C60.0627 15.5886 59.6961 15.8838 59.6961 17.301V45.2305C59.6961 46.6476 60.0627 46.9429 61.468 46.9429H65.5005C71.2439 46.9429 75.0932 43.1638 75.0932 36.2552Z">
++            <aapt:attr name="android:fillColor">
++                <gradient android:type="linear" android:startX="-122.937" android:startY="-112.19" android:endX="148.028" android:endY="65.952">
++                    <item android:offset="0" android:color="#FFCDF6E9" />
++                    <item android:offset="1" android:color="#FF2BD9B6" />
++                </gradient>
++            </aapt:attr>
++        </path>
++        <path android:pathData="M102.886 5.37334H111.99C122.56 5.37334 133.68 10.8057 133.68 27.221V35.3105C133.68 51.7257 122.56 57.1581 111.99 57.1581H102.886C95.5543 57.1581 93.3547 54.6191 93.3547 47.8286V14.7029C93.3547 7.91238 95.5543 5.37334 102.886 5.37334ZM121.216 36.2552V26.2762C121.216 19.3676 117.367 15.5886 111.623 15.5886H107.591C106.186 15.5886 105.819 15.8838 105.819 17.301V45.2305C105.819 46.6476 106.186 46.9429 107.591 46.9429H111.623C117.367 46.9429 121.216 43.1638 121.216 36.2552Z">
++            <aapt:attr name="android:fillColor">
++                <gradient android:type="linear" android:startX="-122.937" android:startY="-112.19" android:endX="148.028" android:endY="65.952">
++                    <item android:offset="0" android:color="#FFCDF6E9" />
++                    <item android:offset="1" android:color="#FF2BD9B6" />
++                </gradient>
++            </aapt:attr>
++        </path>
++        <path android:pathData="M141.291 10.3333C141.291 6.25905 144.224 4.42857 147.646 4.42857C151.067 4.42857 154 6.25905 154 10.3333L153.987 52.1183C153.777 55.8765 150.938 57.5714 147.645 57.5714C144.223 57.5714 141.291 55.741 141.291 51.6667L141.291 10.3333Z">
++            <aapt:attr name="android:fillColor">
++                <gradient android:type="linear" android:startX="-122.937" android:startY="-112.19" android:endX="148.028" android:endY="65.952">
++                    <item android:offset="0" android:color="#FFCDF6E9" />
++                    <item android:offset="1" android:color="#FF2BD9B6" />
++                </gradient>
++            </aapt:attr>
++        </path>
++    </group>
++</vector>

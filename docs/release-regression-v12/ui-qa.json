@@ -1,0 +1,167 @@
+[
+  {
+    "width": 320,
+    "scale": 1,
+    "rows": 24,
+    "footerPosition": "static",
+    "gap": 32,
+    "footerOverlap": false,
+    "rowOverlap": false,
+    "dateOverlap": false,
+    "horizontalOverflow": false,
+    "descending": true
+  },
+  {
+    "width": 320,
+    "scale": 2,
+    "rows": 24,
+    "footerPosition": "static",
+    "gap": 32,
+    "footerOverlap": false,
+    "rowOverlap": false,
+    "dateOverlap": false,
+    "horizontalOverflow": false,
+    "descending": true
+  },
+  {
+    "width": 320,
+    "emptyFooterCount": 0
+  },
+  {
+    "width": 320,
+    "nav": {
+      "border": "0px",
+      "shadow": "none",
+      "height": 56,
+      "padding": "0px",
+      "bg": "oklch(1 0 0)",
+      "pseudoBefore": "none",
+      "pseudoAfter": "none"
+    }
+  },
+  {
+    "width": 360,
+    "scale": 1,
+    "rows": 24,
+    "footerPosition": "static",
+    "gap": 32,
+    "footerOverlap": false,
+    "rowOverlap": false,
+    "dateOverlap": false,
+    "horizontalOverflow": false,
+    "descending": true
+  },
+  {
+    "width": 360,
+    "scale": 2,
+    "rows": 24,
+    "footerPosition": "static",
+    "gap": 32,
+    "footerOverlap": false,
+    "rowOverlap": false,
+    "dateOverlap": false,
+    "horizontalOverflow": false,
+    "descending": true
+  },
+  {
+    "width": 360,
+    "emptyFooterCount": 0
+  },
+  {
+    "width": 360,
+    "nav": {
+      "border": "0px",
+      "shadow": "none",
+      "height": 56,
+      "padding": "0px",
+      "bg": "oklch(1 0 0)",
+      "pseudoBefore": "none",
+      "pseudoAfter": "none"
+    }
+  },
+  {
+    "width": 390,
+    "scale": 1,
+    "rows": 24,
+    "footerPosition": "static",
+    "gap": 32,
+    "footerOverlap": false,
+    "rowOverlap": false,
+    "dateOverlap": false,
+    "horizontalOverflow": false,
+    "descending": true
+  },
+  {
+    "width": 390,
+    "scale": 2,
+    "rows": 24,
+    "footerPosition": "static",
+    "gap": 32,
+    "footerOverlap": false,
+    "rowOverlap": false,
+    "dateOverlap": false,
+    "horizontalOverflow": false,
+    "descending": true
+  },
+  {
+    "width": 390,
+    "emptyFooterCount": 0
+  },
+  {
+    "width": 390,
+    "nav": {
+      "border": "0px",
+      "shadow": "none",
+      "height": 56,
+      "padding": "0px",
+      "bg": "oklch(1 0 0)",
+      "pseudoBefore": "none",
+      "pseudoAfter": "none"
+    }
+  },
+  {
+    "width": 430,
+    "scale": 1,
+    "rows": 24,
+    "footerPosition": "static",
+    "gap": 32,
+    "footerOverlap": false,
+    "rowOverlap": false,
+    "dateOverlap": false,
+    "horizontalOverflow": false,
+    "descending": true
+  },
+  {
+    "width": 430,
+    "scale": 2,
+    "rows": 24,
+    "footerPosition": "static",
+    "gap": 32,
+    "footerOverlap": false,
+    "rowOverlap": false,
+    "dateOverlap": false,
+    "horizontalOverflow": false,
+    "descending": true
+  },
+  {
+    "width": 430,
+    "emptyFooterCount": 0
+  },
+  {
+    "width": 430,
+    "nav": {
+      "border": "0px",
+      "shadow": "none",
+      "height": 56,
+      "padding": "0px",
+      "bg": "oklch(1 0 0)",
+      "pseudoBefore": "none",
+      "pseudoAfter": "none"
+    }
+  },
+  {
+    "settings": "알림 설정",
+    "toggles": 3,
+    "errors": []
+  }
+]

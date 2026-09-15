@@ -6753,29 +6753,30 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
 }
 
 .notifications-retention-note {
-  position: fixed;
-  left: 50%;
-  bottom: 80px;
-  z-index: 1;
   display: flex;
-  width: min(100%, 430px);
+  width: 100%;
   padding: 0 20px;
   align-items: center;
   gap: 8px;
-  transform: translateX(-50%);
   color: var(--color-font-base-05);
   font-size: 13px;
   line-height: 18px;
   font-weight: 400;
   letter-spacing: -0.325px;
-  white-space: nowrap;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.notifications-retention-note span {
+  min-width: 0;
+  flex: 0 1 auto;
 }
 
 .notifications-retention-note i {
   display: block;
   min-width: 0;
   height: 1px;
-  flex: 1 1 auto;
+  flex: 1 0 8px;
   background: var(--color-border-base-05);
 }
 
@@ -6955,9 +6956,7 @@ img.cat-reward-image-fallback.cat-reward-image-fallback {
   min-height: calc(56px + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
   transform: translateX(-50%);
-  border-top: 1px solid var(--color-border-base-03);
   background: var(--color-bg-base-01);
-  box-shadow: 0.2px -1.2px 4px rgba(241, 242, 244, 0.3);
 }
 
 .bottom-navigation-tabs {
