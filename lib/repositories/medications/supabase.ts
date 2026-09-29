@@ -20,8 +20,8 @@ function sortByCreatedAt(medications: SavedMedication[]) {
   return medications.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
-export function createSupabaseMedicationRepository(userId: string): ServerMedicationRepository {
-  const supabase = createBrowserSupabaseClient();
+export function createSupabaseMedicationRepository(userId: string, client?: ReturnType<typeof createBrowserSupabaseClient>): ServerMedicationRepository {
+  const supabase = client ?? createBrowserSupabaseClient();
 
   async function list(activeOnly: boolean) {
     let query = supabase

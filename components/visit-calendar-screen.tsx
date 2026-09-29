@@ -13,6 +13,7 @@ import {
 } from "@/lib/analytics/events";
 import { getVisitScheduleRepository } from "@/lib/repositories";
 import { formatVisitDate } from "@/lib/visit-date";
+import { dateContextHref } from "@/lib/date-context";
 
 type VisitCalendarScreenProps = {
   mode: "new" | "edit";
@@ -40,7 +41,7 @@ export function VisitCalendarScreen({ mode }: VisitCalendarScreenProps) {
       .then((visit) => {
         if (!active) return;
         if (!visit) {
-          router.replace("/");
+          router.replace(dateContextHref("/"));
           return;
         }
         setInitialDate(visit.visitDate);
@@ -65,7 +66,7 @@ export function VisitCalendarScreen({ mode }: VisitCalendarScreenProps) {
       setDialog("discard");
       return;
     }
-    router.replace(mode === "edit" ? "/visits" : "/");
+    router.replace(dateContextHref(mode === "edit" ? "/visits" : "/"));
   }, [isDirty, mode, router]);
 
   async function confirmSave() {
@@ -79,7 +80,7 @@ export function VisitCalendarScreen({ mode }: VisitCalendarScreenProps) {
         trackVisitAdded();
         completeVisitAddAttempt();
       }
-      router.replace(mode === "new" ? "/?visitToast=added" : "/visits?visitToast=updated");
+      router.replace(dateContextHref(mode === "new" ? "/?visitToast=added" : "/visits?visitToast=updated"));
     } catch {
       setDialog(null);
       setError(mode === "new" ? "내원일정을 추가하지 못했어요." : "내원일정을 수정하지 못했어요.");
@@ -133,7 +134,7 @@ export function VisitCalendarScreen({ mode }: VisitCalendarScreenProps) {
           cancelLabel="닫기"
           confirmLabel="취소하기"
           onCancel={() => setDialog(null)}
-          onConfirm={() => router.replace("/visits")}
+          onConfirm={() => router.replace(dateContextHref("/visits"))}
         />
       ) : null}
     </MobileShell>

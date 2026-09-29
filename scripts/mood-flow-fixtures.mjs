@@ -219,7 +219,7 @@ const pageSource = await readFile(new URL("../app/moods/new/page.tsx", import.me
 assert.match(flowSource, /window\.history\.pushState/);
 assert.match(flowSource, /window\.history\.back\(\)/);
 assert.match(flowSource, /title="감정 기록을 중단할까요\?"/);
-assert.match(flowSource, /clearMoodDraft\(window\.sessionStorage, targetDateKey\)/);
+assert.match(flowSource, /clearMoodDraft\(draftStorage \?\? window\.sessionStorage, targetDateKey\)/);
 assert.match(flowSource, /대화에 집중이 안되고 다른 생각을 했어요/);
 assert.match(flowSource, /다른 사람의 이야기를 이해하기 어려웠어요/);
 assert.match(flowSource, /혼자있고 싶었어요/);

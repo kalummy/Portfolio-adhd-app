@@ -22,17 +22,17 @@ const PROVIDERS: ReadonlyArray<{
   { id: "google", label: "구글", logo: "/auth/google.svg" },
 ];
 
-export function MyHomeSocialLogin() {
+export function MyHomeSocialLogin({ initialError = "" }: { initialError?: string } = {}) {
   const [linkedProviders, setLinkedProviders] = useState<AddiOAuthProvider[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyProvider, setBusyProvider] = useState<AddiOAuthProvider | null>(null);
   const [confirmProvider, setConfirmProvider] = useState<AddiOAuthProvider | null>(null);
   const [toast, setToast] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(initialError);
 
   const loadIdentities = useCallback(async () => {
     setLoading(true);
-    setError("");
+    setError(initialError);
     try {
       const identities = await getLinkedOAuthIdentities();
       setLinkedProviders(identities.map((identity) => identity.provider));
@@ -41,7 +41,7 @@ export function MyHomeSocialLogin() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [initialError]);
 
   useEffect(() => {
     void loadIdentities();

@@ -145,9 +145,15 @@ export function MoodHistory({ showDeletedToast = false }: { showDeletedToast?: b
     const url = new URL(window.location.href);
     url.searchParams.delete("deleted");
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [showDeletedToast]);
+
+  // Native observes the cleaned URL immediately; that prop change must not cancel
+  // the visible toast's lifetime. Keep the existing Web duration and design.
+  useEffect(() => {
+    if (!deletedToast) return;
     const timer = window.setTimeout(() => setDeletedToast(""), 2500);
     return () => window.clearTimeout(timer);
-  }, [showDeletedToast]);
+  }, [deletedToast]);
 
   function selectTab(tab: MoodTab) {
     if (tab === activeTab) return;

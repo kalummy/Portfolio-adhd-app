@@ -42,15 +42,16 @@ const encoded = (v: unknown) =>
 export function createFcmSender(
   credential: FcmCredential,
   fetcher: typeof fetch = fetch,
+  expectedProject = DEV_FIREBASE,
 ) {
   if (
-    credential.project_id !== DEV_FIREBASE ||
+    credential.project_id !== expectedProject ||
     !credential.client_email.endsWith(
-      `@${DEV_FIREBASE}.iam.gserviceaccount.com`,
+      `@${expectedProject}.iam.gserviceaccount.com`,
     ) ||
     !credential.private_key.includes("BEGIN PRIVATE KEY")
   )
-    throw Error("dev_fcm_credential_required");
+    throw Error("native_fcm_credential_mismatch");
   let access: { token: string; expires: number } | undefined;
   async function bearer() {
     if (access && access.expires > Date.now() + 60000) return access.token;
@@ -128,7 +129,7 @@ export function createFcmSender(
     const content = getReminderContent(kind);
     try {
       const response = await fetcher(
-        `https://fcm.googleapis.com/v1/projects/${DEV_FIREBASE}/messages:send`,
+        `https://fcm.googleapis.com/v1/projects/${expectedProject}/messages:send`,
         {
           method: "POST",
           headers: {

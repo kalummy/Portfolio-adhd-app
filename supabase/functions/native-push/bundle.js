@@ -144,8 +144,8 @@ var json = (value, status = 200) => new Response(JSON.stringify(value), {
 });
 var exact = (value, keys) => Object.keys(value).every((k) => keys.includes(k));
 var identityKeys = ["installationId", "secret", "revision"];
-function nativePushHandler(db, send, configuredUrl) {
-  if (configuredUrl !== DEV_SUPABASE) throw Error("dev_project_required");
+function nativePushHandler(db, send, configuredUrl, expectedUrl = DEV_SUPABASE) {
+  if (configuredUrl !== expectedUrl) throw Error("native_project_mismatch");
   return async (req) => {
     const origin = req.headers.get("origin");
     if (origin && origin !== "https://localhost")
@@ -300,11 +300,11 @@ function classifyFcm(status, body) {
 }
 var b64 = (bytes) => btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join("")).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 var encoded = (v) => b64(new TextEncoder().encode(JSON.stringify(v)));
-function createFcmSender(credential, fetcher = fetch) {
-  if (credential.project_id !== DEV_FIREBASE || !credential.client_email.endsWith(
-    `@${DEV_FIREBASE}.iam.gserviceaccount.com`
+function createFcmSender(credential, fetcher = fetch, expectedProject = DEV_FIREBASE) {
+  if (credential.project_id !== expectedProject || !credential.client_email.endsWith(
+    `@${expectedProject}.iam.gserviceaccount.com`
   ) || !credential.private_key.includes("BEGIN PRIVATE KEY"))
-    throw Error("dev_fcm_credential_required");
+    throw Error("native_fcm_credential_mismatch");
   let access;
   async function bearer() {
     if (access && access.expires > Date.now() + 6e4) return access.token;
@@ -368,7 +368,7 @@ function createFcmSender(credential, fetcher = fetch) {
     const content = getReminderContent(kind);
     try {
       const response = await fetcher(
-        `https://fcm.googleapis.com/v1/projects/${DEV_FIREBASE}/messages:send`,
+        `https://fcm.googleapis.com/v1/projects/${expectedProject}/messages:send`,
         {
           method: "POST",
           headers: {
@@ -409,50 +409,66 @@ function createFcmSender(credential, fetcher = fetch) {
 }
 
 // lib/native-push/scheduler.ts
+var CLAIM_BATCH_LIMIT = 4;
+var unknownOutcome = {
+  status: "permanent_failed",
+  http: null,
+  code: "provider_outcome_unknown"
+};
+var disabledTarget = {
+  status: "cancelled",
+  http: null,
+  code: "target_disabled"
+};
 async function runNativeAwareReminders(db, transports, options) {
+  let claimed = 0;
   let delivered = 0;
   let failed = 0;
+  let cancelled = 0;
+  const clock = options.clock ?? (() => options.now);
   for (const window of getActiveReminderWindows(options.now)) {
+    if (clock().getTime() >= Date.parse(window.windowExpiresAt)) break;
     const claim = await db.rpc("claim_due_reminder_dispatches_v2", {
       p_reminder_date: window.localDate,
       p_reminder_slot: window.slotKey,
-      p_now: options.now.toISOString(),
+      p_now: clock().toISOString(),
       p_window_expires_at: window.windowExpiresAt,
-      p_batch_limit: 1,
-      p_only_user_id: options.onlyUserId
+      p_batch_limit: CLAIM_BATCH_LIMIT,
+      p_only_user_id: options.onlyUserId ?? null
     });
     if (claim.error) throw Error("reminder_claim_failed");
-    for (const row of claim.data ?? []) {
-      const args = {
+    const rows = claim.data ?? [];
+    claimed += rows.length;
+    for (const row of rows) {
+      const prepared = await db.rpc("prepare_reminder_dispatch_v2", {
         p_user_id: row.user_id,
         p_reminder_date: row.reminder_date,
         p_reminder_slot: row.reminder_slot,
         p_claim_token: row.claim_token,
-        p_now: options.now.toISOString()
-      };
-      const prepared = await db.rpc("prepare_reminder_dispatch_v2", args);
+        p_now: clock().toISOString()
+      });
       if (prepared.error) throw Error("reminder_prepare_failed");
       if (!prepared.data) continue;
       const { kind, targets } = prepared.data;
-      for (const target of targets) {
-        let result = {
-          status: "cancelled",
-          http: null,
-          code: "target_disabled"
-        };
-        if (options.allowTarget(target)) {
+      const nativeSelected = targets.some((target) => target.transport === "fcm");
+      await Promise.all(targets.map(async (target) => {
+        let result = disabledTarget;
+        const allowed = !nativeSelected || target.transport === "fcm";
+        if (allowed && clock().getTime() < Date.parse(window.windowExpiresAt) && (options.allowTarget?.(target) ?? true)) {
           try {
             result = await transports[target.transport](
               target,
               kind,
-              `${row.reminder_date}:${row.reminder_slot}:${target.targetId}`
+              `${row.reminder_date}:${row.reminder_slot}:${target.targetId}`,
+              {
+                userId: row.user_id,
+                localDate: row.reminder_date,
+                slotKey: row.reminder_slot,
+                claimToken: row.claim_token
+              }
             );
           } catch {
-            result = {
-              status: "permanent_failed",
-              http: null,
-              code: "provider_outcome_unknown"
-            };
+            result = unknownOutcome;
           }
         }
         const finish = await db.rpc("finish_reminder_target_v2", {
@@ -465,24 +481,47 @@ async function runNativeAwareReminders(db, transports, options) {
           p_outcome: result.status,
           p_http: result.http,
           p_error: result.code,
-          p_now: options.now.toISOString()
+          p_now: clock().toISOString()
         });
         if (finish.error || finish.data !== true)
           throw Error("reminder_delivery_save_failed");
         if (result.status === "sent") delivered++;
-        else if (result.status !== "cancelled") failed++;
-      }
+        else if (result.status === "cancelled") cancelled++;
+        else failed++;
+      }));
       const finalized = await db.rpc("finalize_reminder_dispatch_v2", {
         p_user_id: row.user_id,
         p_date: row.reminder_date,
         p_slot: row.reminder_slot,
         p_claim: row.claim_token,
-        p_now: options.now.toISOString()
+        p_now: clock().toISOString()
       });
-      if (finalized.error) throw Error("reminder_finalize_failed");
+      if (finalized.error || typeof finalized.data !== "string")
+        throw Error("reminder_finalize_failed");
     }
   }
-  return { delivered, failed };
+  return { claimed, delivered, failed, cancelled };
+}
+
+// lib/native-environment.ts
+var NATIVE_PRODUCTION_SUPABASE_URL = "https://joffvlsyxivveqycjrio.supabase.co";
+var NATIVE_PRODUCTION_CALLBACK = "https://addi-gamma.vercel.app/auth/native/callback";
+function nativeStage(value) {
+  if (!value || value === "development") return "development";
+  if (value === "production") return "production";
+  throw new Error("invalid_native_stage");
+}
+function assertNativeProject(stage, url) {
+  if (!url) throw new Error("native_project_mismatch");
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error("native_project_mismatch");
+  }
+  if (parsed.protocol !== "https:" || parsed.origin !== url || !/^[a-z0-9-]+\.supabase\.co$/.test(parsed.hostname) || stage === "production" && url !== NATIVE_PRODUCTION_SUPABASE_URL || stage === "development" && url === NATIVE_PRODUCTION_SUPABASE_URL)
+    throw new Error("native_project_mismatch");
+  return url;
 }
 export {
   DEV_FIREBASE,
@@ -490,14 +529,18 @@ export {
   DEV_SUPABASE,
   DISABLED,
   KINDS,
+  NATIVE_PRODUCTION_CALLBACK,
+  NATIVE_PRODUCTION_SUPABASE_URL,
   NATIVE_PUSH_PATH,
   UUID,
   allowedRoute,
+  assertNativeProject,
   classifyFcm,
   createFcmSender,
   getReminderContent,
   isPreferences,
   nativePushHandler,
+  nativeStage,
   runNativeAwareReminders,
   sha256,
   validInstallation,

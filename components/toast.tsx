@@ -8,6 +8,7 @@ type ToastProps = {
   onDismiss: () => void;
   aboveNavigation?: boolean;
   showIcon?: boolean;
+  tone?: "success" | "warning";
 };
 
 export function Toast({
@@ -15,14 +16,17 @@ export function Toast({
   onDismiss,
   aboveNavigation = false,
   showIcon = true,
+  tone = "success",
 }: ToastProps) {
+  const dismissRef = useRef(onDismiss);
+  dismissRef.current = onDismiss;
   const messageRef = useRef<HTMLSpanElement>(null);
   const [isMultiline, setIsMultiline] = useState(false);
 
   useEffect(() => {
-    const timeout = window.setTimeout(onDismiss, 3000);
+    const timeout = window.setTimeout(() => dismissRef.current(), 3000);
     return () => window.clearTimeout(timeout);
-  }, [message, onDismiss]);
+  }, [message]);
 
   useLayoutEffect(() => {
     const messageElement = messageRef.current;
@@ -53,9 +57,11 @@ export function Toast({
       aria-live="polite"
     >
       {showIcon ? (
-        <Image src="/icons/visit-toast-check.svg" alt="" width={20} height={20} />
+        <span className="app-toast-icon" aria-hidden="true">
+          <Image src={tone === "warning" ? "/icons/toast-notice.svg" : "/icons/visit-toast-check.svg"} alt="" width={17} height={17} />
+        </span>
       ) : null}
-      <span ref={messageRef}>{message}</span>
+      <span className="app-toast-message" ref={messageRef}>{message}</span>
     </div>
   );
 }

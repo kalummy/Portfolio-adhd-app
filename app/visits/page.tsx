@@ -9,6 +9,7 @@ import { VisitDialog } from "@/components/visit-dialog";
 import { getVisitScheduleRepository } from "@/lib/repositories";
 import { formatVisitDate, formatVisitDday } from "@/lib/visit-date";
 import type { VisitSchedule } from "@/lib/types";
+import { dateContextHref, readDateContext, withDateContext } from "@/lib/date-context";
 
 function VisitListContent() {
   const router = useRouter();
@@ -28,7 +29,7 @@ function VisitListContent() {
       const repository = await getVisitScheduleRepository();
       const savedVisit = await repository.getUpcoming();
       if (!savedVisit) {
-        router.replace("/");
+        router.replace(dateContextHref("/"));
         return;
       }
       setVisit(savedVisit);
@@ -48,7 +49,9 @@ function VisitListContent() {
     if (!queryToast) return;
     setToast(queryToast);
     const timeout = window.setTimeout(() => {
-      window.history.replaceState(window.history.state, "", "/visits");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("visitToast");
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
     }, 0);
     return () => window.clearTimeout(timeout);
   }, [queryToast]);
@@ -60,7 +63,7 @@ function VisitListContent() {
     try {
       const repository = await getVisitScheduleRepository();
       await repository.deleteUpcoming();
-      router.replace("/?visitToast=deleted");
+      router.replace(dateContextHref("/?visitToast=deleted"));
     } catch {
       setShowDelete(false);
       setError("내원일정을 삭제하지 못했어요.");
@@ -73,7 +76,7 @@ function VisitListContent() {
 
   return (
     <MobileShell className="flow-screen visit-list-screen">
-      <FlowHeader title="내원일정" fallbackHref="/" />
+      <FlowHeader title="내원일정" fallbackHref={withDateContext("/", readDateContext(searchParams.toString()))} />
       <section className="visit-list-content">
         <div className="visit-list-title">
           <h1>내원일정을 확인해주세요</h1>
@@ -89,7 +92,7 @@ function VisitListContent() {
                 {dday ? <span>{dday}</span> : null}
               </div>
               <div className="visit-card-actions">
-                <button type="button" onClick={() => router.push("/visits/edit")}>수정</button>
+                <button type="button" onClick={() => router.push(dateContextHref("/visits/edit"))}>수정</button>
                 <button type="button" onClick={() => setShowDelete(true)}>삭제</button>
               </div>
             </article>

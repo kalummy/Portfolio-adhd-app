@@ -3272,6 +3272,7 @@ html[data-addi-member-splash="skip"] .member-splash {
   animation: shimmer 1.2s infinite;
 }
 
+/* Figma Alert/Toast: content-sized single line; 320px two-line variant. */
 .app-toast {
   position: fixed;
   z-index: 70;
@@ -3280,53 +3281,46 @@ html[data-addi-member-splash="skip"] .member-splash {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  width: fit-content;
-  max-width: calc(100% - 40px);
+  width: max-content;
+  max-width: min(320px, calc(100% - 40px));
   padding: 12px 16px;
   transform: translateX(-50%);
   border-radius: 12px;
   background: var(--color-gray-800);
   color: var(--color-font-base-01);
-  animation: app-toast-in 180ms ease-out both;
 }
 
-.home-screen .app-toast {
-  bottom: calc(80px + env(safe-area-inset-bottom));
-}
-
+.home-screen .app-toast,
 .app-toast.above-navigation {
   bottom: calc(80px + env(safe-area-inset-bottom));
 }
 
 .app-toast.multiline {
-  width: min(calc(100% - 40px), 390px);
+  width: min(calc(100% - 40px), 320px);
 }
 
-.app-toast img {
-  display: block;
+.app-toast-icon {
+  display: grid;
   width: 20px;
   height: 20px;
   flex: 0 0 20px;
+  place-items: center;
 }
 
-.app-toast span {
-  overflow: hidden;
+.app-toast-icon img {
+  display: block;
+  width: 16.6667px;
+  height: 16.6667px;
+}
+
+.app-toast-message {
+  min-width: 0;
   font-size: 14px;
   line-height: 20px;
   font-weight: 500;
   letter-spacing: -0.35px;
   white-space: pre-wrap;
-}
-
-@keyframes app-toast-in {
-  from { opacity: 0; transform: translate(-50%, 8px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .app-toast {
-    animation: none;
-  }
+  overflow-wrap: break-word;
 }
 
 .home-content {

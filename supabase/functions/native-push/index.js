@@ -3,20 +3,87 @@ import {
   nativePushHandler,
   createFcmSender,
   runNativeAwareReminders,
-  DEV_SUPABASE,
+  DEV_FIREBASE,
+  nativeStage,
+  assertNativeProject,
   UUID,
   getReminderContent,
 } from "./bundle.js";
 const url = Deno.env.get("SUPABASE_URL");
-if (url !== DEV_SUPABASE) throw Error("dev_project_required");
+const stage = nativeStage(Deno.env.get("ADDI_NATIVE_STAGE"));
+const expectedUrl = assertNativeProject(stage, url);
+const firebaseProject = stage === "production"
+  ? Deno.env.get("ADDI_NATIVE_FIREBASE_PROJECT_ID")
+  : DEV_FIREBASE;
+if (!firebaseProject)
+  throw Error("native_firebase_project_required");
 const db = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"), {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 const send = createFcmSender(
-  JSON.parse(Deno.env.get("ADDI_DEV_FCM_CREDENTIAL") || "{}"),
+  JSON.parse(Deno.env.get(stage === "production" ? "ADDI_PROD_FCM_CREDENTIAL" : "ADDI_DEV_FCM_CREDENTIAL") || "{}"),
+  fetch,
+  firebaseProject,
 );
-const handler = nativePushHandler(db, send, url);
+const handler = nativePushHandler(db, send, url, expectedUrl);
+async function sendClaimedReminder(req) {
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!serviceRoleKey || req.headers.get("authorization") !== `Bearer ${serviceRoleKey}`)
+    return new Response(null, { status: 403 });
+  if (req.method !== "POST") return new Response(null, { status: 405 });
+  try {
+    const text = await req.text();
+    if (text.length > 1024) return new Response(null, { status: 400 });
+    const body = JSON.parse(text);
+    const keys = ["userId", "date", "slot", "claimToken", "targetId", "kind"];
+    if (!body || typeof body !== "object" || Object.keys(body).length !== keys.length
+      || keys.some((key) => !(key in body))
+      || !UUID.test(body.userId) || !UUID.test(body.claimToken) || !UUID.test(body.targetId)
+      || !/^\d{4}-\d{2}-\d{2}$/.test(body.date)
+      || !["visit_day_before_0800", "visit_day_today_0800", "medication_0900",
+        "daily_1100", "daily_1300", "mood_1500", "bedtime_2100"].includes(body.slot)
+      || !["visit_day_before", "visit_day_today", "daily", "as_needed", "bedtime", "mood"].includes(body.kind))
+      return new Response(null, { status: 400 });
+    const { data: dispatch, error: dispatchError } = await db.from("reminder_dispatches")
+      .select("delivery_kind,status,claim_token,window_expires_at")
+      .eq("user_id", body.userId).eq("reminder_date", body.date)
+      .eq("reminder_slot", body.slot).maybeSingle();
+    if (dispatchError || !dispatch || dispatch.status !== "processing"
+      || dispatch.claim_token !== body.claimToken || dispatch.delivery_kind !== body.kind
+      || Date.parse(dispatch.window_expires_at) <= Date.now())
+      return new Response(null, { status: 409 });
+    const { data: delivery, error: deliveryError } = await db.from("reminder_deliveries")
+      .select("status,claim_token,binding_id,token_hash")
+      .eq("user_id", body.userId).eq("reminder_date", body.date)
+      .eq("reminder_slot", body.slot).eq("transport", "fcm")
+      .eq("target_id", body.targetId).maybeSingle();
+    if (deliveryError || !delivery || delivery.status !== "processing"
+      || delivery.claim_token !== body.claimToken)
+      return new Response(null, { status: 409 });
+    const { data: registration, error: registrationError } = await db.from("native_push_registrations")
+      .select("installation_id,binding_id,fcm_token,token_hash")
+      .eq("id", body.targetId).eq("user_id", body.userId)
+      .is("revoked_at", null).maybeSingle();
+    if (registrationError || !registration || registration.binding_id !== delivery.binding_id
+      || registration.token_hash !== delivery.token_hash)
+      return new Response(null, { status: 409 });
+    const result = await send({
+      token: registration.fcm_token,
+      installationId: registration.installation_id,
+      bindingId: registration.binding_id,
+    }, body.kind, `${body.date}:${body.slot}:${body.targetId}`);
+    return Response.json(result, { headers: { "Cache-Control": "no-store" } });
+  } catch {
+    return new Response(null, { status: 503 });
+  }
+}
+
 Deno.serve(async (req) => {
+  const pathname = new URL(req.url).pathname;
+  if (stage === "production" && (/\/(test|test-admin|scheduler)$/.test(pathname)))
+    return new Response(null, { status: 404 });
+  if (pathname.endsWith("/scheduler-send"))
+    return sendClaimedReminder(req);
   // A manual Dev send is limited to the selected, unexpired singleton Galaxy installation.
   if (new URL(req.url).pathname.endsWith("/test-admin")) {
     const secret = Deno.env.get("ADDI_DEV_PUSH_QA_SECRET");
