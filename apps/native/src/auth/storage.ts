@@ -1,3 +1,4 @@
+import { measureNative } from '../platform/performance';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import type { SecureStore } from './flow';
 interface SecureStoragePlugin {
@@ -12,7 +13,7 @@ function requireAndroid() {
   if (Capacitor.getPlatform() !== 'android') throw new Error('android_secure_storage_required');
 }
 export const secureStorage: SecureStore = {
-  async getItem(key) { requireAndroid(); return (await plugin.get({ key })).value; },
+  async getItem(key) { requireAndroid(); return (await measureNative('bridge.keystore.read', () => plugin.get({ key }))).value; },
   async setItem(key, value) { requireAndroid(); await plugin.set({ key, value }); },
   async removeItem(key) { requireAndroid(); await plugin.remove({ key }); },
 };

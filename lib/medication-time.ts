@@ -26,6 +26,14 @@ export function digitsOnly(value: string, maxLength = 2) {
   return value.replace(/\D/g, "").slice(0, maxLength);
 }
 
+export function medicationTimeInputError(field: "hour" | "minute", value: string): string | null {
+  const digits = digitsOnly(value);
+  if (!digits) return null;
+  if (field === "hour" && Number(digits) > 23) return "시는 0부터 23까지 입력해주세요.";
+  if (field === "minute" && Number(digits) > 59) return "분은 0부터 59까지 입력해주세요.";
+  return null;
+}
+
 export function parseScheduledTime(value?: string | null): MedicationTimeFields | null {
   if (!value) return null;
   const match = CANONICAL_TIME_PATTERN.exec(value);

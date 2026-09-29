@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 // @ts-expect-error Node's type-stripping fixture runner imports production TypeScript directly.
-import { formatScheduledTimeLabel, normalizeHourInput, parseScheduledTime, resolveMedicationEditorInitialTime, toRecordedAtIso, toScheduledTime } from "../lib/medication-time.ts";
+import { formatScheduledTimeLabel, medicationTimeInputError, normalizeHourInput, parseScheduledTime, resolveMedicationEditorInitialTime, toRecordedAtIso, toScheduledTime } from "../lib/medication-time.ts";
 // @ts-expect-error Node's type-stripping fixture runner imports production TypeScript directly.
 import { isValidDateKey, KST_TIME_ZONE } from "../lib/kst-date.ts";
 // @ts-expect-error Node's type-stripping fixture runner imports production TypeScript directly.
@@ -150,6 +150,12 @@ assert.deepEqual(normalizeHourInput("13", "am"), { period: "pm", hour: "1" });
 assert.deepEqual(normalizeHourInput("23", "am"), { period: "pm", hour: "11" });
 assert.deepEqual(normalizeHourInput("25", "am"), { period: "am", hour: "25" });
 
+assert.equal(medicationTimeInputError("hour", "99"), "시는 0부터 23까지 입력해주세요.");
+assert.equal(medicationTimeInputError("hour", "24"), "시는 0부터 23까지 입력해주세요.");
+assert.equal(medicationTimeInputError("minute", "88"), "분은 0부터 59까지 입력해주세요.");
+assert.equal(medicationTimeInputError("minute", "60"), "분은 0부터 59까지 입력해주세요.");
+assert.equal(medicationTimeInputError("hour", "23"), null);
+assert.equal(medicationTimeInputError("minute", "59"), null);
 assert.equal(toScheduledTime({ period: "am", hour: "", minute: "" }), null);
 assert.equal(toScheduledTime({ period: "am", hour: "9", minute: "" }), undefined);
 assert.equal(toScheduledTime({ period: "am", hour: "9", minute: "60" }), undefined);
@@ -212,7 +218,7 @@ assert.match(guestUpdateSource, /store\.put\(updatedRecord\)/);
 assert.match(guestUpdateSource, /transaction\(INTAKE_DATASET_STORE, "readonly"\)/);
 assert.doesNotMatch(guestUpdateSource, /metadataStore\.put|intakeRecordIds:/);
 
-const listPage = await readFile(new URL("../app/medications/page.tsx", import.meta.url), "utf8");
+const listPage = await readFile(new URL("../components/medication-list-screen.tsx", import.meta.url), "utf8");
 assert.match(listPage, /이미 저장된 복용기록은 지워지지 않아요\./);
 assert.match(listPage, /삭제하면 다시 약을 등록해야해요\./);
 assert.match(listPage, /\/medications\/new\/search\?origin=medications/);
@@ -233,9 +239,11 @@ assert.match(scheduleEditor, /Date\.parse\(right\)/);
 assert.match(scheduleEditor, /isSameRecordedAtInstant\(savedRecord\.recordedAt, recordedAt\)/);
 assert.match(scheduleEditor, /isSameRecordedAtInstant\(persistedRecord\?\.recordedAt, recordedAt\)/);
 assert.match(scheduleEditor, /persistedRecord\?\.id !== intake\.id/);
-assert.match(scheduleEditor, /destination\.searchParams\.set\("medicationToast", "time-updated"\)/);
+assert.match(scheduleEditor, /timeChanged \? "time-updated" : "schedule-updated"/);
 assert.doesNotMatch(scheduleEditor, /savedRecord\.recordedAt !== recordedAt/);
-assert.doesNotMatch(scheduleEditor, /scheduledTime|updateSchedule|trackMedicationScheduleUpdated/);
+assert.match(scheduleEditor, /medications\.updateSchedule\(medication.id, \{ schedule \}\)/);
+assert.doesNotMatch(scheduleEditor, /mode ===|toScheduledTime|scheduledTime:/);
+assert.doesNotMatch(listPage, /복용 일정 수정/);
 assert.equal((scheduleEditor.match(/updateRecordedAt\(/g) ?? []).length, 1);
 const completeHandlerIndex = scheduleEditor.indexOf("async function complete()");
 assert.ok(completeHandlerIndex >= 0);
@@ -268,8 +276,13 @@ assert.match(homeScreen, /reconcileMedicationIntakeRecord/);
 assert.doesNotMatch(homeScreen, /scheduledTimeLabel \?\?/);
 
 const homePage = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
-assert.match(homePage, /medicationToast === "added" \|\| moodToast === "saved"/);
-assert.match(homePage, /"time-updated": "복용 시간을 수정했어요\."/);
+assert.match(homePage, /homeToastProps\(toastParams\)/);
+const { homeToastProps } = await import(new URL("../lib/navigation-toast.ts", import.meta.url).href);
+assert.equal(homeToastProps(new URLSearchParams("medicationToast=time-updated")).initialToast, "복용 시간을 수정했어요.");
+assert.equal(homeToastProps(new URLSearchParams("medicationToast=added")).initialToast, undefined);
+assert.equal(homeToastProps(new URLSearchParams("medicationToast=added&toastId=one")).initialToast, "약을 등록했어요!");
+assert.equal(homeToastProps(new URLSearchParams("medicationToast=deleted&toastId=delete-once")).initialToast, "복용중인 약을 삭제했어요.");
+assert.equal(homeToastProps(new URLSearchParams("medicationToast=schedule-updated&toastId=schedule-once")).initialToast, "복용 일정을 수정했어요.");
 
 assert.equal(
   Date.parse("2026-08-23T11:01:00.000Z"),

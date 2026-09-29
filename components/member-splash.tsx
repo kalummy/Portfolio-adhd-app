@@ -7,12 +7,12 @@ import {
   MEMBER_SPLASH_SESSION_KEY,
 } from "@/lib/auth/routes";
 
-const SPLASH_STEPS = [
+export const SPLASH_STEPS = [
   { at: 300, variant: 1 },
   { at: 1100, variant: 2 },
   { at: 2000, variant: 3 },
 ] as const;
-const SPLASH_COMPLETE_MS = 2500;
+export const SPLASH_COMPLETE_MS = 2500;
 
 type MemberBrandLockupProps = {
   revealFirstLine?: boolean;

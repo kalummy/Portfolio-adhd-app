@@ -30,8 +30,9 @@ export function nativePushHandler(
   db: SupabaseClient,
   send: Sender,
   configuredUrl: string,
+  expectedUrl = DEV_SUPABASE,
 ) {
-  if (configuredUrl !== DEV_SUPABASE) throw Error("dev_project_required");
+  if (configuredUrl !== expectedUrl) throw Error("native_project_mismatch");
   return async (req: Request): Promise<Response> => {
     const origin = req.headers.get("origin");
     if (origin && origin !== "https://localhost")

@@ -67,7 +67,7 @@ assert.match(
   /\.bottom-navigation-tabs\s*\{[^}]*grid-template-columns:\s*repeat\(3,/s,
 );
 assert.doesNotMatch(homeScreen, /home-notification-button/);
-assert.match(homeScreen, /setProfileId\(getAddiProfileId\(authState\.user\)\)/);
+assert.match(homeScreen, /const profileId = authState \? getAddiProfileId\(authState\.user\)/);
 assert.match(homeScreen, /src=\{getAddiProfileAsset\(profileId\)\}/);
 assert.match(homeScreen, /<BottomNavigation activeTab="home" profileId=\{profileId\}/);
 assert.doesNotMatch(deleteAccount, /개인정보·기록 보관이 걱정돼요/);

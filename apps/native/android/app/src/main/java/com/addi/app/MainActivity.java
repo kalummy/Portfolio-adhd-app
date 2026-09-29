@@ -30,6 +30,9 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(AddiSecureStoragePlugin.class);
         registerPlugin(NativePushPlugin.class);
+        registerPlugin(NavigationHapticsPlugin.class);
+        registerPlugin(PlayUpdatePlugin.class);
+        registerPlugin(CameraPermissionPlugin.class);
         super.onCreate(savedInstanceState);
         bridge.getWebView().setWebViewClient(new BridgeWebViewClient(bridge) {
             @Override

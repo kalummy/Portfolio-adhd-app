@@ -180,6 +180,7 @@ h = harness(); await h.start();
 const manualId = h.events[0].medication_attempt_id;
 h.find("input").onChange({ target: { value: "private-manual" } }); await h.settle();
 await new Promise((resolve) => setTimeout(resolve, 270)); await h.settle();
+h.find("section", (props) => props.className === "no-results-state"); // Zero results render the existing Web empty state before Enter.
 h.find("input").onKeyDown({ key: "Enter", preventDefault() {} }); await h.settle();
 h.find("PrimaryButton").onClick(); await h.mount(h.navigations.at(-1));
 h.find("PrimaryButton").onClick(); await h.mount(h.navigations.at(-1));

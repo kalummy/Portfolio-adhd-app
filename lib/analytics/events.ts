@@ -59,6 +59,7 @@ const START_THROTTLE_MS = 1_000;
 const MOOD_SAVE_ANALYTICS_WAIT_MS = 500;
 
 let analyticsQueue: Promise<unknown> = Promise.resolve();
+let analyticsSession = 0;
 let lastMedicationManagementOpenAt = 0;
 let medicationAttempt: MedicationAttemptState | null = null;
 export type MedicationAttemptHandle = Pick<MedicationAttemptState, "id" | "dateKey"> | null;
@@ -89,6 +90,23 @@ const screenTrackingGlobal = globalThis as typeof globalThis & {
 const screenTrackingState = screenTrackingGlobal.__addiScreenTrackingState ??= {
   previousScreen: null,
 };
+
+/** Native changes accounts without a document reload. Drop the previous attempt context. */
+export function resetAnalyticsSession() {
+  analyticsSession++;
+  medicationAttempt = null;
+  lastMedicationManagementOpenAt = 0;
+  moodAttempts.clear();
+  moodAuthStates.clear();
+  for (const entry of pendingMoodEvents) entry.dispatch('guest');
+  analyticsQueue = Promise.resolve();
+  screenTrackingState.previousScreen = null;
+  try {
+    for (const key of Object.keys(window.sessionStorage)) {
+      if (key.startsWith('addi:analytics:')) window.sessionStorage.removeItem(key);
+    }
+  } catch { /* Analytics cannot block logout. */ }
+}
 
 function readSessionValue(key: string) {
   try {
@@ -208,6 +226,7 @@ function queueResolvedEvent<T extends AnalyticsEventName>(
     return Promise.resolve();
   }
   const attemptId = (properties as { mood_attempt_id?: string }).mood_attempt_id;
+  const session = analyticsSession;
   if (attemptId) {
     const pathname = pathnameOverride ?? window.location.pathname;
     let dispatched = false;
@@ -217,7 +236,7 @@ function queueResolvedEvent<T extends AnalyticsEventName>(
       if (dispatched) return;
       dispatched = true;
       pendingMoodEvents.delete(entry);
-      try { trackAnalyticsEvent(eventName, auth, properties, pathname); }
+      try { if (session === analyticsSession) trackAnalyticsEvent(eventName, auth, properties, pathname); }
       catch { /* SDK failure must never affect the product. */ }
       finally { complete(); }
     } };
@@ -235,7 +254,7 @@ function queueResolvedEvent<T extends AnalyticsEventName>(
   analyticsQueue = analyticsQueue
     .then(async () => {
       const authState = await resolveAnalyticsAuthState();
-      trackAnalyticsEvent(eventName, authState, properties, pathnameOverride);
+      if (session === analyticsSession) trackAnalyticsEvent(eventName, authState, properties, pathnameOverride);
     })
     .catch(() => undefined);
   return analyticsQueue;

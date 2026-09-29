@@ -1,3 +1,8 @@
+import { trackLoginCompleted, resetAnalyticsSession } from '../adapters/analytics';
+import { resetAnalyticsIdentity } from '../adapters/analytics-transport';
+import { handleIdentityCallback, cancelIdentityLink, refreshIdentityLinkScreen } from './identities';
+import { nativeMoodDrafts } from '../api/mood-draft-store';
+import { measureNative, markNative } from '../platform/performance';
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
@@ -25,20 +30,30 @@ let expiryTimer: ReturnType<typeof setTimeout> | undefined;
 function failure() { update({ status: 'signed_out', user: null, message: '로그인을 완료하지 못했어요. 다시 시도해주세요.', profile: null }); }
 async function complete(redirect = true) {
   const client = getNativeClient();
-  const { data, error } = await client.auth.getUser();
+  const { data, error } = await measureNative("auth.validate", () => client.auth.getUser());
   if (error || !data.user) throw new Error('user_validation_failed');
   const user = data.user;
   // Same authoritative profiles.id and upsert as web. No email matching/linking.
-  const before = await client.from('profiles').select('id').eq('id', user.id).maybeSingle();
+  const before = await measureNative('auth.profile.read', async () => client.from('profiles').select('id').eq('id', user.id).maybeSingle());
   if (before.error) throw new Error('profile_read_failed');
-  const profile = await ensureUserProfile(client, user.id);
-  if (profile.error) throw new Error('profile_failed');
+  if (!before.data) {
+    const profile = await measureNative('auth.profile.create', () => ensureUserProfile(client, user.id));
+    if (profile.error) throw new Error('profile_failed');
+  }
+  await nativeMoodDrafts.restore(user.id);
+  markNative('auth.ready');
   update({ status: 'signed_in', user, message: '', profile: before.data ? 'existing' : 'created' });
   if (active) client.auth.startAutoRefresh();
-  if (redirect || location.pathname === '/auth/login') router.replace('/');
+  if (redirect) trackLoginCompleted();
+  if (redirect || location.pathname === '/auth/login') {
+    const next = await secureStorage.getItem('addi-native-auth-return');
+    await secureStorage.removeItem('addi-native-auth-return');
+    router.replace(next === '/delete-account' ? next : '/');
+  }
 }
 async function receive(raw: string) {
   await started;
+  if (await handleIdentityCallback(raw)) return;
   if (!flow) return;
   try { await flow.callback(raw); }
   catch (error) {
@@ -55,6 +70,7 @@ async function scheduleExpiry() {
 }
 export function startNativeAuth() {
   return started ??= (async () => {
+    markNative('auth.start');
     if (!nativeConfig || Capacitor.getPlatform() !== 'android') {
       update({ status: 'unavailable', message: '로그인 설정이 필요해요.' }); return;
     }
@@ -95,6 +111,7 @@ export function startNativeAuth() {
       if (isActive) void scheduleExpiry().catch(failure);
     });
     await Browser.addListener('browserFinished', () => {
+      void refreshIdentityLinkScreen().catch(() => undefined);
       // Kakao may leave the Custom Tab for its native app. Keep the attempt until
       // explicit cancellation/expiry; TAB_HIDDEN alone is not an OAuth failure.
       if (state.status === 'pending') update({ message: '로그인을 기다리고 있어요. 취소하거나 브라우저에서 계속해주세요.' });
@@ -110,7 +127,7 @@ export function startNativeAuth() {
     const pending = await flow.pending();
     if (pending) { update({ status: 'pending' }); await scheduleExpiry(); }
     else {
-      const { data, error } = await client.auth.getSession();
+      const { data, error } = await measureNative("auth.session.restore", () => client.auth.getSession());
       if (error) throw new Error('session_restore_failed');
       if (data.session) await complete(false);
       else update({ status: 'signed_out' });
@@ -119,11 +136,14 @@ export function startNativeAuth() {
     if (launch?.url) queueMicrotask(() => { void receive(launch.url).catch(failure); });
   })().catch(() => { update({ status: 'signed_out', user: null, message: '로그인 상태를 확인하지 못했어요. 다시 시도해주세요.' }); });
 }
-export async function signInNative(provider: Provider) {
+export async function signInNative(provider: Provider, nextPath = '/') {
   await startNativeAuth();
   if (!flow || state.user) throw new Error('native_auth_unavailable');
   update({ status: 'pending', message: '' });
-  try { await flow.start(provider); await scheduleExpiry(); }
+  try {
+    await secureStorage.setItem('addi-native-auth-return', nextPath === '/delete-account' ? nextPath : '/');
+    await flow.start(provider); await scheduleExpiry();
+  }
   catch (error) {
     if (error instanceof AuthFlowError && error.reason === 'busy') {
       update({ status: 'pending', message: '이미 로그인을 진행하고 있어요.' });
@@ -139,6 +159,10 @@ export async function cancelNativeLogin() {
   await Browser.close().catch(() => undefined);
 }
 export async function signOutNative() {
+  resetAnalyticsSession();
+  resetAnalyticsIdentity();
+  await nativeMoodDrafts.lock();
+  await cancelIdentityLink();
   await clearNativePushBinding();
   clearTimeout(expiryTimer);
   // Remove mounted account UI immediately, including in-flight repository results.

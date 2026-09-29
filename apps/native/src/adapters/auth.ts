@@ -12,6 +12,11 @@ export async function updateAddiProfile(profileId: AddiProfileId) {
   window.dispatchEvent(new CustomEvent('addi:profile-changed', { detail: { profileId } }));
   return data.user;
 }
-export const signInWithGoogle = () => signInNative('google');
-export const signInWithKakao = () => signInNative('kakao');
+export const signInWithGoogle = (nextPath = '/') => signInNative('google', nextPath);
+export const signInWithKakao = (nextPath = '/') => signInNative('kakao', nextPath);
 export const signOut = signOutNative;
+
+export const clearDeletedAccountSession = signOutNative;
+
+export type AddiOAuthProvider = 'google' | 'kakao';
+export { getLinkedOAuthIdentities, linkOAuthIdentity, unlinkOAuthIdentity } from '../auth/identities';

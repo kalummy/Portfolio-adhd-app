@@ -1,3 +1,4 @@
+import { trackLoginStarted } from '../adapters/analytics';
 import { useSyncExternalStore } from 'react';
 import { MemberBrandLockup } from '@/components/member-splash';
 import { MobileShell } from '@/components/mobile-shell';
@@ -11,7 +12,7 @@ export function NativeLoginScreen() {
       {auth.message && <p className="member-login-error" role="status">{auth.message}</p>}
       {(['kakao', 'google'] as const).map(provider => <button type="button" key={provider}
         className={`member-login-button ${provider}`} disabled={busy || auth.status === 'unavailable'}
-        onClick={() => { void signInNative(provider).catch(() => undefined); }}>
+        onClick={() => { trackLoginStarted(); void signInNative(provider).catch(() => undefined); }}>
         <img src={`/auth/${provider}.svg`} alt="" width={40} height={40} />
         <span>{provider === 'kakao' ? '카카오로 시작' : '구글로 시작'}</span>
       </button>)}

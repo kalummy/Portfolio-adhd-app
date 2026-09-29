@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getCurrentUser } from "@/lib/auth/client";
+import { navigationHaptic } from "@/lib/navigation-haptic";
 import {
   DEFAULT_ADDI_PROFILE_ID,
   getAddiProfileAsset,
@@ -40,12 +41,6 @@ export function BottomNavigation({
     };
   }, []);
 
-  function scheduleTabHaptic() {
-    window.setTimeout(() => {
-      if ("vibrate" in navigator) navigator.vibrate(8);
-    }, 0);
-  }
-
   return (
     <nav className="bottom-navigation" aria-label="주요 메뉴">
       <div className="bottom-navigation-tabs">
@@ -54,7 +49,7 @@ export function BottomNavigation({
             href="/"
             className={`bottom-navigation-tab${activeTab === "home" ? " active" : ""}`}
             aria-current={activeTab === "home" ? "page" : undefined}
-            onClick={scheduleTabHaptic}
+            onClick={() => navigationHaptic(activeTab === "home")}
           >
             <span className="bottom-navigation-icon bottom-navigation-home-icon" aria-hidden="true">
               <Image
@@ -72,7 +67,7 @@ export function BottomNavigation({
             href="/moods"
             className={`bottom-navigation-tab${activeTab === "moods" ? " active" : ""}`}
             aria-current={activeTab === "moods" ? "page" : undefined}
-            onClick={scheduleTabHaptic}
+            onClick={() => navigationHaptic(activeTab === "moods")}
           >
             <span className="bottom-navigation-icon" aria-hidden="true">
               <Image
@@ -90,7 +85,7 @@ export function BottomNavigation({
             href="/my"
             className={`bottom-navigation-tab${activeTab === "my" ? " active" : ""}`}
             aria-current={activeTab === "my" ? "page" : undefined}
-            onClick={scheduleTabHaptic}
+            onClick={() => navigationHaptic(activeTab === "my")}
           >
             <span className="bottom-navigation-icon" aria-hidden="true">
               <Image src={getAddiProfileAsset(profileId)} alt="" width={28} height={28} />
