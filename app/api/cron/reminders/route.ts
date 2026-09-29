@@ -1,4 +1,6 @@
 import { getActiveReminderWindows, isReminderSchedulerEnabled } from "@/lib/reminders/policy";
+import { runNativeAwareReminders } from "@/lib/native-push/scheduler";
+import { createDevReminderTransports } from "@/lib/native-push/cron-transports";
 import { runReminderScheduler } from "@/lib/reminders/scheduler";
 import { SupabaseReminderDispatchRepository } from "@/lib/reminders/supabase-repository";
 import { assertWebPushConfigured, sendWebPush } from "@/lib/push/server";
@@ -37,6 +39,21 @@ export async function GET(request: Request) {
   }
 
   try {
+    if (process.env.NATIVE_REMINDER_TRANSPORT_ENABLED === "true") {
+      const admin = createSupabaseAdminClient();
+      const result = await runNativeAwareReminders(
+        admin,
+        createDevReminderTransports(),
+        { now, clock: () => new Date() },
+      );
+      return json({
+        ok: true,
+        status: "processed",
+        localDate: windows[0].localDate,
+        reminderSlots: windows.map((window) => window.slotKey),
+        ...result,
+      });
+    }
     assertWebPushConfigured();
     const admin = createSupabaseAdminClient();
     const repository = new SupabaseReminderDispatchRepository(admin);
