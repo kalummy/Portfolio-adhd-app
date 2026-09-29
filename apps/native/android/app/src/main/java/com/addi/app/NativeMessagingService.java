@@ -104,7 +104,7 @@ public class NativeMessagingService extends FirebaseMessagingService {
         NativePushStore.save(context, s);
         channel(context);
         Intent intent = new Intent(context, MainActivity.class)
-          .setAction("com.addi.app.dev.NOTIFICATION")
+          .setAction(context.getPackageName() + ".NOTIFICATION")
           .setData(
             android.net.Uri.parse(
               "addi-internal://notification/" + android.net.Uri.encode(delivery)

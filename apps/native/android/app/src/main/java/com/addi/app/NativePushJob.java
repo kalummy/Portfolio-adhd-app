@@ -35,7 +35,7 @@ public class NativePushJob extends JobService {
       pending.remove("action");
       if (!action.equals("rotate") && !action.equals("revoke")) return true;
       HttpURLConnection connection = (HttpURLConnection) URI.create(
-        "https://ohobxicxchkaisxxswkk.supabase.co/functions/v1/native-push/" +
+        BuildConfig.NATIVE_PUSH_URL + "/" +
           action
       )
         .toURL()

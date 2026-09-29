@@ -8,6 +8,7 @@ import { MoodHistory } from '@/components/mood-history';
 import { MoodRecordDetail } from '@/components/mood-record-detail';
 import { NotificationSettingsScreen } from '@/components/notification-settings-screen';
 import { NativePushQaScreen } from './push/qa-screen';
+import { nativeConfig } from './auth/client';
 import { NotificationsScreen } from '@/components/notifications-screen';
 import { MyHomeScreen } from '@/components/my-home-screen';
 import { FlowHeader } from '@/components/flow-ui';
@@ -36,8 +37,8 @@ export function NativeApp() {
   else if (/^\/moods\/\d{4}-\d{2}-\d{2}$/.test(path)) screen = <MoodRecordDetail dateKey={path.split('/')[2]} />;
   else if (path === '/visits') screen = <VisitListPage />;
   else if (path === '/notifications') screen = <NotificationsScreen />;
-  else if (path === '/notifications/settings') screen = <><NotificationSettingsScreen /><div style={{maxWidth:430,margin:'0 auto',padding:'16px 20px'}}><a href="/dev/push">Dev 알림 테스트</a></div></>;
-  else if (path === '/dev/push') screen = <NativePushQaScreen />;
+  else if (path === '/notifications/settings') screen = <><NotificationSettingsScreen />{nativeConfig.stage === 'development' && <div style={{maxWidth:430,margin:'0 auto',padding:'16px 20px'}}><a href="/dev/push">Dev 알림 테스트</a></div>}</>;
+  else if (path === '/dev/push' && nativeConfig.stage === 'development') screen = <NativePushQaScreen />;
   else if (path === '/my') screen = <MyHomeScreen displayName={getUserDisplayName(auth.user)} userId={auth.user.id} initialProfileId={getAddiProfileId(auth.user)} />;
   else screen = <Placeholder phase={path.startsWith('/notifications') ? 3 : 2} />;
   return <div key={`${auth.user.id}:${path}`} data-native-route={path}>{screen}</div>;

@@ -56,7 +56,7 @@ async function scheduleExpiry() {
 export function startNativeAuth() {
   return started ??= (async () => {
     if (!nativeConfig || Capacitor.getPlatform() !== 'android') {
-      update({ status: 'unavailable', message: 'Dev 로그인 설정이 필요해요.' }); return;
+      update({ status: 'unavailable', message: '로그인 설정이 필요해요.' }); return;
     }
     if (!globalThis.crypto?.subtle || !globalThis.crypto?.getRandomValues) throw new Error('secure_random_required');
     const config = nativeConfig;

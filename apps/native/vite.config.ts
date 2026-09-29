@@ -1,12 +1,32 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { nativeAliases } from './native-aliases';
+import environments from './native-environments.json';
 const root = fileURLToPath(new URL('../..', import.meta.url));
+const stage = process.env.ADDI_NATIVE_STAGE;
+if (stage !== 'development' && stage !== 'production') throw new Error('ADDI_NATIVE_STAGE required');
+const buildEnv = { ...loadEnv('production', process.cwd(), 'VITE_NATIVE_'), ...process.env };
+if (!buildEnv.VITE_NATIVE_AUTH_CALLBACK) throw new Error('Native callback required');
+const callback = new URL(buildEnv.VITE_NATIVE_AUTH_CALLBACK);
+if (buildEnv.VITE_NATIVE_STAGE !== stage || buildEnv.VITE_NATIVE_SUPABASE_URL !== environments[stage].supabaseUrl
+    || !buildEnv.VITE_NATIVE_SUPABASE_PUBLISHABLE_KEY?.startsWith('sb_publishable_')
+    || callback.protocol !== 'https:' || callback.username || callback.password || callback.port || callback.search || callback.hash
+    || callback.pathname !== '/auth/native/callback'
+    || (stage === 'production' ? callback.href !== environments.production.callback : callback.href === environments.production.callback))
+  throw new Error('Native Vite environment mismatch');
 
 export default defineConfig({
+  define: { __ADDI_NATIVE_ENV__: JSON.stringify({
+    stage, url: environments[stage].supabaseUrl, callback: buildEnv.VITE_NATIVE_AUTH_CALLBACK,
+  }) },
   plugins: [react(), {
+    name: 'addi-native-csp',
+    transformIndexHtml(html) {
+      return html.replace('__ADDI_NATIVE_SUPABASE_ORIGIN__', environments[stage].supabaseUrl);
+    },
+  }, {
     name: 'addi-native-boundary',
     enforce: 'pre',
     resolveId(source, importer) {

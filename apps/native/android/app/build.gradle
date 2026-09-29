@@ -2,9 +2,69 @@ apply plugin: 'com.android.application'
 
 def nativeAuthProperties = new Properties()
 def nativeAuthFile = rootProject.file('native-auth.properties')
-if (nativeAuthFile.exists()) nativeAuthFile.withInputStream { nativeAuthProperties.load(it) }
-def callbackHost = nativeAuthProperties.getProperty('authCallbackHost', 'native-auth-disabled.invalid')
-if (callbackHost == 'addi-gamma.vercel.app' || !(callbackHost ==~ /[a-zA-Z0-9.-]+/)) throw new GradleException('Dev callback host required')
+if (!nativeAuthFile.isFile()) throw new GradleException('Run Native configuration build before Gradle')
+nativeAuthFile.withInputStream { nativeAuthProperties.load(it) }
+def environments = new groovy.json.JsonSlurper().parse(rootProject.file('../native-environments.json'))
+def nativeStage = nativeAuthProperties.getProperty('nativeStage')
+if (!(nativeStage in ['development', 'production'])) throw new GradleException('Native stage missing')
+def selected = environments[nativeStage]
+def callbackHost = nativeAuthProperties.getProperty('authCallbackHost')
+def supabaseUrl = selected.supabaseUrl
+def nativeApiUrl = supabaseUrl + '/functions/v1/native-api'
+def nativePushUrl = supabaseUrl + '/functions/v1/native-push'
+if (nativeAuthProperties.getProperty('nativePackage') != selected.package
+    || nativeAuthProperties.getProperty('nativeSupabaseUrl') != supabaseUrl
+    || nativeAuthProperties.getProperty('nativeApiUrl') != nativeApiUrl
+    || nativeAuthProperties.getProperty('nativePushUrl') != nativePushUrl
+    || !(callbackHost ==~ /[a-zA-Z0-9.-]+/)
+    || (nativeStage == 'production' && callbackHost != new URL(selected.callback).host)
+    || (nativeStage == 'development' && callbackHost == new URL(environments.production.callback).host))
+    throw new GradleException('Native Android environment mismatch')
+def capacitorFile = file('src/main/assets/capacitor.config.json')
+if (!capacitorFile.isFile() || new groovy.json.JsonSlurper().parse(capacitorFile).appId != selected.package)
+    throw new GradleException('Capacitor appId does not match Android variant')
+
+def firebaseFile = nativeStage == 'production' ? file('src/release/google-services.json') : file('google-services.json')
+if (!firebaseFile.isFile()) throw new GradleException('Native Firebase Android configuration missing')
+def firebase = new groovy.json.JsonSlurper().parse(firebaseFile)
+def clients = firebase.client?.findAll { it.client_info?.android_client_info?.package_name == selected.package }
+if (firebase.project_info?.project_id != selected.firebaseProject || clients?.size() != 1
+    || !clients[0].client_info?.mobilesdk_app_id)
+    throw new GradleException('Native Firebase Android client mismatch')
+if (nativeStage == 'production') {
+    def devFile = file('google-services.json')
+    if (devFile.isFile()) {
+        def dev = new groovy.json.JsonSlurper().parse(devFile)
+        def devClient = dev.client?.find { it.client_info?.android_client_info?.package_name == environments.development.package }
+        if (clients[0].client_info.mobilesdk_app_id == devClient?.client_info?.mobilesdk_app_id)
+            throw new GradleException('Dev Firebase client selected by Production')
+    }
+    def links = new groovy.json.JsonSlurper().parse(rootProject.file('../../../public/.well-known/assetlinks.json'))
+    if (!links.any { it.target?.package_name == selected.package
+            && it.target?.sha256_cert_fingerprints?.contains(selected.playSigningSha256)
+            && it.relation?.contains('delegate_permission/common.handle_all_urls') })
+        throw new GradleException('Production Play App Link association missing')
+}
+def releaseVersionName = System.getenv('ADDI_NATIVE_RELEASE_VERSION_NAME')
+if (nativeStage == 'production' && !releaseVersionName) throw new GradleException('Release versionName proposal required')
+def uploadFilePath = System.getenv('ADDI_NATIVE_UPLOAD_KEYSTORE_PATH')
+def uploadKeyAlias = System.getenv('ADDI_NATIVE_UPLOAD_KEY_ALIAS')
+def releaseSigningReady = nativeStage == 'production' && uploadFilePath && uploadKeyAlias
+    && System.getenv('ADDI_NATIVE_UPLOAD_STORE_PASSWORD') && System.getenv('ADDI_NATIVE_UPLOAD_KEY_PASSWORD')
+if (nativeStage == 'production') {
+    if (!uploadFilePath || !uploadKeyAlias) throw new GradleException('Existing upload keystore path and alias required')
+    def store = java.security.KeyStore.getInstance('JKS')
+    def uploadFile = file(uploadFilePath)
+    if (!uploadFile.isFile()) throw new GradleException('Existing upload keystore missing')
+    // Certificate metadata is public; a null password does not expose the private key.
+    uploadFile.withInputStream { store.load(it, null) }
+    def certificate = store.getCertificate(uploadKeyAlias)
+    if (certificate == null) throw new GradleException('Upload signing alias missing')
+    def fingerprint = java.security.MessageDigest.getInstance('SHA-256').digest(certificate.encoded)
+        .collect { String.format('%02X', it & 0xff) }.join(':')
+    if (fingerprint != selected.uploadSigningSha256)
+        throw new GradleException('Upload certificate does not match Play upload identity')
+}
 
 android {
     namespace = "com.addi.app"
@@ -13,10 +73,16 @@ android {
         applicationId "com.addi.app"
         manifestPlaceholders = [nativeAuthHost: callbackHost]
         buildConfigField "String", "NATIVE_AUTH_HOST", "\"${callbackHost}\""
+        buildConfigField "String", "NATIVE_SUPABASE_URL", '"' + supabaseUrl + '"'
+        buildConfigField "String", "NATIVE_STAGE", '"' + nativeStage + '"'
+        buildConfigField "String", "NATIVE_API_URL", '"' + nativeApiUrl + '"'
+        buildConfigField "String", "NATIVE_PUSH_URL", '"' + nativePushUrl + '"'
+        resValue "string", "package_name", selected.package
+        resValue "string", "custom_url_scheme", selected.package
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 6
-        versionName "0.2.1-prototype"
+        versionCode nativeStage == 'production' ? 14 : 6
+        versionName nativeStage == 'production' ? releaseVersionName : "0.2.1-prototype"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -25,6 +91,16 @@ android {
         }
     }
     buildFeatures { buildConfig true }
+    signingConfigs {
+        production {
+            if (releaseSigningReady) {
+                storeFile file(uploadFilePath)
+                storePassword System.getenv('ADDI_NATIVE_UPLOAD_STORE_PASSWORD')
+                keyAlias uploadKeyAlias
+                keyPassword System.getenv('ADDI_NATIVE_UPLOAD_KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         debug {
             // Install beside the Play app; never replace com.addi.app.
@@ -34,6 +110,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (releaseSigningReady) signingConfig signingConfigs.production
         }
     }
 }
@@ -59,16 +136,21 @@ dependencies {
 
 apply from: 'capacitor.build.gradle'
 
-// Phase 1 cannot produce a release or Play bundle.
+// Only the selected Android variant is available.
 androidComponents {
+    beforeVariants(selector().withBuildType("debug")) { variant ->
+        variant.enable = nativeStage == 'development'
+    }
     beforeVariants(selector().withBuildType("release")) { variant ->
-        variant.enable = false
+        variant.enable = nativeStage == 'production'
     }
 }
 
-// Fail closed: this prototype accepts only the explicitly approved Dev Firebase app.
-def firebaseFile = file('google-services.json')
-if (!firebaseFile.exists()) throw new GradleException('Dev google-services.json required; see Phase 3 QA guide')
-def firebaseConfig = new groovy.json.JsonSlurper().parse(firebaseFile)
-if (firebaseConfig.project_info.project_id != 'addi-503b5' || firebaseConfig.client.any { it.client_info.android_client_info.package_name != 'com.addi.app.dev' }) throw new GradleException('Dev Firebase project/package required')
+// Configuration validation can compile release code without an artifact. Any release
+// package or bundle task requires the existing upload key credentials before execution.
+gradle.taskGraph.whenReady { graph ->
+    if (nativeStage == 'production' && !releaseSigningReady
+        && graph.allTasks.any { it.project == project && it.name ==~ /(?i)(assembleRelease|bundleRelease|packageRelease|signReleaseBundle)/ })
+        throw new GradleException('Release artifact requires verified upload signing credentials')
+}
 apply plugin: 'com.google.gms.google-services'

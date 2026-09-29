@@ -2,14 +2,13 @@ import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import {
-  DEV_SUPABASE,
   DISABLED,
   allowedRoute,
   sha256,
   type Preferences,
   type PreferenceKind,
 } from "../../../../lib/native-push/contracts";
-import { getNativeClient } from "../auth/client";
+import { getNativeClient, nativeConfig } from "../auth/client";
 import { getNativeAuthSnapshot, subscribeNativeAuth } from "../auth/runtime";
 import { pushBridge, waitForTokenDeletion, type PushState } from "./bridge";
 import { router } from "../platform/router";
@@ -56,7 +55,7 @@ async function post(path: string, body: unknown) {
   if (error || !data.session || data.session.user.id !== owner)
     throw new PushUnavailableError();
   const response = await fetch(
-    `${DEV_SUPABASE}/functions/v1/native-push/${path}`,
+    `${nativeConfig.nativePushUrl}/${path}`,
     {
       method: "POST",
       headers: {
@@ -234,6 +233,7 @@ export async function unsubscribeFromPush() {
   await pushBridge.deleteToken();
 }
 export async function sendNativeQa(kind: "daily" | "mood" | "visit_day_today") {
+  if (nativeConfig.stage !== "development") throw new PushUnavailableError();
   const s = await pushBridge.snapshot();
   return post("test", { ...identity(s), requestId: crypto.randomUUID(), kind });
 }
