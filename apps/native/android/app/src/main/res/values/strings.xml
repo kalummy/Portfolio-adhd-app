@@ -2,6 +2,4 @@
 <resources>
     <string name="app_name">아디</string>
     <string name="title_activity_main">아디</string>
-    <string name="package_name">com.addi.app.dev</string>
-    <string name="custom_url_scheme">com.addi.app.dev</string>
 </resources>

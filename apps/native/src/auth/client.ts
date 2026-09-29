@@ -1,13 +1,15 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
 import { readNativeConfig } from './config';
-import { nativeApiPath, NATIVE_API_PREFIX } from '../../../../lib/native-api/contracts';
 import { secureStorage } from './storage';
 export const nativeConfig = readNativeConfig(import.meta.env);
 let client: SupabaseClient | undefined;
 export function permittedNativeRequest(url: URL) {
-  return url.origin === nativeConfig?.url && !url.username && !url.password
-    && (url.pathname.startsWith('/auth/v1/') || url.pathname.startsWith('/rest/v1/') || (url.pathname.startsWith(NATIVE_API_PREFIX + '/') && nativeApiPath('/api/' + url.pathname.slice(NATIVE_API_PREFIX.length + 1))) || /^\/functions\/v1\/native-push\/(register|status|test|revoke|rotate)$/.test(url.pathname));
+  return url.origin === nativeConfig.url && !url.username && !url.password
+    && (url.pathname.startsWith('/auth/v1/') || url.pathname.startsWith('/rest/v1/')
+      || /^\/functions\/v1\/native-api\/(repository|account|moods\/analyze|medications\/(search|manual-match|\d{9}|image\/\d{9}))$/.test(url.pathname)
+      || (nativeConfig.stage === 'development' && url.pathname === '/functions/v1/native-push/test')
+      || /^\/functions\/v1\/native-push\/(register|status|revoke|rotate)$/.test(url.pathname));
 }
 export function getNativeClient(): SupabaseClient {
   if (!nativeConfig || Capacitor.getPlatform() !== 'android') throw new Error('native_auth_not_configured');

@@ -55,7 +55,7 @@ async function post(path: string, body: unknown) {
   if (error || !data.session || data.session.user.id !== owner)
     throw new PushUnavailableError();
   const response = await fetch(
-    `${nativeConfig?.url}/functions/v1/native-push/${path}`,
+    `${nativeConfig.nativePushUrl}/${path}`,
     {
       method: "POST",
       headers: {
@@ -233,6 +233,7 @@ export async function unsubscribeFromPush() {
   await pushBridge.deleteToken();
 }
 export async function sendNativeQa(kind: "daily" | "mood" | "visit_day_today") {
+  if (nativeConfig.stage !== "development") throw new PushUnavailableError();
   const s = await pushBridge.snapshot();
   return post("test", { ...identity(s), requestId: crypto.randomUUID(), kind });
 }
