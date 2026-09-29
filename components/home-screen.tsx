@@ -80,6 +80,7 @@ import type {
   VisitSchedule,
 } from "@/lib/types";
 import { resetDraft } from "@/lib/registration-session";
+import { readDateContext, withDateContext } from "@/lib/date-context";
 import { MobileShell } from "./mobile-shell";
 import { BottomNavigation } from "./bottom-navigation";
 import { NotificationBellButton } from "./notification-bell-button";
@@ -170,6 +171,8 @@ type HomeScreenProps = {
   initialToastId?: string;
   initialToastQueryKey?: "medicationToast" | "moodToast" | "visitToast" | "feedbackToast";
   enableLaunchSplash?: boolean;
+  /** Native supplies the user only after its existing server verification completes. */
+  initialAuthState?: AuthState;
 };
 
 export function HomeScreen({
@@ -185,6 +188,7 @@ export function HomeScreen({
   initialToastId,
   initialToastQueryKey,
   enableLaunchSplash = false,
+  initialAuthState,
 }: HomeScreenProps = {}) {
   const router = useRouter();
   const { bfcacheId } = router;
@@ -200,6 +204,8 @@ export function HomeScreen({
   const [selectedDateKey, setSelectedDateKey] = useState(
     initialDateKey ?? resolvedReferenceDateKey,
   );
+  const selectedDateRef = useRef(selectedDateKey);
+  selectedDateRef.current = selectedDateKey;
   const [pendingDateKey, setPendingDateKey] = useState(selectedDateKey);
   const [visibleMonthKey, setVisibleMonthKey] = useState(
     startOfMonthDateKey(selectedDateKey),
@@ -230,9 +236,14 @@ export function HomeScreen({
   const [guestDatasetSyncStatus, setGuestDatasetSyncStatus] = useState<
     "idle" | "running" | "succeeded" | "failed"
   >("idle");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [greeting, setGreeting] = useState(previewGreeting ?? "로그인이 필요해요");
-  const [profileId, setProfileId] = useState(DEFAULT_ADDI_PROFILE_ID);
+  // A pending auth read is distinct from a verified signed-out session.
+  const [authState, setAuthState] = useState<AuthState | null>(
+    initialAuthState ?? (previewData ? { isAuthenticated: false, user: null } : null),
+  );
+  const greeting = previewGreeting ?? (authState
+    ? authState.isAuthenticated ? accountGreeting(authState.user) : "로그인이 필요해요"
+    : "");
+  const profileId = authState ? getAddiProfileId(authState.user) : DEFAULT_ADDI_PROFILE_ID;
   const [activeSegment, setActiveSegment] = useState<HomeSegment>("medication");
   const [launchSplashRequired, setLaunchSplashRequired] = useState(enableLaunchSplash);
   const [splashMinimumElapsed, setSplashMinimumElapsed] = useState(!enableLaunchSplash);
@@ -299,9 +310,14 @@ export function HomeScreen({
 
     setLoading(true);
     try {
+      const authRead = getAuthState().then((nextAuthState) => {
+        if (isCurrentLoad()) setAuthState(nextAuthState);
+      }).catch(() => {
+        // An unavailable read does not turn a verified member into a guest.
+      });
       const repositories = await getDataRepositories();
-      const [authState, savedMedications, savedIntakes, savedMoods, savedVisit] = await Promise.all([
-        getAuthState().catch(() => ({ isAuthenticated: false, user: null })),
+      const [, savedMedications, savedIntakes, savedMoods, savedVisit] = await Promise.all([
+        authRead,
         identifyHomeDataFailure("medications_failed", repositories.medications.listAll()),
         identifyHomeDataFailure("intake_failed", repositories.medicationIntakes.listAll()),
         identifyHomeDataFailure("moods_failed", repositories.moods.listAll()),
@@ -310,9 +326,6 @@ export function HomeScreen({
       if (!isCurrentLoad()) return;
       setSyncError("");
       setHomeDataFailureSource(null);
-      setIsAuthenticated(authState.isAuthenticated);
-      setGreeting(authState.isAuthenticated ? accountGreeting(authState.user) : "로그인이 필요해요");
-      setProfileId(getAddiProfileId(authState.user));
       setMedications(savedMedications);
       void enrichOfficialMedications(savedMedications).then((enrichedMedications) => {
         if (!isCurrentLoad()) return;
@@ -395,17 +408,22 @@ export function HomeScreen({
     setLaunchSplashRequired(false);
   }, [enableLaunchSplash, launchSplashRequired, loading, splashMinimumElapsed]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (previewData) return;
-    const url = new URL(window.location.href);
-    if (!url.searchParams.has("date")) return;
-    url.searchParams.delete("date");
-    window.history.replaceState(
-      window.history.state,
-      "",
-      `${url.pathname}${url.search}${url.hash}`,
-    );
-  }, [previewData]);
+    const restoreDateContext = () => {
+      if (window.location.pathname !== "/") return;
+      const date = readDateContext(window.location.search) ?? selectedDateRef.current;
+      selectedDateRef.current = date;
+      setSelectedDateKey(date);
+      // Pin even today's implicit context in this history entry before leaving Home.
+      // Preserve Next.js/Capacitor history metadata and unrelated query parameters.
+      const { pathname, search, hash } = window.location;
+      window.history.replaceState(window.history.state, "", withDateContext(`${pathname}${search}${hash}`, date));
+    };
+    restoreDateContext();
+    window.addEventListener("popstate", restoreDateContext);
+    return () => window.removeEventListener("popstate", restoreDateContext);
+  }, [bfcacheId, initialDateKey, previewData]);
 
   useEffect(() => {
     if (!initialToastQueryKey) return;
@@ -415,6 +433,7 @@ export function HomeScreen({
       ? initialToastId
       : null;
 
+    if (!currentToastId && initialToast) setToast(initialToast);
     if (currentToastId && initialToast) {
       const consumptionKey = `${CONSUMED_TOAST_SESSION_PREFIX}${currentToastId}`;
       let consumed = false;
@@ -437,7 +456,7 @@ export function HomeScreen({
     url.searchParams.delete(initialToastQueryKey);
     const nextUrl = `${url.pathname}${url.search}${url.hash}`;
     window.history.replaceState(window.history.state, "", nextUrl);
-  }, [initialToast, initialToastId, initialToastQueryKey]);
+  }, [bfcacheId, initialToast, initialToastId, initialToastQueryKey]);
 
   const selectedIntakeByMedication = useMemo(() => {
     return new Map(
@@ -731,7 +750,7 @@ export function HomeScreen({
 
       <Link
         className="appointment-row"
-        href={visitSchedule ? "/visits" : "/visits/new"}
+        href={withDateContext(visitSchedule ? "/visits" : "/visits/new", selectedDateKey)}
         aria-label={visitSchedule ? "내원일정 확인하기" : "다음 내원일 추가하기"}
         onClick={() => {
           if (!visitSchedule) startVisitAddAttempt();
@@ -974,6 +993,7 @@ export function HomeScreen({
       {toast ? (
         <Toast
           message={toast}
+          tone={toast === "복용중인 약을 삭제했어요." ? "warning" : "success"}
           onDismiss={() => setToast("")}
           showIcon
         />

@@ -413,6 +413,10 @@ assert.ok(gateIndex >= 0);
 assert.ok(gateIndex < routeSource.indexOf("createSupabaseAdminClient()"));
 assert.ok(gateIndex < routeSource.indexOf("assertWebPushConfigured()"));
 assert.match(routeSource, /status: "disabled",[\s\S]*claimed: 0,[\s\S]*sent: 0/);
+assert.match(routeSource, /NATIVE_REMINDER_TRANSPORT_ENABLED === "true"/);
+assert.match(routeSource, /runNativeAwareReminders\(/);
+assert.match(routeSource, /createDevReminderTransports\(/);
+assert.match(routeSource, /sendPush: sendWebPush/);
 
 const pushServerSource = read("lib/push/server.ts");
 assert.match(pushServerSource, /WEB_PUSH_TIMEOUT_MS = 5_000/);

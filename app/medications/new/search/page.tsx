@@ -69,7 +69,7 @@ export default function MedicationSearchPage() {
   const router = useRouter();
   const [returnHref, setReturnHref] = useState("/");
   const [query, setQuery] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [, setSubmitted] = useState(false);
   const [selectedMedicationKey, setSelectedMedicationKey] = useState<string>();
   const [activatingMedicationKey, setActivatingMedicationKey] = useState<string>();
   const [results, setResults] = useState<MedicationCandidate[]>([]);
@@ -197,7 +197,7 @@ export default function MedicationSearchPage() {
     }, SELECTION_FEEDBACK_MS);
   }
 
-  const showNoResults = submitted
+  const showNoResults = Boolean(query.trim())
     && !loading
     && resolvedQuery === query.trim()
     && results.length === 0;

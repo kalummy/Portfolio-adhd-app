@@ -3,6 +3,7 @@ import { Capacitor, SystemBars, SystemBarsStyle } from '@capacitor/core';
 import { Keyboard } from '@capacitor/keyboard';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { hasNativeHistory, router } from './router';
+import { dateContextHref } from '@/lib/date-context';
 
 let keyboardVisible = false;
 /** UI-only diagnostics: no input values, health records, identifiers or transport. */
@@ -28,7 +29,7 @@ export async function handleNativeBack() {
   const back = document.querySelector<HTMLButtonElement>('.flow-header button[aria-label="이전 화면"]');
   if (back) { back.click(); shellState.lastBack = 'screen'; return; }
   if (hasNativeHistory()) { router.back(); shellState.lastBack = 'history'; return; }
-  if (location.pathname !== '/') { router.replace('/'); shellState.lastBack = 'home'; return; }
+  if (location.pathname !== '/') { router.replace(dateContextHref('/')); shellState.lastBack = 'home'; return; }
   shellState.lastBack = 'exit';
   if (Capacitor.isNativePlatform()) await App.exitApp();
 }

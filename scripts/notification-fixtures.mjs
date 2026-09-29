@@ -92,8 +92,8 @@ assert.doesNotMatch(bell, /Notification\.permission|requestPermission|PushManage
 assert.match(home, /<NotificationBellButton/);
 assert.match(home, /<BottomNavigation activeTab="home"/);
 assert.match(bottomNavigation, /<Link[\s\S]*href="\/moods"/);
-assert.match(bottomNavigation, /onClick=\{scheduleTabHaptic\}/);
-assert.match(bottomNavigation, /window\.setTimeout\(\(\) => \{[\s\S]*navigator\.vibrate\(8\)/);
+assert.match(bottomNavigation, /navigationHaptic\(activeTab ===/);
+assert.match(readFileSync(new URL("../lib/navigation-haptic.ts", import.meta.url), "utf8"), /window\.setTimeout\(\(\) => \{[\s\S]*navigator\.vibrate\(8\)/);
 assert.doesNotMatch(bottomNavigation, /router\.push|router\.prefetch|bottom-navigation-ios-haptic|switch: ""/);
 assert.doesNotMatch(styles, /\.bottom-navigation-ios-haptic/);
 

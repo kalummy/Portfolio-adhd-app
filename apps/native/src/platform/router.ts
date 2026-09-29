@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { dateContextHref } from '@/lib/date-context';
 
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach(listener => listener());
@@ -24,7 +25,7 @@ export const router = {
   bfcacheId: null,
   push: (href: string) => navigate(href),
   replace: (href: string) => navigate(href, true),
-  back: () => depth > 0 ? history.back() : navigate('/', true),
+  back: () => depth > 0 ? history.back() : navigate(dateContextHref('/'), true),
   refresh: notify,
   prefetch: () => Promise.resolve(),
 };

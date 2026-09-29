@@ -2,14 +2,13 @@ import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import {
-  DEV_SUPABASE,
   DISABLED,
   allowedRoute,
   sha256,
   type Preferences,
   type PreferenceKind,
 } from "../../../../lib/native-push/contracts";
-import { getNativeClient } from "../auth/client";
+import { getNativeClient, nativeConfig } from "../auth/client";
 import { getNativeAuthSnapshot, subscribeNativeAuth } from "../auth/runtime";
 import { pushBridge, waitForTokenDeletion, type PushState } from "./bridge";
 import { router } from "../platform/router";
@@ -56,7 +55,7 @@ async function post(path: string, body: unknown) {
   if (error || !data.session || data.session.user.id !== owner)
     throw new PushUnavailableError();
   const response = await fetch(
-    `${DEV_SUPABASE}/functions/v1/native-push/${path}`,
+    `${nativeConfig?.url}/functions/v1/native-push/${path}`,
     {
       method: "POST",
       headers: {

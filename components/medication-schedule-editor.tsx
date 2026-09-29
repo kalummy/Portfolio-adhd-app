@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { createClientId } from "@/lib/client-id";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
@@ -10,6 +11,7 @@ import { enrichOfficialMedications } from "@/lib/medication-enrichment";
 import { resolveMedicationEditorInitialTime } from "@/lib/medication-editor-initial-time";
 import {
   digitsOnly,
+  medicationTimeInputError,
   normalizeHourInput,
   toRecordedAtIso,
   type MedicationTimeFields,
@@ -25,15 +27,15 @@ const schedules: Array<{ value: MedicationSchedule; label: string }> = [
 ];
 
 function keepInputVisible(input: HTMLInputElement) {
-  window.setTimeout(() => {
+  window.requestAnimationFrame(() => {
     const viewport = window.visualViewport;
     const viewportBottom = viewport
       ? viewport.offsetTop + viewport.height
       : window.innerHeight;
-    const inputBottom = input.getBoundingClientRect().bottom;
-    const overlap = inputBottom + 48 - viewportBottom;
-    if (overlap > 0) window.scrollBy({ top: overlap, behavior: "smooth" });
-  }, 250);
+    const fields = input.closest(".medication-time-fields") ?? input;
+    const overlap = fields.getBoundingClientRect().bottom + 48 - viewportBottom;
+    if (overlap > 0) window.scrollBy({ top: overlap, behavior: "instant" });
+  });
 }
 
 function isSameRecordedAtInstant(left?: string, right?: string) {
@@ -61,9 +63,33 @@ export function MedicationScheduleEditor({
   const [hour, setHour] = useState("");
   const [minute, setMinute] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [timeInputError, setTimeInputError] = useState("");
+  const [schedule, setSchedule] = useState<MedicationSchedule>("daily");
+  const savingRef = useRef(false);
   const originalTime = useRef<MedicationTimeFields | null>(null);
   const replaceHourOnNextInput = useRef(false);
   const replaceMinuteOnNextInput = useRef(false);
+
+  useEffect(() => {
+    const adjust = () => {
+      const input = document.activeElement;
+      if (input instanceof HTMLInputElement && input.closest(".medication-time-picker")) keepInputVisible(input);
+    };
+    window.visualViewport?.addEventListener("resize", adjust);
+    window.addEventListener("resize", adjust);
+    // The native keyboard event can follow the viewport resize and hide the fixed CTA.
+    const keyboardObserver = new MutationObserver(adjust);
+    keyboardObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-keyboard"],
+    });
+    return () => {
+      keyboardObserver.disconnect();
+      window.visualViewport?.removeEventListener("resize", adjust);
+      window.removeEventListener("resize", adjust);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,11 +130,12 @@ export function MedicationScheduleEditor({
         setHour(initialTime.hour);
         setMinute(initialTime.minute);
         setMedication(enrichedMedication ?? savedMedication);
-        setIntake(matchingIntakes[0]);
+        setIntake(matchingIntakes[0] ?? null);
+        setSchedule(savedMedication.schedule);
         originalTime.current = initialTime;
       })
       .catch(() => {
-        // Figma does not define a loading failure state for this screen.
+        if (!cancelled) setError("복용 정보를 불러오지 못했어요. 다시 시도해주세요.");
       });
     return () => {
       cancelled = true;
@@ -121,7 +148,7 @@ export function MedicationScheduleEditor({
       : undefined,
     [hour, minute, period, targetDateKey],
   );
-  const canComplete = Boolean(intake) && recordedAt !== undefined && !saving;
+  const canComplete = Boolean(intake) && recordedAt !== undefined && !timeInputError && !saving;
 
   function valueAfterFirstFocusedInput(
     value: string,
@@ -146,6 +173,12 @@ export function MedicationScheduleEditor({
       ? valueAfterFirstFocusedInput(value, hour, insertedText)
       : value;
     replaceHourOnNextInput.current = false;
+    const invalid = medicationTimeInputError("hour", nextValue);
+    if (invalid) {
+      setTimeInputError(invalid);
+      return;
+    }
+    setTimeInputError("");
     const normalized = normalizeHourInput(nextValue, period);
     setPeriod(normalized.period);
     setHour(normalized.hour);
@@ -156,47 +189,70 @@ export function MedicationScheduleEditor({
       ? valueAfterFirstFocusedInput(value, minute, insertedText)
       : value;
     replaceMinuteOnNextInput.current = false;
+    const invalid = medicationTimeInputError("minute", nextValue);
+    if (invalid) {
+      setTimeInputError(invalid);
+      return;
+    }
+    setTimeInputError("");
     setMinute(digitsOnly(nextValue));
   }
 
   async function complete() {
-    if (!medication || !intake || !targetDateKey || recordedAt === undefined || saving) return;
+    if (savingRef.current) return;
+    if (!medication || !intake || !targetDateKey || recordedAt === undefined || timeInputError || saving) return;
 
     const timeChanged = originalTime.current?.period !== period
       || originalTime.current?.hour !== hour
       || originalTime.current?.minute !== minute;
-    if (!timeChanged) {
+    const scheduleChanged = medication.schedule !== schedule;
+    if (!timeChanged && !scheduleChanged) {
       router.replace(homeHref);
       return;
     }
 
+    savingRef.current = true;
     setSaving(true);
+    setError("");
     try {
-      const { medicationIntakes: repository } = await getDataRepositories();
-      const savedRecord = await repository.updateRecordedAt(
-        medication.id,
-        targetDateKey,
-        recordedAt,
-      );
-      const persistedMatches = (await repository.listByDate(targetDateKey)).filter((record) => (
-        record.medicationId === medication.id
-        && record.date === targetDateKey
-        && record.taken === true
-      ));
-      const persistedRecord = persistedMatches[0];
-      if (
-        persistedMatches.length !== 1
-        || savedRecord.id !== intake.id
-        || !isSameRecordedAtInstant(savedRecord.recordedAt, recordedAt)
-        || persistedRecord?.id !== intake.id
-        || !isSameRecordedAtInstant(persistedRecord?.recordedAt, recordedAt)
-      ) throw new Error("복용 완료 시간 저장 결과를 확인하지 못했어요.");
+      const repositories = await getDataRepositories();
+      if (scheduleChanged) {
+        // Figma 273:8706: schedule choice is independent of the recorded intake time.
+        const saved = await repositories.medications.updateSchedule(medication.id, { schedule });
+        const [persisted] = await repositories.medications.getByIds([medication.id]);
+        if ([saved, persisted].some(value => !value || value.id !== medication.id || value.schedule !== schedule)) {
+          throw new Error("medication_schedule_unconfirmed");
+        }
+      }
+      if (timeChanged) {
+        const repository = repositories.medicationIntakes;
+        const savedRecord = await repository.updateRecordedAt(
+          medication.id,
+          targetDateKey,
+          recordedAt,
+        );
+        const persistedMatches = (await repository.listByDate(targetDateKey)).filter((record) => (
+          record.medicationId === medication.id
+          && record.date === targetDateKey
+          && record.taken === true
+        ));
+        const persistedRecord = persistedMatches[0];
+        if (
+          persistedMatches.length !== 1
+          || savedRecord.id !== intake.id
+          || !isSameRecordedAtInstant(savedRecord.recordedAt, recordedAt)
+          || persistedRecord?.id !== intake.id
+          || !isSameRecordedAtInstant(persistedRecord?.recordedAt, recordedAt)
+        ) throw new Error("복용 완료 시간 저장 결과를 확인하지 못했어요.");
+      }
       const destination = new URL(homeHref, window.location.origin);
-      destination.searchParams.set("medicationToast", "time-updated");
+      destination.searchParams.set("medicationToast", timeChanged ? "time-updated" : "schedule-updated");
+      destination.searchParams.set("toastId", createClientId());
       router.replace(`${destination.pathname}${destination.search}${destination.hash}`);
     } catch {
-      // Figma does not define a save failure state for this screen.
+      setError("저장하지 못했어요. 잠시 후 다시 시도해주세요.");
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
@@ -204,7 +260,8 @@ export function MedicationScheduleEditor({
   if (!medication || !intake) {
     return (
       <MobileShell className="flow-screen medication-schedule-edit-screen">
-        {null}
+        <FlowHeader title="복용 정보" fallbackHref={returnHref} />
+        {error ? <p className="save-error" role="alert">{error}</p> : null}
       </MobileShell>
     );
   }
@@ -222,13 +279,14 @@ export function MedicationScheduleEditor({
               <button
                 type="button"
                 role="radio"
-                aria-checked={medication.schedule === option.value}
-                className={`schedule-option ${medication.schedule === option.value ? "selected" : ""}`}
-                disabled
+                aria-checked={schedule === option.value}
+                className={`schedule-option ${schedule === option.value ? "selected" : ""}`}
+                disabled={saving}
+                onClick={() => setSchedule(option.value)}
                 key={option.value}
               >
                 <span className="radio-mark" aria-hidden="true">
-                  {medication.schedule === option.value ? (
+                  {schedule === option.value ? (
                     <Image src="/icons/radio-selected.svg" alt="" width={20} height={20} />
                   ) : (
                     <>
@@ -278,6 +336,8 @@ export function MedicationScheduleEditor({
               <label className="medication-time-input">
                 <input
                   aria-label="시"
+                  aria-invalid={Boolean(timeInputError)}
+                  aria-describedby={timeInputError ? "medication-time-input-error" : undefined}
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={hour}
@@ -299,6 +359,8 @@ export function MedicationScheduleEditor({
               <label className="medication-time-input">
                 <input
                   aria-label="분"
+                  aria-invalid={Boolean(timeInputError)}
+                  aria-describedby={timeInputError ? "medication-time-input-error" : undefined}
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={minute}
@@ -319,10 +381,12 @@ export function MedicationScheduleEditor({
               <span className="medication-time-unit">분</span>
             </div>
           </div>
+          {timeInputError ? <p id="medication-time-input-error" className="save-error" role="alert">{timeInputError}</p> : null}
         </section>
       </section>
 
       <BottomActions>
+        {error ? <p className="save-error" role="alert">{error}</p> : null}
         <PrimaryButton
           type="button"
           variant="primary"

@@ -124,6 +124,33 @@ assert.deepEqual(
   "PROJECTION CASE 6: current date does not expose inactive A",
 );
 
+const registeredToday = {
+  ...medication("new", true),
+  createdAt: "2026-08-23T15:30:00.000Z", // 2026-08-24 00:30 KST
+};
+for (const selectedDate of ["2026-08-22", "2026-08-23"]) {
+  assert.deepEqual(projectMedications({
+    medications: [registeredToday], intakeRecords: [], selectedDate,
+  }), [], `M-03: no pending medication before the KST registration day (${selectedDate})`);
+}
+for (const selectedDate of ["2026-08-24", "2026-08-25"]) {
+  assert.deepEqual(projectMedications({
+    medications: [registeredToday], intakeRecords: [], selectedDate,
+  }).map(({ id }) => id), ["new"],
+  `M-03: show medication on and after registration (${selectedDate})`);
+}
+assert.deepEqual(projectMedications({
+  medications: [registeredToday],
+  intakeRecords: [intakeFor("new", "2026-08-23")],
+  selectedDate: "2026-08-23",
+}).map(({ id }) => id), ["new"],
+"M-03: preserve an actual earlier intake even when created_at is later");
+assert.deepEqual(projectMedications({
+  medications: [registeredToday],
+  intakeRecords: [intake("new", { date: "2026-08-23", taken: false })],
+  selectedDate: "2026-08-23",
+}), [], "M-03: never project an untaken historical placeholder");
+
 assert.equal(
   getWeekProgress(date, [intake("med-a")], [mood]),
   "complete",

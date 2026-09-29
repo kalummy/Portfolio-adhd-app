@@ -658,7 +658,7 @@ try {
   assert.match(homeSource, /onSelect=\{handleCalendarSelect\}/);
   console.log("PASS home date picker action-only wiring and unchanged-date confirmation suppression");
 
-  const medicationListSource = await readFile(new URL("../app/medications/page.tsx", import.meta.url), "utf8");
+  const medicationListSource = await readFile(new URL("../components/medication-list-screen.tsx", import.meta.url), "utf8");
   const medicationEditorSource = await readFile(new URL("../components/medication-schedule-editor.tsx", import.meta.url), "utf8");
   const analyticsEventsSource = await readFile(new URL("../lib/analytics/events.ts", import.meta.url), "utf8");
   const screenTrackerSource = await readFile(new URL("../components/analytics-screen-tracker.tsx", import.meta.url), "utf8");
@@ -689,7 +689,7 @@ try {
   );
   assert.equal((medicationListSource.match(/trackMedicationDeleteConfirmed\(/g) ?? []).length, 1);
 
-  const noChangeReturnIndex = medicationEditorSource.indexOf("if (!timeChanged)");
+  const noChangeReturnIndex = medicationEditorSource.indexOf("if (!timeChanged && !scheduleChanged)");
   const updateIndex = medicationEditorSource.indexOf("await repository.updateRecordedAt");
   const rereadIndex = medicationEditorSource.indexOf("await repository.listByDate(targetDateKey)");
   const verificationIndex = medicationEditorSource.indexOf("persistedMatches.length !== 1");

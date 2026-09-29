@@ -1,5 +1,7 @@
 "use client";
 
+import { navigateMoodHome } from "@/lib/mood-navigation";
+
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BottomActions, FlowHeader, PrimaryButton } from "@/components/flow-ui";
@@ -139,11 +141,17 @@ function normalizeRestoredAnswers(answers: MoodAnswerDraft[]) {
 
 export function MoodQuestionFlow({
   targetDateKey,
+  analysisRecovery = false,
+  draftStorage,
 }: {
   targetDateKey: string;
+  /** Opt-in for the Native API adapter; web keeps its existing behavior. */
+  analysisRecovery?: boolean;
+  draftStorage?: Storage;
   lottieAvailability: { complete: boolean };
 }) {
   const restoredRequestStarted = useRef(false);
+  const analysisRequestPending = useRef(false);
   const completionHandled = useRef(false);
   const saveInFlight = useRef(false);
   const saveStage = useRef<MoodSaveStage | null>(null);
@@ -176,7 +184,7 @@ export function MoodQuestionFlow({
     : null;
 
   const persistDraft = useCallback((next: DraftUpdate = {}) => {
-    writeMoodDraft(window.sessionStorage, targetDateKey, {
+    writeMoodDraft(draftStorage ?? window.sessionStorage, targetDateKey, {
       moodAttemptId: moodAttempt.current?.id,
       phase: next.phase ?? phase,
       step: next.step ?? step,
@@ -187,19 +195,19 @@ export function MoodQuestionFlow({
       analysis: next.analysis ?? analysis,
       analysisFailed: next.analysisFailed ?? analysisFailed,
     });
-  }, [analysis, analysisFailed, answers, catId, phase, recordedAt, step, stepOneKind, targetDateKey]);
+  }, [analysis, analysisFailed, answers, catId, phase, recordedAt, step, stepOneKind, targetDateKey, draftStorage]);
 
   useEffect(() => {
     void (async () => {
       const repositories = await getDataRepositories();
       if (await repositories.moods.findByDate(targetDateKey)) {
-        window.location.replace(homeHref);
+        navigateMoodHome(homeHref, true);
         return;
       }
 
       const intakes = await repositories.medicationIntakes.listByDate(targetDateKey);
       const intakeIds = intakes.map((item) => item.medicationId);
-      const draft = readMoodDraft(window.sessionStorage, targetDateKey);
+      const draft = readMoodDraft(draftStorage ?? window.sessionStorage, targetDateKey);
       const kind = draft?.stepOneKind ?? "medication_effect";
 
       setIntakeMedicationIds(intakeIds);
@@ -247,8 +255,8 @@ export function MoodQuestionFlow({
       }, "");
       setReady(true);
       moodAttempt.current = ensureMoodAttempt("home", targetDateKey, draft?.moodAttemptId, repositories.moods.storageBackend);
-    })().catch(() => window.location.replace(homeHref));
-  }, [homeHref, targetDateKey]);
+    })().catch(() => navigateMoodHome(homeHref, true));
+  }, [homeHref, targetDateKey, draftStorage]);
 
   useEffect(() => {
     if (ready) persistDraft();
@@ -280,7 +288,11 @@ export function MoodQuestionFlow({
     timestamp = recordedAt,
     reward = catId,
   ) => {
-    if (!timestamp) return;
+    if (!timestamp || (analysisRecovery && analysisRequestPending.current)) return;
+    if (analysisRecovery) {
+      analysisRequestPending.current = true;
+      restoredRequestStarted.current = true;
+    }
     setAnalysisFailed(false);
     setPhase("summarizing");
     persistDraft({
@@ -338,8 +350,10 @@ export function MoodQuestionFlow({
         recordedAt: timestamp,
         analysisFailed: true,
       });
+    } finally {
+      analysisRequestPending.current = false;
     }
-  }, [answers, catId, intakeMedicationIds, persistDraft, recordedAt, stepOneKind, targetDateKey]);
+  }, [analysisRecovery, answers, catId, intakeMedicationIds, persistDraft, recordedAt, stepOneKind, targetDateKey]);
 
   useEffect(() => {
     if (!ready || phase !== "summarizing" || analysis || restoredRequestStarted.current) return;
@@ -410,13 +424,13 @@ export function MoodQuestionFlow({
 
   function goBack() {
     if (step > 0) window.history.back();
-    else window.location.assign(homeHref);
+    else navigateMoodHome(homeHref);
   }
 
   function discardDraftAndGoHome() {
-    clearMoodDraft(window.sessionStorage, targetDateKey);
+    clearMoodDraft(draftStorage ?? window.sessionStorage, targetDateKey);
     endMoodAttempt(moodAttempt.current);
-    window.location.assign(homeHref);
+    navigateMoodHome(homeHref);
   }
 
   function goToNextStep() {
@@ -473,16 +487,16 @@ export function MoodQuestionFlow({
         classifyMoodSaveFailure(error ?? new DuplicateMoodRecordError(), storageBackend),
         storageBackend,
       );
-      window.location.replace(homeHref);
+      navigateMoodHome(homeHref, true);
       return;
     }
 
-    clearMoodDraft(window.sessionStorage, targetDateKey);
+    clearMoodDraft(draftStorage ?? window.sessionStorage, targetDateKey);
     void trackMoodSaved(attempt, storageBackend);
     const destination = new URL(homeHref, window.location.origin);
     destination.searchParams.set("moodToast", "saved");
     destination.searchParams.set("toastId", createClientId());
-    window.location.assign(`${destination.pathname}${destination.search}`);
+    navigateMoodHome(`${destination.pathname}${destination.search}`);
   }
 
   async function save() {
@@ -561,6 +575,21 @@ export function MoodQuestionFlow({
     return (
       <MobileShell className="flow-screen mood-question-screen" aria-busy="true">
         <span className="visually-hidden">감정 기록 확인 중</span>
+      </MobileShell>
+    );
+  }
+
+  if (phase === "summarizing" && analysisRecovery && analysisFailed) {
+    return (
+      <MobileShell className="flow-screen mood-question-screen">
+        <FlowHeader title="감정 기록하기" onBack={() => setPhase("questions")} />
+        <section className="mood-question-heading" role="alert">
+          <h1>분석을 완료하지 못했어요</h1>
+          <p>선택한 기록은 유지돼요. 잠시 후 다시 시도해주세요.</p>
+        </section>
+        <BottomActions>
+          <PrimaryButton type="button" onClick={() => void requestAnalysis()}>다시 시도</PrimaryButton>
+        </BottomActions>
       </MobileShell>
     );
   }

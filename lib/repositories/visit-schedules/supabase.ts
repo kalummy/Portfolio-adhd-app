@@ -11,8 +11,9 @@ const VISIT_COLUMNS = "user_id,visit_id,visit_date,created_at,updated_at";
 
 export function createSupabaseVisitScheduleRepository(
   userId: string,
+  client?: ReturnType<typeof createBrowserSupabaseClient>,
 ): VisitScheduleRepository {
-  const supabase = createBrowserSupabaseClient();
+  const supabase = client ?? createBrowserSupabaseClient();
 
   async function getUpcoming() {
     const { data, error } = await supabase

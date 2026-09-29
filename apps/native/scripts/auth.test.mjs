@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { NativeAuthFlow, ATTEMPT_KEY, ATTEMPT_TTL, callbackCode } from '../src/auth/flow.ts';
-import { validateCallbackBase, readNativeConfig, DEV_SUPABASE_URL } from '../src/auth/config.ts';
+import { validateCallbackBase, readNativeConfig } from '../src/auth/config.ts';
+const DEV_SUPABASE_URL = 'https://addi-dev-fixture.supabase.co';
 const callback = 'https://addi-auth-qa.example.com/auth/native/callback';
 function setup() {
   const memory = new Map(); let now = 1_000_000, exchanges = 0, clears = 0, opened;
@@ -65,8 +66,19 @@ test('secure storage failure never opens browser',async()=>{
 });
 test('Production target and callback are rejected by build config',()=>{
   assert.throws(()=>validateCallbackBase('https://addi-gamma.vercel.app/auth/native/callback'));
-  assert.throws(()=>readNativeConfig({VITE_NATIVE_SUPABASE_URL:'https://production.supabase.co',VITE_NATIVE_SUPABASE_PUBLISHABLE_KEY:'sb_publishable_fixture',VITE_NATIVE_AUTH_CALLBACK:callback}));
+  assert.throws(()=>readNativeConfig({VITE_NATIVE_SUPABASE_URL:'https://joffvlsyxivveqycjrio.supabase.co',VITE_NATIVE_SUPABASE_PUBLISHABLE_KEY:'sb_publishable_fixture',VITE_NATIVE_AUTH_CALLBACK:callback}));
   assert.equal(readNativeConfig({}),null);
+});
+test('Production Native Auth selects only the Production project and exact App Link',()=>{
+  const production='https://joffvlsyxivveqycjrio.supabase.co';
+  const prodCallback='https://addi-gamma.vercel.app/auth/native/callback';
+  const env={VITE_NATIVE_STAGE:'production',VITE_NATIVE_SUPABASE_URL:production,VITE_NATIVE_SUPABASE_PUBLISHABLE_KEY:'sb_publishable_fixture',VITE_NATIVE_AUTH_CALLBACK:prodCallback};
+  const config=readNativeConfig(env);
+  assert.equal(config.stage,'production'); assert.equal(config.url,production);
+  assert.equal(config.callback,prodCallback); assert.notEqual(config.storageKey,'addi-native-dev-auth');
+  assert.throws(()=>readNativeConfig({...env,VITE_NATIVE_SUPABASE_URL:DEV_SUPABASE_URL}));
+  assert.throws(()=>readNativeConfig({...env,VITE_NATIVE_AUTH_CALLBACK:callback}));
+  assert.throws(()=>readNativeConfig({...env,VITE_NATIVE_STAGE:'development'}));
 });
 test('real Supabase SDK: S256 verifier generated here, persisted, flow-matched exchange and refresh',async()=>{
   const memory=new Map(); const requests=[];

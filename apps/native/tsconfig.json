@@ -8,6 +8,7 @@
     ],
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "strict": true,
     "noEmit": true,
@@ -33,7 +34,9 @@
       "@/lib/auth/client": [
         "./src/adapters/auth.ts"
       ],
-      "@/lib/push/preferences": ["./src/adapters/push-preferences.ts"],
+      "@/lib/push/preferences": [
+        "./src/adapters/push-preferences.ts"
+      ],
       "@/lib/push/client": [
         "./src/adapters/push.ts"
       ],
@@ -42,9 +45,6 @@
       ],
       "@/lib/analytics/events": [
         "./src/adapters/analytics.ts"
-      ],
-      "@/lib/medication-enrichment": [
-        "./src/adapters/enrichment.ts"
       ],
       "@/lib/indexed-db": [
         "./src/adapters/legacy-storage.ts"
@@ -60,6 +60,18 @@
       ],
       "@/lib/supabase/client": [
         "./src/auth/client.ts"
+      ],
+      "@/lib/account-deletion-local": [
+        "./src/adapters/account-deletion.ts"
+      ],
+      "@/lib/analytics/use-medication-registration-step": [
+        "./src/adapters/registration-analytics.ts"
+      ],
+      "@/lib/supabase/config": [
+        "./src/adapters/supabase-config.ts"
+      ],
+      "@/lib/analytics/mixpanel": [
+        "./src/adapters/analytics-transport.ts"
       ]
     }
   },
