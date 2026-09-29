@@ -225,7 +225,7 @@ test("Native-only candidate runner claims same policy and isolates target result
             ],
           },
         };
-      return { data: true };
+      return { data: name === "finalize_reminder_dispatch_v2" ? "sent" : true };
     },
   };
   const result = await runNativeAwareReminders(
@@ -253,4 +253,74 @@ test("Native-only candidate runner claims same policy and isolates target result
     2,
   );
   assert.equal(calls.at(-1).name, "finalize_reminder_dispatch_v2");
+});
+
+function schedulerFixture(kind, targets) {
+  const calls = [];
+  const row = {
+    user_id: "fixture-owner",
+    reminder_date: "2026-09-15",
+    reminder_slot: kind === "mood" ? "mood_1500"
+      : kind === "visit_day_today" ? "visit_day_today_0800" : "medication_0900",
+    claim_token: "one-logical-claim",
+  };
+  const db = {
+    rpc: async (name, args) => {
+      calls.push({ name, args });
+      if (name === "claim_due_reminder_dispatches_v2")
+        return { data: targets.length && args.p_reminder_slot === row.reminder_slot ? [row] : [] };
+      if (name === "prepare_reminder_dispatch_v2")
+        return { data: { kind, targets } };
+      return { data: name === "finalize_reminder_dispatch_v2" ? "sent" : true };
+    },
+  };
+  return { db, calls };
+}
+
+test("Dev scheduler selects one transport for medication, mood and visit", async () => {
+  const cases = [
+    ["daily", "2026-09-15T00:00:00Z"],
+    ["mood", "2026-09-15T06:00:00Z"],
+    ["visit_day_today", "2026-09-14T23:00:00Z"],
+  ];
+  for (const [kind, instant] of cases) {
+    const native = { transport: "fcm", targetId: "native", credentials: {} };
+    const web = { transport: "web", targetId: "web", credentials: {} };
+    for (const [name, targets, expected] of [
+      ["native-only", [native], ["fcm"]],
+      ["web-only", [web], ["web"]],
+      ["both", [native, web], ["fcm"]],
+      ["none", [], []],
+    ]) {
+      const { db, calls } = schedulerFixture(kind, targets);
+      const sent = [];
+      const transports = {
+        fcm: async () => { sent.push("fcm"); return { status: "sent", http: null, code: null }; },
+        web: async () => { sent.push("web"); return { status: "sent", http: null, code: null }; },
+      };
+      const result = await runNativeAwareReminders(db, transports, {
+        now: new Date(instant),
+      });
+      assert.deepEqual(sent, expected, `${kind} ${name}`);
+      assert.equal(result.claimed, targets.length ? 1 : 0);
+      assert.equal(calls.filter((call) => call.name === "finish_reminder_target_v2").length, targets.length);
+      if (name === "both") assert.equal(result.cancelled, 1);
+    }
+  }
+});
+
+test("Native timeout is terminal and never sends Web for the same reminder", async () => {
+  const { db, calls } = schedulerFixture("mood", [
+    { transport: "fcm", targetId: "native", credentials: {} },
+    { transport: "web", targetId: "web", credentials: {} },
+  ]);
+  let webSends = 0;
+  await runNativeAwareReminders(db, {
+    fcm: async () => { throw Error("provider timeout"); },
+    web: async () => { webSends++; return { status: "sent", http: null, code: null }; },
+  }, { now: new Date("2026-09-15T06:00:00Z") });
+  assert.equal(webSends, 0);
+  const finishes = calls.filter((call) => call.name === "finish_reminder_target_v2");
+  assert.equal(finishes.find((call) => call.args.p_transport === "fcm").args.p_error, "provider_outcome_unknown");
+  assert.equal(finishes.find((call) => call.args.p_transport === "web").args.p_outcome, "cancelled");
 });
