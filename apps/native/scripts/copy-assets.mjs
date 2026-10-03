@@ -5,6 +5,7 @@ export const assetDirectories = ['icons', 'medications', 'moods', 'cats', 'lotti
 const destination = new URL('../public/', import.meta.url);
 await rm(destination, { recursive: true, force: true });
 await mkdir(destination, { recursive: true });
+await cp(new URL('../resources/webview-update.html', import.meta.url), new URL('webview-update.html', destination));
 for (const dir of assetDirectories) await cp(new URL(`../../../public/${dir}`, import.meta.url), new URL(dir, destination), { recursive: true });
 console.log(`Copied ${assetDirectories.length} shared asset directories to ${fileURLToPath(destination)}`);
 

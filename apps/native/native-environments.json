@@ -10,6 +10,6 @@
     "callback": "https://addi-gamma.vercel.app/auth/native/callback",
     "firebaseProject": "addi-503b5",
     "playSigningSha256": "76:2F:82:83:36:A5:16:12:38:48:1F:12:D0:82:40:12:49:CF:36:B5:C4:96:55:88:74:22:6B:43:0D:1C:E7:90",
-    "uploadSigningSha256": "E6:68:50:AB:AA:CB:11:CA:5A:34:5A:F6:0B:65:CC:3D:C1:B8:4B:95:BB:82:83:BF:05:F8:7D:20:58:ED:A8:A4"
+    "uploadSigningSha256": "4C:B5:F3:FC:FF:6E:28:56:8E:46:08:AF:C0:FC:C1:95:43:AB:F9:96:F5:3D:03:80:0A:B3:B8:DF:9E:D7:EB:EE"
   }
 }

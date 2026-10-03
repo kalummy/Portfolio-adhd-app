@@ -1,3 +1,28 @@
+# Current Android RC configuration
+
+v14의 lockfile을 기준으로 Capacitor core/Android/CLI **8.5.2**, App **8.1.1**, Browser **8.0.2**, Keyboard **8.0.5**, Push Notifications **8.1.2**, Splash Screen **8.0.2**를 고정합니다. Android는 **minSdk 24 / compileSdk 36 / targetSdk 36**, Cordova Android **14.0.1**, FCM **25.0.1**입니다. API 23 제외는 수용한 compatibility change입니다.
+
+SystemBars는 Capacitor core의 공식 구현을 사용하며 `insetsHandling: css`와 `viewport-fit=cover`를 유지합니다. 시스템 바의 CSS inset과 실제 IME inset에 따라 WebView가 resize됩니다. 일부 WebView에서 resize 후 focus 자동 스크롤이 누락되는 경우, `src/platform/keyboard-viewport.ts`가 visual viewport와 기존 고정 영역의 실제 경계를 측정해 입력을 노출하고 키보드 종료 시 자신이 추가한 스크롤만 복원합니다. 빠른 포커스 전환 시 누락되는 Keyboard 이벤트는 앱의 읽기 전용 `ImeStatePlugin`으로 실제 root IME 표시 여부를 조회해 동기화합니다. 이 observer는 insets listener나 window padding을 변경하지 않습니다. StatusBar plugin, `adjustMarginsForEdgeToEdge`, 고정 키보드 padding, core/plugin fork, `overrideLibrary`는 사용하지 않습니다. ES2022 실행에 필요한 WebView 94 미만에서는 로컬 업데이트 안내를 표시합니다.
+
+Production은 `com.addi.app`과 Production Supabase/Firebase/Auth/App Links를 선택하고, Dev는 독립 패키지를 사용합니다. Release 서명은 활성 Upload Key `addi-upload-2026`과 기존 Mac Keychain helper를 사용합니다. 다음 RC는 versionCode 15 / versionName 1.0.3입니다. AAB 생성은 이 소스의 main 반영과 요청한 QA 통과 후에만 진행하며 Play 업로드·release 저장·Production Push·scheduler/Native transport 활성화는 별도 단계입니다.
+
+아래 Phase 1/2 항목은 도입 당시의 기록입니다. 현재 빌드/검증 근거는 이번 RC 검증 보고서를 확인합니다.
+
+## v15 source / release boundary
+
+2026-10-04 KST 기준 `origin/main` (`ad090ed`)에는 Android 16 focus/IME 보완 코드가 없으므로 이 변경은 별도 Ready PR로 검토합니다. **이 소스가 main에 반영되기 전에는 v15 AAB를 생성하지 않습니다.** versionCode 15는 Play 미사용이며 최신 업로드 artifact가 14라는 사용자 확인에 따라 다음 RC는 **15 / 1.0.3**으로 확정했습니다.
+
+Production 선택은 `com.addi.app`, Production Supabase / native-api / native-push, Firebase Android client, OAuth callback 및 Play App Signing 기반 App Link association을 유지합니다. Upload certificate guard는 사용자가 활성화 상태를 확인한 새 Upload Key fingerprint를 사용합니다. App Link association에는 Upload Key를 추가하지 않습니다. 비밀번호는 기존 Mac Keychain helper로만 사용하고 소스/보고서에 저장하지 않습니다.
+
+Closed Testing 설치 후 E2E: TWA v13/v14→Capacitor v15 업데이트, 실제 Google/Kakao 로그인, Production user_id 및 기존 약/감정/내원 데이터 유지, verified App Link, Production Native FCM 등록·1건 수신·탭 후 내부 화면, Galaxy UI/키보드/성능. 이 항목은 AAB 생성 blocker가 아닙니다.
+
+Play 업로드, Production track 변경, 실제 Production Push 발송, scheduler ON 및 Native transport ON은 이번 작업에서 수행하지 않습니다.
+
+Source PR validation (2026-10-04 KST): Web/Native build 및 typecheck PASS, Native 58/58, Native Push 14/14, Android release Java compile/lint PASS (errors 0 / warnings 21 / NewApi 0). API 36 offline regression 25/25 PASS, 360/390/430px × 9 입력 = 27/27에서 실제 OS IME와 입력 필드 겹침 0건, 닫기 후 height 복원 및 fixed header 유지. M-01/M-02는 offline UI와 시간 fixtures, M-03는 KST 생성 전 제외/실제 과거 intake 보존 fixtures로 확인했습니다.
+
+API 36 재검사는 기존 inspection QA APK를 사용했습니다. 이번 fresh Production build의 UI 228개 파일과 QA APK의 bundled UI가 바이트 일치하고 모든 Native Java 소스 10개가 일치합니다. QA APK의 optional autofocus manifest 선언은 이 PR에서 제외한 별도 차이이며, UI/IME 코드에는 차이가 없습니다. 네트워크는 차단했고 로그인/API/AI 응답은 synthetic fixture입니다. 실제 provider/FCM/Play App Link/Galaxy E2E를 이 결과로 대체하지 않습니다. 새 AAB와 bundletool/jarsigner 검증은 main 반영 이후 단계입니다.
+
+
 # Phase 2 Native Auth
 
 The current branch adds isolated Native Auth. Read [Phase 2 architecture, setup and QA](docs/phase2-auth.md) first. Existing-account Google/Kakao Galaxy acceptance and current Native/Web regression pass; see [final Phase 2 QA](docs/phase2-final-qa.md). PR #90 remains unmerged and requires an approving review. No Production or Play changes are authorized. The Phase 1 notes below describe the original fixture shell baseline.
