@@ -1,11 +1,13 @@
 import { App } from '@capacitor/app';
-import { Capacitor, SystemBars, SystemBarsStyle } from '@capacitor/core';
+import { Capacitor, registerPlugin, SystemBars, SystemBarsStyle } from '@capacitor/core';
 import { Keyboard } from '@capacitor/keyboard';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { hasNativeHistory, router } from './router';
 import { dateContextHref } from '@/lib/date-context';
+import { installKeyboardViewport } from './keyboard-viewport';
 
 let keyboardVisible = false;
+const imeState = registerPlugin<{ getState(): Promise<{ visible: boolean }> }>('AddiImeState');
 /** UI-only diagnostics: no input values, health records, identifiers or transport. */
 export const shellState = { starts: 1, resumes: 0, active: true, keyboardVisible: false, lastBack: '' };
 export async function handleNativeBack() {
@@ -37,16 +39,52 @@ export async function startNativeLifecycle() {
   if (!Capacitor.isNativePlatform()) return;
   await SystemBars.setStyle({ style: SystemBarsStyle.Light });
   await SystemBars.show();
+  const keyboardViewport = installKeyboardViewport();
+  function updateKeyboard(visible: boolean) {
+    keyboardVisible = visible;
+    shellState.keyboardVisible = visible;
+    if (visible) {
+      document.documentElement.dataset.keyboard = 'open';
+      keyboardViewport.show();
+    } else {
+      delete document.documentElement.dataset.keyboard;
+      keyboardViewport.hide();
+    }
+  }
+  let imeFrame = 0;
+  let imeRequest = 0;
+  function syncIme() {
+    if (imeFrame) return;
+    imeFrame = requestAnimationFrame(() => {
+      imeFrame = 0;
+      const request = ++imeRequest;
+      // Read actual root IME visibility after SystemBars resizes the WebView.
+      // This also handles cancelled/missing Keyboard animation events.
+      void imeState.getState().then(state => {
+        if (request === imeRequest) updateKeyboard(state.visible);
+      }).catch(() => undefined);
+    });
+  }
+  document.addEventListener('focusin', syncIme);
+  window.addEventListener('resize', syncIme);
+  window.visualViewport?.addEventListener('resize', syncIme);
   await App.addListener('backButton', () => { void handleNativeBack(); });
   await App.addListener('appStateChange', ({ isActive }) => {
     shellState.active = isActive;
     if (isActive) {
       shellState.resumes++;
+      syncIme();
       window.dispatchEvent(new Event('focus'));
     }
   });
-  await Keyboard.addListener('keyboardDidShow', () => { keyboardVisible = true; shellState.keyboardVisible = true; document.documentElement.dataset.keyboard = 'open'; });
-  await Keyboard.addListener('keyboardDidHide', () => { keyboardVisible = false; shellState.keyboardVisible = false; delete document.documentElement.dataset.keyboard; });
+  await Keyboard.addListener('keyboardDidShow', () => {
+    updateKeyboard(true);
+    syncIme();
+  });
+  await Keyboard.addListener('keyboardDidHide', () => {
+    updateKeyboard(false);
+    syncIme();
+  });
 }
 export async function dismissNativeSplash() {
   await document.fonts.ready;

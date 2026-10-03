@@ -33,6 +33,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NavigationHapticsPlugin.class);
         registerPlugin(PlayUpdatePlugin.class);
         registerPlugin(CameraPermissionPlugin.class);
+        registerPlugin(ImeStatePlugin.class);
         super.onCreate(savedInstanceState);
         bridge.getWebView().setWebViewClient(new BridgeWebViewClient(bridge) {
             @Override

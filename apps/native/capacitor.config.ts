@@ -9,7 +9,9 @@ const config: CapacitorConfig = {
   appName: '아디',
   webDir: 'dist',
   loggingBehavior: 'none',
-  android: { backgroundColor: '#fafafb' },
+  android: { backgroundColor: '#fafafb', minWebViewVersion: 94 },
+  // ES2022 needs a current WebView; unsupported engines get an offline page.
+  server: { errorPath: 'webview-update.html' },
   plugins: {
     SplashScreen: { launchAutoHide: false, launchFadeOutDuration: 0, backgroundColor: '#fafafb', showSpinner: false },
     SystemBars: { insetsHandling: 'css', style: 'LIGHT', hidden: false, initialViewportFitValueHint: 'cover' },
