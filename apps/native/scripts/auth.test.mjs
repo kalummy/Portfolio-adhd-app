@@ -57,6 +57,42 @@ test('explicit browser cancellation deletes attempt; callback after cancel rejec
 test('provider cancellation clears only matched attempt',async()=>{
   const s=setup(); await s.flow.start('kakao'); await assert.rejects(s.flow.callback(s.url().replace('code=synthetic','error=access_denied')),{reason:'cancelled'}); assert.equal(await s.flow.pending(),null);
 });
+for (const provider of ['google', 'kakao']) {
+  for (const error of ['access_denied', 'server_error']) test(`${provider}: Supabase error fragment clears pending attempt and verifier (${error})`, async()=>{
+    const s=setup(); let clears=0; s.deps.clearVerifier=async()=>{clears++;}; await s.flow.start(provider);
+    const query=new URLSearchParams({attempt:'a'.repeat(64),error,error_code:'provider_error',error_description:'Provider cancelled or failed'});
+    const fragment=new URLSearchParams({error,error_code:'provider_error',error_description:'Provider cancelled or failed',sb:''});
+    const url=`${callback}?${query}#${fragment}`;
+    await assert.rejects(s.flow.callback(url),{reason:'cancelled'}); assert.equal(await s.flow.pending(),null);
+    assert.equal(clears,2); assert.equal(s.exchanges(),0);
+    await assert.rejects(s.flow.callback(url),{reason:'no_attempt'});
+  });
+}
+for (const provider of ['google', 'kakao']) test(`${provider}: Supabase URI-encoded provider error description clears waiting attempt`,async()=>{
+  const s=setup(); await s.flow.start(provider);
+  const description='Unable to exchange external code: SYNT';
+  const query=new URLSearchParams({attempt:'a'.repeat(64),error:'server_error',error_code:'unexpected_failure',error_description:description});
+  const fragment=new URLSearchParams({error:'server_error',error_code:'unexpected_failure',error_description:encodeURIComponent(description),sb:''});
+  await assert.rejects(s.flow.callback(`${callback}?${query}#${fragment}`),{reason:'cancelled'});
+  assert.equal(await s.flow.pending(),null); assert.equal(s.exchanges(),0);
+});
+test('expired Supabase error fragment still clears pending attempt',async()=>{
+  const s=setup(); await s.flow.start('google'); s.setNow(1_000_000+ATTEMPT_TTL);
+  await assert.rejects(s.flow.callback(s.url().replace('code=synthetic','error=access_denied')+'#error=access_denied&sb='),{reason:'expired'});
+  assert.equal(await s.flow.pending(),null); assert.equal(s.exchanges(),0);
+});
+for (const change of [
+  u=>u.replace('attempt=aaa','attempt=bbb'), u=>u+'#error=access_denied&sb=',
+  u=>u.replace('error=access_denied&sb=','error=server_error&sb='),
+  u=>u+'&access_token=synthetic', u=>u+'&code=synthetic', u=>u+'&next=%2F',
+  u=>u+'&error=access_denied', u=>u+'&sb=', u=>u.replace('&sb=','&sb=nonempty'),
+  u=>u+'&error_description=unmatched',
+]) test(`reject forged or malformed error fragment ${String(change)}`,async()=>{
+  const s=setup(); await s.flow.start('google');
+  const url=s.url().replace('code=synthetic','error=access_denied')+'#error=access_denied&sb=';
+  await assert.rejects(s.flow.callback(change(url)),{reason:'invalid_callback'});
+  assert.ok(await s.flow.pending()); assert.equal(s.exchanges(),0);
+});
 test('exchange/network failure is terminal; no retry with a consumed code',async()=>{
   const s=setup(); s.deps.exchange=async()=>{throw new Error('offline')}; await s.flow.start('google');
   await assert.rejects(s.flow.callback(s.url())); await assert.rejects(s.flow.callback(s.url()),{reason:'no_attempt'});

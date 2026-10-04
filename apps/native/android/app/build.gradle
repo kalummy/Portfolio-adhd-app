@@ -81,7 +81,7 @@ android {
         resValue "string", "custom_url_scheme", selected.package
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode nativeStage == 'production' ? 15 : 6
+        versionCode nativeStage == 'production' ? 16 : 6
         versionName nativeStage == 'production' ? releaseVersionName : "0.2.1-prototype"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

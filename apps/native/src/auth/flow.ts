@@ -15,9 +15,26 @@ export function callbackCode(raw: string, expected: string, attempt: Attempt, no
   try { url = new URL(raw); } catch { throw new AuthFlowError('invalid_callback'); }
   const base = new URL(expected);
   const allowed = new Set(['attempt', 'code', 'error', 'error_code', 'error_description']);
-  if (url.origin !== base.origin || url.pathname !== base.pathname || url.username || url.password || url.hash
+  if (url.origin !== base.origin || url.pathname !== base.pathname || url.username || url.password
     || [...url.searchParams.keys()].some(key => !allowed.has(key) || url.searchParams.getAll(key).length !== 1)
     || url.searchParams.get('attempt') !== attempt.id) throw new AuthFlowError('invalid_callback');
+  if (url.hash) {
+    // Supabase mirrors provider errors in a fragment, including an empty `sb` marker.
+    // Accept only a matching error result; fragments can never supply a success code.
+    const fragment = new URLSearchParams(url.hash.slice(1));
+    const errorKeys = new Set(['error', 'error_code', 'error_description', 'sb']);
+    const description = fragment.get('error_description');
+    let descriptionMatches = description === url.searchParams.get('error_description');
+    // Supabase may URI-encode the description once more when adding the fragment.
+    try { descriptionMatches ||= description !== null && decodeURIComponent(description) === url.searchParams.get('error_description'); }
+    catch { /* Malformed descriptions remain invalid. */ }
+    if (!url.searchParams.get('error') || url.searchParams.has('code')
+      || [...fragment.keys()].some(key => !errorKeys.has(key) || fragment.getAll(key).length !== 1)
+      || fragment.get('error') !== url.searchParams.get('error')
+      || (fragment.has('error_code') && fragment.get('error_code') !== url.searchParams.get('error_code'))
+      || (fragment.has('error_description') && !descriptionMatches)
+      || (fragment.has('sb') && fragment.get('sb') !== '')) throw new AuthFlowError('invalid_callback');
+  }
   if (now < attempt.createdAt || now - attempt.createdAt >= ATTEMPT_TTL) throw new AuthFlowError('expired');
   if (url.searchParams.has('error')) throw new AuthFlowError('cancelled');
   const code = url.searchParams.get('code');
