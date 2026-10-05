@@ -874,7 +874,7 @@ function selectOfficialManualMedicationCandidate(name, strengthValue, candidates
   return prefixMatches.length === 0 ? { status: "not-found" } : { status: "ambiguous" };
 }
 
-// lib/medication-images.ts
+// lib/medication-curated-images.ts
 var MFDS_PILL_IMAGE_SOURCE = "\uC2DD\uD488\uC758\uC57D\uD488\uC548\uC804\uCC98 \uC758\uC57D\uD488 \uB0B1\uC54C\uC2DD\uBCC4\uC815\uBCF4";
 var CONCERTA_18_IMAGE = {
   catalogId: "202005265",
@@ -1042,6 +1042,8 @@ var OFFICIAL_IMAGE_KEYS = [
   "product_image",
   "productImage"
 ];
+var MfdsConfigurationError = class extends Error {
+};
 function getString(item, ...keys) {
   for (const key of keys) {
     const value = item[key];
@@ -1259,15 +1261,29 @@ async function matchMfdsManualMedication(name, strengthValue) {
   const medication2 = await getMfdsMedication(catalogId);
   return medication2 ? { status: "matched", medication: medication2 } : { status: "not-found" };
 }
-async function getMfdsImageCandidates(itemSequence) {
-  const serviceKey = getDrugPermissionServiceKey();
-  const [detailItems, pillItems] = await Promise.all([
-    fetchItems(PRODUCT_DETAIL_ENDPOINT, serviceKey, "item_seq", itemSequence),
-    fetchPillItems("item_seq", itemSequence)
+async function getMfdsImageCandidates(itemSequence, expectedProduct) {
+  const results = await Promise.allSettled([
+    Promise.resolve().then(() => fetchItems(PRODUCT_DETAIL_ENDPOINT, getDrugPermissionServiceKey(), "item_seq", itemSequence)),
+    Promise.resolve().then(() => fetchPillItems("item_seq", itemSequence))
   ]);
+  if (results.every((result) => result.status === "rejected")) {
+    if (!ADDI_MFDS_KEY?.trim() && !ADDI_MFDS_PILL_KEY?.trim()) {
+      throw new MfdsConfigurationError("\uC2DD\uC57D\uCC98 \uC774\uBBF8\uC9C0 metadata \uC11C\uBE44\uC2A4\uB97C \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC5B4\uC694.");
+    }
+    throw new Error("mfds_image_metadata_unavailable");
+  }
+  const [detailItems, pillItems] = results.map((result) => result.status === "fulfilled" ? result.value : []);
+  const matchesCatalog = (item) => {
+    if (getString(item, "ITEM_SEQ", "item_seq", "itemSeq", "PRDLST_STDR_CODE", "prdlst_Stdr_code") !== itemSequence) return false;
+    if (!expectedProduct) return true;
+    const name = productBaseName(cleanProductLabel(getString(item, "ITEM_NAME", "item_name", "itemName")));
+    return name === expectedProduct.name && parseStrength(item) === expectedProduct.strengthValue;
+  };
   const candidates = [];
-  const productImage = detailItems[0] ? officialImageFromItem(detailItems[0]) : void 0;
-  const pillImage = pillItems[0] ? officialImageFromItem(pillItems[0]) : void 0;
+  const detail = detailItems.find(matchesCatalog);
+  const pill = pillItems.find(matchesCatalog);
+  const productImage = detail ? officialImageFromItem(detail) : void 0;
+  const pillImage = pill ? officialImageFromItem(pill) : void 0;
   if (pillImage) candidates.push({ source: "pill", originalUrl: pillImage });
   if (productImage && productImage !== pillImage) {
     candidates.push({ source: "product", originalUrl: productImage });
@@ -1287,8 +1303,14 @@ function upstreamUrls(originalUrl) {
   secureUrl.protocol = "https:";
   return [secureUrl.toString(), parsed.toString()];
 }
+function normalizeMfdsImageRequest(value) {
+  const normalized = normalizeOfficialImage(value);
+  if (!normalized) return void 0;
+  const url = new URL(normalized);
+  return url.username || url.password || url.port ? void 0 : normalized;
+}
 async function fetchVerifiedMfdsImage(candidate) {
-  const officialUrl = normalizeOfficialImage(candidate.originalUrl);
+  const officialUrl = normalizeMfdsImageRequest(candidate.originalUrl);
   if (!officialUrl) return null;
   for (const upstreamUrl of upstreamUrls(officialUrl)) {
     try {
@@ -1298,7 +1320,7 @@ async function fetchVerifiedMfdsImage(candidate) {
         signal: AbortSignal.timeout(1e4),
         headers: { Accept: "image/avif,image/webp,image/png,image/jpeg,image/*" }
       });
-      const finalUrl = normalizeOfficialImage(response.url);
+      const finalUrl = normalizeMfdsImageRequest(response.url);
       const contentType = response.headers.get("content-type")?.split(";")[0].trim() ?? "";
       if (!response.ok || response.status !== 200 || !finalUrl) continue;
       const bytes = new Uint8Array(await response.arrayBuffer());
@@ -1312,6 +1334,140 @@ async function fetchVerifiedMfdsImage(candidate) {
       };
     } catch {
     }
+  }
+  return null;
+}
+
+// lib/medication-catalog-images.ts
+var entries = [
+  {
+    "catalogId": "198700736",
+    "name": "\uD658\uC778\uBCA4\uC988\uD2B8\uB85C\uD540\uC815",
+    "strengthValue": 1,
+    "strengthUnit": "mg",
+    "displayLabel": "\uD658\uC778\uBCA4\uC988\uD2B8\uB85C\uD540\uC815 1mg",
+    "sourceUrl": "https://nedrug.mfds.go.kr/pbp/cmn/itemImageDownload/1P2JYwFsCIO"
+  },
+  {
+    "catalogId": "198702209",
+    "name": "\uC790\uB098\uD31C\uC815",
+    "strengthValue": 0.25,
+    "strengthUnit": "mg",
+    "displayLabel": "\uC790\uB098\uD31C\uC815 0.25mg",
+    "sourceUrl": "https://nedrug.mfds.go.kr/pbp/cmn/itemImageDownload/1OiAjxwzC-Y"
+  },
+  {
+    "catalogId": "200409982",
+    "name": "\uC544\uBCF4\uB2E4\uD2B8\uC5F0\uC9C8\uCEA1\uC290",
+    "strengthValue": 0.5,
+    "strengthUnit": "mg",
+    "displayLabel": "\uC544\uBCF4\uB2E4\uD2B8\uC5F0\uC9C8\uCEA1\uC290 0.5mg",
+    "sourceUrl": "https://nedrug.mfds.go.kr/pbp/cmn/itemImageDownload/1Oi0vWfEyP7"
+  },
+  {
+    "catalogId": "200808451",
+    "name": "\uC544\uBE4C\uB9AC\uD30C\uC774\uC815",
+    "strengthValue": 2,
+    "strengthUnit": "mg",
+    "displayLabel": "\uC544\uBE4C\uB9AC\uD30C\uC774\uC815 2mg",
+    "sourceUrl": "https://nedrug.mfds.go.kr/pbp/cmn/itemImageDownload/151706776344800032"
+  },
+  {
+    "catalogId": "201111087",
+    "name": "\uBA54\uB514\uD0A4\uB137\uB9AC\uD0C0\uB4DC\uCEA1\uC290",
+    "strengthValue": 40,
+    "strengthUnit": "mg",
+    "displayLabel": "\uBA54\uB514\uD0A4\uB137\uB9AC\uD0C0\uB4DC\uCEA1\uC290 40mg",
+    "sourceUrl": "https://nedrug.mfds.go.kr/pbp/cmn/itemImageDownload/147426592401600114"
+  },
+  {
+    "catalogId": "201111088",
+    "name": "\uBA54\uB514\uD0A4\uB137\uB9AC\uD0C0\uB4DC\uCEA1\uC290",
+    "strengthValue": 10,
+    "strengthUnit": "mg",
+    "displayLabel": "\uBA54\uB514\uD0A4\uB137\uB9AC\uD0C0\uB4DC\uCEA1\uC290 10mg",
+    "sourceUrl": "https://nedrug.mfds.go.kr/pbp/cmn/itemImageDownload/147426592401600117"
+  },
+  {
+    "catalogId": "201307635",
+    "name": "\uC544\uD1A0\uBAA9\uC2E0\uCEA1\uC290",
+    "strengthValue": 40,
+    "strengthUnit": "mg",
+    "displayLabel": "\uC544\uD1A0\uBAA9\uC2E0\uCEA1\uC290 40mg",
+    "sourceUrl": "https://nedrug.mfds.go.kr/pbp/cmn/itemImageDownload/147426720602800099"
+  },
+  {
+    "catalogId": "201907454",
+    "name": "\uC5D0\uC18C\uBA54\uB518\uC815",
+    "strengthValue": 40,
+    "strengthUnit": "mg",
+    "displayLabel": "\uC5D0\uC18C\uBA54\uB518\uC815 40mg",
+    "sourceUrl": "https://nedrug.mfds.go.kr/pbp/cmn/itemImageDownload/1M-s0nmguuD"
+  },
+  {
+    "catalogId": "202002454",
+    "name": "\uB370\uD30D\uC2E0\uC11C\uBC29\uC815",
+    "strengthValue": 100,
+    "strengthUnit": "mg",
+    "displayLabel": "\uB370\uD30D\uC2E0\uC11C\uBC29\uC815 100mg",
+    "sourceUrl": "https://nedrug.mfds.go.kr/pbp/cmn/itemImageDownload/1N925qYaIFI"
+  }
+];
+var VERIFIED_CATALOG_IMAGES = Object.fromEntries(entries.map((entry) => [entry.catalogId, entry]));
+function normalizedCatalogLabel(value) {
+  return value.normalize("NFKC").toLowerCase().replace(/밀리그(?:램|람)/g, "mg").replace(/\s+/g, "").replace(/\((\d+(?:\.\d+)?mg)\)/g, "$1").replace(/\d+(?:\.\d+)?(?=mg)/g, (dose) => String(Number(dose)));
+}
+function getVerifiedCatalogImage(catalogId, label) {
+  const image = VERIFIED_CATALOG_IMAGES[catalogId?.trim() ?? ""];
+  return image && (!label || normalizedCatalogLabel(label) === normalizedCatalogLabel(image.displayLabel)) ? image : void 0;
+}
+
+// lib/medication-image-service.ts
+var normalizeLabel = normalizedCatalogLabel;
+function hasVerifiedProductIdentity(row, itemSequence) {
+  return row.catalog_id === itemSequence && row.official_match_status === "matched" && row.manufacturer?.trim() && row.strength_unit === "mg" && Number.isFinite(row.strength_value) && row.strength_value > 0 && /(?:정|캡슐)$/.test(row.name.trim()) && normalizeLabel(row.display_label ?? "") === normalizeLabel(`${row.name} ${row.strength_value}mg`);
+}
+function storedMfdsImageCandidates(itemSequence, rows) {
+  const matches = rows.filter((row) => hasVerifiedProductIdentity(row, itemSequence));
+  if (new Set(rows.map((row) => normalizeLabel(`${row.name} ${row.strength_value}mg`))).size > 1) return [];
+  const candidates = [];
+  for (const row of matches) {
+    const verifiedCatalog = getVerifiedCatalogImage(itemSequence, row.display_label ?? "");
+    const originalUrl = normalizeOfficialImage(row.image_source_url ?? "");
+    if (!verifiedCatalog || originalUrl !== verifiedCatalog.sourceUrl || !row.image_source_name?.startsWith("\uC2DD\uD488\uC758\uC57D\uD488\uC548\uC804\uCC98")) continue;
+    const url = new URL(originalUrl);
+    if (url.hostname !== "nedrug.mfds.go.kr" || !/^\/pbp\/cmn\/itemImageDownload\/[^/]+$/.test(url.pathname)) continue;
+    const source = row.image_source_name.includes("\uB0B1\uC54C\uC2DD\uBCC4") ? "pill" : "product";
+    if (!candidates.some((candidate) => candidate.originalUrl === originalUrl)) {
+      candidates.push({ source, originalUrl });
+    }
+  }
+  return candidates;
+}
+async function getVerifiedMedicationImage(itemSequence, client, userId) {
+  const { data, error } = await client.from("user_medications").select("catalog_id,display_label,name,strength_value,strength_unit,manufacturer,official_match_status,image_source_name,image_source_url").eq("user_id", userId).eq("catalog_id", itemSequence).order("updated_at", { ascending: false }).limit(50);
+  if (error) throw new Error("medication_image_metadata_unavailable");
+  if (data?.length && (data.some((row) => !hasVerifiedProductIdentity(row, itemSequence)) || new Set(data.map((row) => normalizeLabel(row.name + " " + row.strength_value + "mg"))).size > 1)) return null;
+  const verifiedCatalog = getVerifiedCatalogImage(itemSequence);
+  if (verifiedCatalog && data?.some((row) => normalizeLabel(row.display_label ?? "") !== normalizeLabel(verifiedCatalog.displayLabel))) return null;
+  const tried = /* @__PURE__ */ new Set();
+  for (const candidate of storedMfdsImageCandidates(itemSequence, data ?? [])) {
+    tried.add(candidate.originalUrl);
+    const image = await fetchVerifiedMfdsImage(candidate);
+    if (image) return image;
+  }
+  if (verifiedCatalog && !tried.has(verifiedCatalog.sourceUrl)) {
+    tried.add(verifiedCatalog.sourceUrl);
+    const image = await fetchVerifiedMfdsImage({ source: "pill", originalUrl: verifiedCatalog.sourceUrl });
+    if (image) return image;
+  }
+  for (const candidate of await getMfdsImageCandidates(itemSequence, data?.[0] ? {
+    name: data[0].name,
+    strengthValue: data[0].strength_value
+  } : void 0)) {
+    if (tried.has(candidate.originalUrl)) continue;
+    const image = await fetchVerifiedMfdsImage(candidate);
+    if (image) return image;
   }
   return null;
 }
@@ -1623,15 +1779,14 @@ function createNativeApiHandler(deps) {
       }
       const item = path.split("/").at(-1);
       if (path.startsWith("/api/medications/image/")) {
-        for (const candidate of await getMfdsImageCandidates(item)) {
-          const image = await fetchVerifiedMfdsImage(candidate);
-          if (image) return new Response(new Uint8Array(image.bytes), { headers: { ...headers, "Content-Type": image.contentType, "X-Addi-Image-Source": image.source } });
-        }
+        const image = await getVerifiedMedicationImage(item, client, user.id);
+        if (image) return new Response(new Uint8Array(image.bytes), { headers: { ...headers, "Content-Type": image.contentType, "X-Addi-Image-Source": image.source } });
         return json({ code: "IMAGE_NOT_FOUND" }, 404);
       }
       const medication2 = await getMfdsMedication(item);
       return medication2 ? json({ medication: medication2 }) : json({ code: "NOT_FOUND" }, 404);
     } catch (error) {
+      if (error instanceof MfdsConfigurationError && path.startsWith("/api/medications/image/")) return json({ code: "IMAGE_SERVICE_NOT_CONFIGURED" }, 503);
       if (error instanceof NativeRequestError) return json({ code: "INVALID_REQUEST" }, 400);
       if (error instanceof DuplicateMoodRecordError) return json({ code: "DUPLICATE_MOOD" }, 409);
       return json({ code: "REQUEST_FAILED" }, 502);

@@ -42,7 +42,7 @@ import {
   type HomeDataFailureSource,
 } from "@/lib/home-load-orchestration";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
-import { resolveMedicationImage } from "@/lib/medication-images";
+import { MedicationThumbnail } from "./medication-thumbnail";
 import { reconcileMedicationIntakeRecord } from "@/lib/medication-intake-state";
 import { getHomeMedicationProjection } from "@/lib/home-medication-projection";
 import { getWeekProgress } from "@/lib/home-week-progress";
@@ -247,10 +247,6 @@ export function HomeScreen({
   const [activeSegment, setActiveSegment] = useState<HomeSegment>("medication");
   const [launchSplashRequired, setLaunchSplashRequired] = useState(enableLaunchSplash);
   const [splashMinimumElapsed, setSplashMinimumElapsed] = useState(!enableLaunchSplash);
-  const [failedMedicationImages, setFailedMedicationImages] = useState<Set<string>>(
-    () => new Set(),
-  );
-
   const selectedRelation = dateKeyDayDifference(selectedDateKey, todayDateKey);
   const selectedDateParts = parseDateKey(selectedDateKey)!;
 
@@ -846,15 +842,6 @@ export function HomeScreen({
                   const intake = selectedIntakeByMedication.get(medication.id);
                   const isTaken = Boolean(intake);
                   const isHistoricalInactive = medication.active === false;
-                  const image = resolveMedicationImage({
-                    medicationId: medication.catalogId,
-                    medicationName: medicationLabel(medication),
-                    existingImage: medication.productImage ?? medication.imagePath,
-                    fallbackImage: medication.fallbackImage,
-                    failedSources: failedMedicationImages,
-                  });
-                  const isFallbackImage = image.type === "fallback";
-                  const displayedImage = image.src;
                   return (
                     <article className="home-medication-item" key={medication.id}>
                       {isHistoricalInactive ? (
@@ -881,21 +868,7 @@ export function HomeScreen({
                           />
                         </button>
                       )}
-                      <div className={`home-medication-image ${isFallbackImage ? "fallback" : ""}`}>
-                        <Image
-                          src={displayedImage}
-                          alt=""
-                          fill
-                          sizes="64px"
-                          unoptimized={isFallbackImage}
-                          onError={() => setFailedMedicationImages((current) => {
-                            if (current.has(displayedImage)) return current;
-                            const next = new Set(current);
-                            next.add(displayedImage);
-                            return next;
-                          })}
-                        />
-                      </div>
+                      <MedicationThumbnail medication={medication} className="home-medication-image" />
                       <div className="home-medication-copy">
                         <strong>{medicationLabel(medication)}</strong>
                         <div className="home-medication-schedule">

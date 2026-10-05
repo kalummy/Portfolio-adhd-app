@@ -8,7 +8,8 @@ import { deleteAuthenticatedAccount } from '../account-deletion';
 import { validateMoodAnalysisInput, type MoodAnalysisInput } from '../mood-analysis';
 import { requestOpenAIMoodAnalysis, DEFAULT_OPENAI_MOOD_MODEL, getMoodAnalysisFailureDiagnostic } from '../openai-mood-provider';
 import { classifyMoodAnalysisDiagnostic } from '../analytics/mood-contract';
-import { searchMfdsMedications, getMfdsMedication, matchMfdsManualMedication, getMfdsImageCandidates, fetchVerifiedMfdsImage } from '../mfds-medications';
+import { searchMfdsMedications, getMfdsMedication, matchMfdsManualMedication, MfdsConfigurationError } from '../mfds-medications';
+import { getVerifiedMedicationImage } from '../medication-image-service';
 import type { AnalysisStage } from './preview-ai';
 export { requestPreviewMoodAnalysis } from './preview-ai';
 export { nativeStage, assertNativeProject } from '../native-environment';
@@ -133,15 +134,14 @@ export function createNativeApiHandler(deps: NativeApiDependencies) {
       }
       const item = path.split('/').at(-1)!;
       if (path.startsWith('/api/medications/image/')) {
-        for (const candidate of await getMfdsImageCandidates(item)) {
-          const image = await fetchVerifiedMfdsImage(candidate);
-          if (image) return new Response(new Uint8Array(image.bytes),{headers:{...headers,'Content-Type':image.contentType,'X-Addi-Image-Source':image.source}});
-        }
+        const image = await getVerifiedMedicationImage(item, client, user.id);
+        if (image) return new Response(new Uint8Array(image.bytes),{headers:{...headers,'Content-Type':image.contentType,'X-Addi-Image-Source':image.source}});
         return json({code:'IMAGE_NOT_FOUND'},404);
       }
       const medication = await getMfdsMedication(item);
       return medication ? json({medication}) : json({code:'NOT_FOUND'},404);
     } catch (error) {
+      if (error instanceof MfdsConfigurationError && path.startsWith('/api/medications/image/')) return json({code:'IMAGE_SERVICE_NOT_CONFIGURED'},503);
       if (error instanceof NativeRequestError) return json({code:'INVALID_REQUEST'},400);
       if (error instanceof DuplicateMoodRecordError) return json({code:'DUPLICATE_MOOD'},409);
       // Never return Postgres errors, health data, user IDs or provider credentials.

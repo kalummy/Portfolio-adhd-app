@@ -9,6 +9,8 @@ const root=fileURLToPath(new URL('../../../',import.meta.url));
 const fixture=resolve(root,'apps/native/scripts/date-context/fixtures.mjs');
 async function loadHome(){
  const result=await build({stdin:{contents:`export {HomeScreen} from './components/home-screen';`,resolveDir:root,loader:'tsx'},bundle:true,platform:'node',format:'cjs',jsx:'automatic',write:false,packages:'external',alias:{'@':root},plugins:[{name:'ssr-fixtures',setup(b){
+  b.onResolve({filter:/\.module\.css$/},()=>({path:'styles',namespace:'fake-css'}));
+  b.onLoad({filter:/.*/,namespace:'fake-css'},()=>({contents:'export default {thumbnail: "medication-thumbnail"};',loader:'js'}));
   b.onResolve({filter:/^\.\/mixpanel$/},()=>({path:'analytics',namespace:'fake-analytics'}));
   b.onLoad({filter:/.*/,namespace:'fake-analytics'},()=>({contents:'export const trackAnalyticsEvent=()=>false;',loader:'js'}));
   b.onResolve({filter:/^(next\/|@\/lib\/(auth\/client|repositories|notifications|medication-enrichment|analytics\/events))/},a=>{

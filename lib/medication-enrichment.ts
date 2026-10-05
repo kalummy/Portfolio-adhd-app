@@ -1,4 +1,5 @@
 import type { MedicationCandidate } from "./types";
+import { isMedicationFallbackImage } from "./medication-images";
 
 type MedicationDetailResponse = {
   medication?: MedicationCandidate;
@@ -40,7 +41,20 @@ export async function enrichOfficialMedication<T extends MedicationCandidate>(
       return medication;
     }
 
-    return { ...medication, ...payload.medication };
+    const hasSavedProductImage = [medication.productImage, medication.imagePath]
+      .some((source) => source?.trim() && !isMedicationFallbackImage(source.trim()));
+    return {
+      ...medication,
+      ...payload.medication,
+      ...(hasSavedProductImage ? {
+        imagePath: medication.imagePath,
+        productImage: medication.productImage,
+        fallbackImage: medication.fallbackImage,
+        imageType: medication.imageType,
+        imageSourceName: medication.imageSourceName,
+        imageSourceUrl: medication.imageSourceUrl,
+      } : {}),
+    };
   } catch {
     return medication;
   }
