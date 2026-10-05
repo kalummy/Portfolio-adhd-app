@@ -1,0 +1,19 @@
+.thumbnail {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.thumbnail img {
+  display: block;
+  object-fit: cover;
+  object-position: center;
+}
+
+.thumbnail[data-image-type="fallback"] img {
+  object-fit: contain;
+}

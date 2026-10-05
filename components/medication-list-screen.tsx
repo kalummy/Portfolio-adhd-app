@@ -13,7 +13,7 @@ import {
   trackMedicationScheduleEditOpened,
 } from "@/lib/analytics/events";
 import { enrichOfficialMedications } from "@/lib/medication-enrichment";
-import { resolveMedicationImage } from "@/lib/medication-images";
+import { MedicationThumbnail } from "./medication-thumbnail";
 import { getHomeMedicationProjection } from "@/lib/home-medication-projection";
 import { KST_TIME_ZONE, getKstDateKey, isValidDateKey } from "@/lib/kst-date";
 import {
@@ -46,40 +46,6 @@ function formatMedicationRecordTime(iso: string) {
       ? "오후"
       : rawDayPeriod;
   return `${dayPeriod} ${part("hour")}:${part("minute")}`.trim();
-}
-
-function MedicationListImage({ medication }: { medication: SavedMedication }) {
-  const [failedSources, setFailedSources] = useState<Set<string>>(() => new Set());
-  const label = medicationLabel(medication);
-  const existingImage = medication.productImage ?? medication.imagePath;
-  const image = resolveMedicationImage({
-    medicationId: medication.catalogId,
-    medicationName: label,
-    existingImage,
-    fallbackImage: medication.fallbackImage ?? medication.imagePath,
-    failedSources,
-  });
-
-  useEffect(() => setFailedSources(new Set()), [
-    medication.fallbackImage,
-    medication.imagePath,
-    medication.catalogId,
-    medication.productImage,
-    label,
-  ]);
-
-  return (
-    <div className={`medication-list-image ${image.type === "fallback" ? "fallback" : ""}`}>
-      <Image
-        src={image.src}
-        alt=""
-        fill
-        sizes="64px"
-        unoptimized={image.type === "fallback"}
-        onError={() => setFailedSources((current) => new Set(current).add(image.src))}
-      />
-    </div>
-  );
 }
 
 export function MedicationListContent() {
@@ -173,7 +139,7 @@ export function MedicationListContent() {
           return (
             <article className="medication-list-item" key={medication.id}>
               <div className="medication-list-main">
-                <MedicationListImage medication={medication} />
+                <MedicationThumbnail medication={medication} className="medication-list-image" />
                 <div className="medication-list-item-copy">
                   <strong>{medicationLabel(medication)}</strong>
                   <div className="medication-list-schedule">

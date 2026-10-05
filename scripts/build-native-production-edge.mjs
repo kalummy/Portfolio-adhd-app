@@ -20,7 +20,8 @@ function replaceExactlyOnce(source, before, after) {
   return source.replace(before, after);
 }
 
-for (const name of ['native-api', 'native-push']) {
+const targets = process.argv.includes('--native-api-only') ? ['native-api'] : ['native-api', 'native-push'];
+for (const name of targets) {
   const dir = resolve(root, 'supabase/functions', name, 'production');
   await mkdir(dir, { recursive: true });
   const bundlePath = resolve(dir, 'bundle.js');

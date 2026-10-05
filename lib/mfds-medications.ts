@@ -1,6 +1,6 @@
 import { MEDICATION_FALLBACK_IMAGE } from "./medication-utils";
 import { selectOfficialManualMedicationCandidate } from "./medication-candidates";
-import { getLocalMedicationProductImage } from "./medication-images";
+import { getLocalMedicationProductImage } from "./medication-curated-images";
 import type { MedicationCandidate } from "./types";
 
 const PRODUCT_ENDPOINT =
@@ -22,6 +22,8 @@ const OFFICIAL_IMAGE_KEYS = [
 type ApiItem = Record<string, unknown>;
 
 export type MfdsImageSource = "product" | "pill";
+
+export class MfdsConfigurationError extends Error {}
 
 export type MfdsImageCandidate = {
   source: MfdsImageSource;
@@ -335,17 +337,31 @@ export async function matchMfdsManualMedication(
 
 export async function getMfdsImageCandidates(
   itemSequence: string,
+  expectedProduct?: { name: string; strengthValue: number },
 ): Promise<MfdsImageCandidate[]> {
-  const serviceKey = getDrugPermissionServiceKey();
-
-  const [detailItems, pillItems] = await Promise.all([
-    fetchItems(PRODUCT_DETAIL_ENDPOINT, serviceKey, "item_seq", itemSequence),
-    fetchPillItems("item_seq", itemSequence),
+  const results = await Promise.allSettled([
+    Promise.resolve().then(() => fetchItems(PRODUCT_DETAIL_ENDPOINT, getDrugPermissionServiceKey(), "item_seq", itemSequence)),
+    Promise.resolve().then(() => fetchPillItems("item_seq", itemSequence)),
   ]);
+  if (results.every((result) => result.status === "rejected")) {
+    if (!process.env.MFDS_SERVICE_KEY?.trim() && !process.env.MFDS_PILL_IDENTIFICATION_SERVICE_KEY?.trim()) {
+      throw new MfdsConfigurationError("식약처 이미지 metadata 서비스를 사용할 수 없어요.");
+    }
+    throw new Error("mfds_image_metadata_unavailable");
+  }
+  const [detailItems, pillItems] = results.map((result) => result.status === "fulfilled" ? result.value : []);
+  const matchesCatalog = (item: ApiItem) => {
+    if (getString(item, "ITEM_SEQ", "item_seq", "itemSeq", "PRDLST_STDR_CODE", "prdlst_Stdr_code") !== itemSequence) return false;
+    if (!expectedProduct) return true;
+    const name = productBaseName(cleanProductLabel(getString(item, "ITEM_NAME", "item_name", "itemName")));
+    return name === expectedProduct.name && parseStrength(item) === expectedProduct.strengthValue;
+  };
 
   const candidates: MfdsImageCandidate[] = [];
-  const productImage = detailItems[0] ? officialImageFromItem(detailItems[0]) : undefined;
-  const pillImage = pillItems[0] ? officialImageFromItem(pillItems[0]) : undefined;
+  const detail = detailItems.find(matchesCatalog);
+  const pill = pillItems.find(matchesCatalog);
+  const productImage = detail ? officialImageFromItem(detail) : undefined;
+  const pillImage = pill ? officialImageFromItem(pill) : undefined;
 
   if (pillImage) candidates.push({ source: "pill", originalUrl: pillImage });
   if (productImage && productImage !== pillImage) {
@@ -381,10 +397,17 @@ function upstreamUrls(originalUrl: string) {
   return [secureUrl.toString(), parsed.toString()];
 }
 
+export function normalizeMfdsImageRequest(value: string) {
+  const normalized = normalizeOfficialImage(value);
+  if (!normalized) return undefined;
+  const url = new URL(normalized);
+  return url.username || url.password || url.port ? undefined : normalized;
+}
+
 export async function fetchVerifiedMfdsImage(
   candidate: MfdsImageCandidate,
 ): Promise<VerifiedMfdsImage | null> {
-  const officialUrl = normalizeOfficialImage(candidate.originalUrl);
+  const officialUrl = normalizeMfdsImageRequest(candidate.originalUrl);
   if (!officialUrl) return null;
 
   for (const upstreamUrl of upstreamUrls(officialUrl)) {
@@ -395,7 +418,7 @@ export async function fetchVerifiedMfdsImage(
         signal: AbortSignal.timeout(10_000),
         headers: { Accept: "image/avif,image/webp,image/png,image/jpeg,image/*" },
       });
-      const finalUrl = normalizeOfficialImage(response.url);
+      const finalUrl = normalizeMfdsImageRequest(response.url);
       const contentType = response.headers.get("content-type")?.split(";")[0].trim() ?? "";
       if (!response.ok || response.status !== 200 || !finalUrl) continue;
 
