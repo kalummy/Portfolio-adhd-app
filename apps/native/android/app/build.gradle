@@ -45,8 +45,10 @@ if (nativeStage == 'production') {
             && it.relation?.contains('delegate_permission/common.handle_all_urls') })
         throw new GradleException('Production Play App Link association missing')
 }
-def releaseVersionName = System.getenv('ADDI_NATIVE_RELEASE_VERSION_NAME')
-if (nativeStage == 'production' && !releaseVersionName) throw new GradleException('Release versionName proposal required')
+def releaseVersionName = '1.0.3'
+def proposedVersionName = System.getenv('ADDI_NATIVE_RELEASE_VERSION_NAME')
+if (nativeStage == 'production' && proposedVersionName && proposedVersionName != releaseVersionName)
+    throw new GradleException('Release versionName must match the committed Production version')
 def uploadFilePath = System.getenv('ADDI_NATIVE_UPLOAD_KEYSTORE_PATH')
 def uploadKeyAlias = System.getenv('ADDI_NATIVE_UPLOAD_KEY_ALIAS')
 def releaseSigningReady = nativeStage == 'production' && uploadFilePath && uploadKeyAlias
@@ -81,7 +83,7 @@ android {
         resValue "string", "custom_url_scheme", selected.package
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode nativeStage == 'production' ? 16 : 6
+        versionCode nativeStage == 'production' ? 17 : 6
         versionName nativeStage == 'production' ? releaseVersionName : "0.2.1-prototype"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -155,3 +157,14 @@ gradle.taskGraph.whenReady { graph ->
         throw new GradleException('Release artifact requires verified upload signing credentials')
 }
 apply plugin: 'com.google.gms.google-services'
+
+// Always read the current Auth config before Production compilation, lint or packaging.
+// This task has no cached outputs and never writes Supabase settings.
+def productionAuthGuard = tasks.register('validateProductionAuth', Exec) {
+    onlyIf { nativeStage == 'production' }
+    workingDir rootProject.file('../../..')
+    commandLine 'python3', rootProject.file('../../../scripts/validate-production-auth.py').absolutePath
+}
+tasks.matching { it.name in ['preReleaseBuild', 'lintRelease'] }.configureEach {
+    dependsOn productionAuthGuard
+}

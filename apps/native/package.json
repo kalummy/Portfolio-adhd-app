@@ -12,7 +12,7 @@
     "test": "node --experimental-transform-types --test scripts/*.test.mjs",
     "qa:web": "node scripts/qa-web.mjs",
     "predev": "node scripts/copy-assets.mjs",
-    "prebuild": "node scripts/copy-assets.mjs && node scripts/configure-auth.mjs",
+    "prebuild": "python3 ../../scripts/validate-production-auth.py --native-build && node scripts/copy-assets.mjs && node scripts/configure-auth.mjs",
     "qa:android": "node scripts/qa-android.mjs",
     "test:auth": "node --experimental-transform-types --test scripts/auth.test.mjs",
     "qa:auth:android": "node scripts/qa-auth-android.mjs"
