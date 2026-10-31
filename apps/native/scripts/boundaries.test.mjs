@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
+import ts from 'typescript';
 const base='1eac31aee1c7b3f3d16c17a35252268f67669a31';
 test('packaged shell stays bundled with the selected Native transport only', async () => {
   const config=JSON.parse(await readFile('android/app/src/main/assets/capacitor.config.json','utf8'));
@@ -21,11 +22,28 @@ test('packaged shell stays bundled with the selected Native transport only', asy
     assert.equal(/sb_secret_[A-Za-z0-9]{20}/.test(code), false, 'Secret in bundle');
   }
 });
-test('web Google/Kakao, cookie callback, DAL, TWA, API and Web Push byte-preserved', async () => {
-  for(const path of ['lib/auth/client.ts','app/auth/callback/route.ts','lib/supabase/client.ts','lib/supabase/server.ts','lib/supabase/proxy.ts','public/.well-known/assetlinks.json','android/app/src/main/AndroidManifest.xml','lib/push/client.ts','lib/push/server.ts','public/sw.js','app/manifest.ts','lib/reminders/policy.ts','lib/reminders/scheduler.ts']) {
+test('web Google/Kakao helpers, cookie callback, DAL, TWA, API and Web Push preserved', async () => {
+  for(const path of ['app/auth/callback/route.ts','lib/supabase/client.ts','lib/supabase/server.ts','lib/supabase/proxy.ts','public/.well-known/assetlinks.json','android/app/src/main/AndroidManifest.xml','lib/push/client.ts','lib/push/server.ts','public/sw.js','app/manifest.ts','lib/reminders/policy.ts','lib/reminders/scheduler.ts']) {
     assert.equal(await readFile(`../../${path}`,'utf8'),execFileSync('git',['show',`${base}:${path}`],{encoding:'utf8'}),path);
   }
-
+  // Logout is deliberately changing. Preserve the actual OAuth/profile helpers
+  // instead of requiring the entire client module to remain byte-identical.
+  const before=execFileSync('git',['show',`${base}:lib/auth/client.ts`],{encoding:'utf8'});
+  const after=await readFile('../../lib/auth/client.ts','utf8');
+  const declaration=(source,name)=>{
+    const ast=ts.createSourceFile('auth-client.ts',source,ts.ScriptTarget.Latest,true);
+    const fn=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text===name);
+    assert.ok(fn,`${name} must remain present`);
+    return fn.getText(ast);
+  };
+  for(const name of ['signInWithProvider','signInWithGoogle','signInWithKakao','getLinkedOAuthIdentities','linkOAuthIdentity','unlinkOAuthIdentity','updateAddiProfile']) {
+    const actual=declaration(after,name);
+    // The new recovery guard is the only permitted OAuth helper addition.
+    const normalized=name==='signInWithProvider'
+      ? actual.replace(/\n  if \(getPendingDeletedAccountCleanup\(\)\) throw new Error\("account_cleanup_pending"\);/, '')
+      : actual;
+    assert.equal(normalized,declaration(before,name),name);
+  }
 });
 test('shared CSS outside the validated Toast component stays byte-preserved', async () => {
   const before=execFileSync('git',['show',`${base}:app/globals.css`],{encoding:'utf8'});

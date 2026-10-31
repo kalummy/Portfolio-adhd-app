@@ -624,10 +624,10 @@ try {
   assert.match(mixpanelSource, /property_blacklist: \[\.\.\.URL_PROPERTY_BLACKLIST\]/);
   assert.match(mixpanelSource, /track_pageview: false/);
   assert.match(mixpanelSource, /record_sessions_percent: 0/);
-  assert.match(mixpanelSource, /if \(isAnalyticsPathBlocked\(window\.location\.pathname\)\) return false;/);
+  assert.match(mixpanelSource, /if \(!cleanupOnly && isAnalyticsPathBlocked\(window\.location\.pathname\)\) return false;/);
   assert.match(mixpanelSource, /const currentPathname = window\.location\.pathname;\s*const pathname = pathnameOverride \?\? currentPathname;/);
   assert.match(mixpanelSource, /isAnalyticsPathBlocked\(currentPathname\)[\s\S]*?isAnalyticsPathBlocked\(pathname\)[\s\S]*?!initAnalytics\(\)/);
-  assert.ok(mixpanelSource.indexOf("isAnalyticsPathBlocked(pathname)") < mixpanelSource.indexOf("mixpanel.track(eventName, payload)"));
+  assert.ok(mixpanelSource.indexOf("isAnalyticsPathBlocked(pathname)") < mixpanelSource.indexOf("mixpanel.track(eventName,"));
   assert.match(mixpanelSource, /const tracked = trackAnalyticsEvent\("app_opened", "unknown", \{\}\);\s*if \(tracked\) analyticsState\.appOpenedTracked = true;/);
   console.log("PASS URL privacy and automatic collection configuration");
 

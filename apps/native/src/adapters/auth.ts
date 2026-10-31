@@ -17,6 +17,11 @@ export const signInWithKakao = (nextPath = '/') => signInNative('kakao', nextPat
 export const signOut = signOutNative;
 
 export const clearDeletedAccountSession = signOutNative;
+export {
+  completeDeletedAccountCleanup,
+  retryDeletedAccountCleanup,
+  getPendingDeletedAccountCleanup,
+} from '../auth/runtime';
 
 export type AddiOAuthProvider = 'google' | 'kakao';
 export { getLinkedOAuthIdentities, linkOAuthIdentity, unlinkOAuthIdentity } from '../auth/identities';

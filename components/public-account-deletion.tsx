@@ -3,14 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MobileShell } from "@/components/mobile-shell";
 import { FlowHeader } from "@/components/flow-ui";
 import { VisitDialog } from "@/components/visit-dialog";
-import { clearDeletedAccountLocalData } from "@/lib/account-deletion-local";
 import { trackLoginStarted } from "@/lib/analytics/events";
 import {
-  clearDeletedAccountSession,
+  completeDeletedAccountCleanup,
+  getPendingDeletedAccountCleanup,
+  retryDeletedAccountCleanup,
   signInWithGoogle,
   signInWithKakao,
 } from "@/lib/auth/client";
@@ -44,10 +45,21 @@ export function PublicAccountDeletion({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleted, setDeleted] = useState(false);
+  const [serverDeleted, setServerDeleted] = useState(false);
   const [error, setError] = useState("");
+  const [cleanupPending, setCleanupPending] = useState(false);
+  const [recoveryComplete, setRecoveryComplete] = useState(false);
+  const operationInFlight = useRef(false);
+  const serverDeletedRef = useRef(false);
+  const recoveryCompleteRef = useRef(false);
+
+  useEffect(() => {
+    // An untrusted local hint cannot confirm that the server account was deleted.
+    if (getPendingDeletedAccountCleanup()) setCleanupPending(true);
+  }, []);
 
   async function handleSignIn(provider: LoginProvider) {
-    if (!configured || busyProvider) return;
+    if (!configured || busyProvider || deleting || cleanupPending || deleted) return;
     setBusyProvider(provider);
     setError("");
 
@@ -62,30 +74,58 @@ export function PublicAccountDeletion({
   }
 
   async function handleDeleteAccount() {
-    if (deleting) return;
+    const recoveryPending = getPendingDeletedAccountCleanup();
+    if (deleting || deleted || operationInFlight.current || recoveryCompleteRef.current) return;
+    if (!isAuthenticated && !cleanupPending && !serverDeletedRef.current && !recoveryPending) return;
+    operationInFlight.current = true;
     setDeleting(true);
     setError("");
 
     try {
-      const response = await fetch("/api/account", {
-        method: "DELETE",
-        cache: "no-store",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        keepalive: true,
-      });
-      if (!response.ok) throw new Error("account_delete_failed");
+      const localOnly = cleanupPending || serverDeletedRef.current || recoveryPending;
+      if (!localOnly) {
+        const response = await fetch("/api/account", {
+          method: "DELETE",
+          cache: "no-store",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          keepalive: true,
+        });
+        if (!response.ok) throw new Error("account_delete_failed");
+        serverDeletedRef.current = true;
+        setServerDeleted(true);
+      }
 
-      await Promise.allSettled([
-        clearDeletedAccountLocalData(),
-        clearDeletedAccountSession(),
-      ]);
-      setDeleteDialogOpen(false);
-      setDeleted(true);
+      const result = localOnly
+        ? await retryDeletedAccountCleanup()
+        : await completeDeletedAccountCleanup();
+      if (result.status !== "complete") {
+        setCleanupPending(true);
+        setError(serverDeletedRef.current
+          ? "계정 삭제는 처리됐지만 이 기기의 정보 정리가 남아 있어요. 다시 시도해주세요."
+          : "이 기기의 정보 정리가 아직 완료되지 않았어요. 다시 시도해주세요.");
+        return;
+      }
+
+      setCleanupPending(false);
+      if (serverDeletedRef.current) setDeleted(true);
+      else {
+        recoveryCompleteRef.current = true;
+        setRecoveryComplete(true);
+      }
       router.refresh();
     } catch {
+      if (serverDeletedRef.current || cleanupPending || recoveryPending) {
+        setCleanupPending(true);
+        setError(serverDeletedRef.current
+          ? "계정 삭제는 처리됐지만 이 기기의 정보 정리가 남아 있어요. 다시 시도해주세요."
+          : "이 기기의 정보 정리가 아직 완료되지 않았어요. 다시 시도해주세요.");
+      } else {
+        setError("계정 삭제 결과를 확인하지 못했어요. 잠시 후 다시 시도해주세요.");
+      }
+    } finally {
+      operationInFlight.current = false;
       setDeleteDialogOpen(false);
-      setError("계정 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.");
       setDeleting(false);
     }
   }
@@ -111,7 +151,27 @@ export function PublicAccountDeletion({
             <ul>
               {DELETED_DATA.map((item) => <li key={item}>{item}</li>)}
             </ul>
-            {deleted ? (
+            {recoveryComplete && !deleted ? (
+              <p className="account-deletion-success" role="status">
+                이 기기의 정보 정리를 마쳤어요. 계정 삭제 여부를 확인한 결과는 아니에요.
+              </p>
+            ) : cleanupPending ? (
+              <div className="account-deletion-authenticated">
+                <p className="account-deletion-error" role="alert">
+                  {error || (serverDeleted
+                    ? "계정 삭제는 처리됐지만 이 기기의 정보 정리가 남아 있어요. 다시 시도해주세요."
+                    : "이 기기의 정보 정리가 아직 완료되지 않았어요. 다시 시도해주세요.")}
+                </p>
+                <button
+                  type="button"
+                  className="account-deletion-delete-button"
+                  disabled={deleting}
+                  onClick={() => void handleDeleteAccount()}
+                >
+                  {deleting ? "기기 정보 정리 중" : "기기 정보 정리 다시 시도"}
+                </button>
+              </div>
+            ) : deleted ? (
               <p className="account-deletion-success" role="status">
                 ADDI 계정이 삭제되었습니다.
               </p>
