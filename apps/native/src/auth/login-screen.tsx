@@ -2,7 +2,7 @@ import { trackLoginStarted } from '../adapters/analytics';
 import { useSyncExternalStore } from 'react';
 import { MemberBrandLockup } from '@/components/member-splash';
 import { MobileShell } from '@/components/mobile-shell';
-import { cancelNativeLogin, getNativeAuthSnapshot, signInNative, subscribeNativeAuth } from './runtime';
+import { cancelNativeLogin, getNativeAuthSnapshot, retryNativeCleanup, signInNative, subscribeNativeAuth } from './runtime';
 export function NativeLoginScreen() {
   const auth = useSyncExternalStore(subscribeNativeAuth, getNativeAuthSnapshot);
   const busy = ['starting', 'pending', 'completing'].includes(auth.status);
@@ -11,11 +11,13 @@ export function NativeLoginScreen() {
     <div className="member-login-actions">
       {auth.message && <p className="member-login-error" role="status">{auth.message}</p>}
       {(['kakao', 'google'] as const).map(provider => <button type="button" key={provider}
-        className={`member-login-button ${provider}`} disabled={busy || auth.status === 'unavailable'}
+        className={`member-login-button ${provider}`} disabled={busy || auth.cleanupPending || auth.status === 'unavailable'}
         onClick={() => { trackLoginStarted(); void signInNative(provider).catch(() => undefined); }}>
         <img src={`/auth/${provider}.svg`} alt="" width={40} height={40} />
         <span>{provider === 'kakao' ? '카카오로 시작' : '구글로 시작'}</span>
       </button>)}
+      {auth.cleanupPending && <button type="button" className="member-login-button" disabled={busy}
+        onClick={() => { void retryNativeCleanup().catch(() => undefined); }}>기기 정보 정리 다시 시도</button>}
       {auth.status === 'pending' && <button type="button" className="member-login-button" onClick={() => { void cancelNativeLogin().catch(() => undefined); }}>로그인 취소</button>}
       {auth.status === 'completing' && !auth.message && <p role="status">로그인을 완료하고 있어요.</p>}
     </div>

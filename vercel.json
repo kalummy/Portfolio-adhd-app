@@ -1,5 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "codex/privacy-client-cleanup-20261031": false
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/reminders",
